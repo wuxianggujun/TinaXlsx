@@ -1,0 +1,47 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# 查找依赖
+find_dependency(PkgConfig QUIET)
+
+# TinaXlsx库的配置信息
+set(TinaXlsx_VERSION @PROJECT_VERSION@)
+set(TinaXlsx_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(TinaXlsx_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(TinaXlsx_VERSION_PATCH @PROJECT_VERSION_PATCH@)
+
+# 检查编译配置的兼容性
+set_and_check(TinaXlsx_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set_and_check(TinaXlsx_LIBRARY_DIRS "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+
+# 导入目标
+include("${CMAKE_CURRENT_LIST_DIR}/TinaXlsxTargets.cmake")
+
+# 设置库变量
+set(TinaXlsx_LIBRARIES TinaXlsx::TinaXlsx)
+set(TinaXlsx_INCLUDE_DIR ${TinaXlsx_INCLUDE_DIRS})
+
+# 检查所有组件是否找到
+check_required_components(TinaXlsx)
+
+# 提供一些帮助信息
+if(TinaXlsx_FOUND)
+    message(STATUS "找到TinaXlsx库 ${TinaXlsx_VERSION}")
+    
+    # 显示库的功能特性
+    if(TARGET TinaXlsx::TinaXlsx)
+        get_target_property(_tinaxlsx_type TinaXlsx::TinaXlsx TYPE)
+        if(_tinaxlsx_type STREQUAL "SHARED_LIBRARY")
+            message(STATUS "TinaXlsx: 动态库")
+        elseif(_tinaxlsx_type STREQUAL "STATIC_LIBRARY")
+            message(STATUS "TinaXlsx: 静态库")
+        endif()
+    endif()
+endif()
+
+# 为了向后兼容，提供一些别名
+set(TINAXLSX_FOUND ${TinaXlsx_FOUND})
+set(TINAXLSX_VERSION ${TinaXlsx_VERSION})
+set(TINAXLSX_INCLUDE_DIRS ${TinaXlsx_INCLUDE_DIRS})
+set(TINAXLSX_LIBRARIES ${TinaXlsx_LIBRARIES}) 

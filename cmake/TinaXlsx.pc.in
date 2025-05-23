@@ -1,0 +1,16 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+
+Name: TinaXlsx
+Description: @PROJECT_DESCRIPTION@
+Version: @PROJECT_VERSION@
+URL: https://github.com/wuxianggujun/TinaXlsx.git
+
+Requires: 
+Requires.private: 
+Conflicts: 
+Libs: -L${libdir} -lTinaXlsx
+Libs.private: -lxlsxwriter
+Cflags: -I${includedir} 
