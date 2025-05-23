@@ -11,10 +11,15 @@ namespace TinaXlsx {
 Workbook::Workbook(const std::string& filePath, Mode mode) 
     : filePath_(filePath), mode_(mode) {
     
+    // 检查文件路径不能为空
+    if (filePath.empty()) {
+        throw Exception("File path cannot be empty");
+    }
+    
     switch (mode_) {
         case Mode::Read:
             if (!std::filesystem::exists(filePath)) {
-                throw FileException("文件不存在: " + filePath);
+                throw FileException("File not found: " + filePath);
             }
             reader_ = std::make_unique<Reader>(filePath);
             break;
@@ -24,7 +29,7 @@ Workbook::Workbook(const std::string& filePath, Mode mode)
             break;
             
         case Mode::ReadWrite:
-            throw Exception("暂不支持读写模式");
+            throw Exception("ReadWrite mode not supported yet");
             break;
     }
 }
@@ -50,14 +55,14 @@ Workbook::~Workbook() = default;
 
 Reader& Workbook::getReader() {
     if (!reader_) {
-        throw Exception("工作簿不在读取模式");
+        throw Exception("Workbook not in read mode");
     }
     return *reader_;
 }
 
 Writer& Workbook::getWriter() {
     if (!writer_) {
-        throw Exception("工作簿不在写入模式");
+        throw Exception("Workbook not in write mode");
     }
     return *writer_;
 }

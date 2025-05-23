@@ -31,6 +31,9 @@ add_subdirectory(third_party/zlib)
 
 # 2. 构建 expat (XML解析库，xlsxio需要)
 message(STATUS "配置 expat...")
+# 设置 expat 构建为静态库，避免 DLL 依赖问题
+set(EXPAT_BUILD_SHARED OFF CACHE BOOL "Build expat shared library" FORCE)
+set(EXPAT_SHARED_LIBS OFF CACHE BOOL "Build expat shared library" FORCE)
 add_subdirectory(third_party/expat/expat)
 
 # 3. 为 minizip 创建一个简单的包装器
@@ -80,10 +83,12 @@ message(STATUS "配置 xlsxio...")
 # 设置 xlsxio 构建选项 - 只构建静态库，避免文件名冲突
 set(BUILD_STATIC ON CACHE BOOL "Build xlsxio static libraries" FORCE)
 set(BUILD_SHARED OFF CACHE BOOL "Build xlsxio shared libraries" FORCE)
+set(BUILD_TOOLS OFF CACHE BOOL "Build xlsxio tools" FORCE)
+set(BUILD_EXAMPLES OFF CACHE BOOL "Build xlsxio examples" FORCE)
 
 # 为 xlsxio 设置 Minizip 变量
 set(MINIZIP_FOUND TRUE CACHE BOOL "Minizip found" FORCE)
-set(MINIZIP_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libxlsxwriter/third_party/minizip" CACHE STRING "Minizip include dirs" FORCE)
+set(MINIZIP_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libxlsxwriter/third_party" CACHE STRING "Minizip include dirs" FORCE)
 set(MINIZIP_LIBRARIES minizip CACHE STRING "Minizip libraries" FORCE)
 
 # 为 xlsxio 设置 EXPAT 变量
@@ -143,6 +148,8 @@ target_include_directories(TinaXlsx
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/xlsxio/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libxlsxwriter/include
 )
 
 # 链接库
@@ -189,6 +196,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 else()
     target_compile_definitions(TinaXlsx PRIVATE NDEBUG TINAXLSX_RELEASE)
 endif()
+
+# xlsxio 静态库链接定义
+target_compile_definitions(TinaXlsx PRIVATE 
+    BUILD_XLSXIO_STATIC
+    STATIC
+)
 
 # =============================================================================
 # 测试配置

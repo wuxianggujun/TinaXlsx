@@ -71,11 +71,11 @@ struct Reader::Impl {
             fsPath = std::filesystem::u8path(path);
 #endif
         } catch (const std::exception& e) {
-            throw FileException("路径编码错误: " + path + " (" + e.what() + ")");
+            throw FileException("Path encoding error: " + path + " (" + e.what() + ")");
         }
         
         if (!std::filesystem::exists(fsPath)) {
-            throw FileException("文件不存在: " + path);
+            throw FileException("File not found: " + path);
         }
         
         // 在Windows上尝试使用宽字符路径
@@ -109,12 +109,12 @@ struct Reader::Impl {
                 // 尝试打开临时文件
                 book = xlsxioread_open(tempFilePath.c_str());
             } catch (const std::exception& e) {
-                throw FileException("无法打开文件: " + path + " (" + e.what() + ")");
+                throw FileException("Cannot open file: " + path + " (" + e.what() + ")");
             }
         }
         
         if (!book) {
-            throw FileException("无法打开Excel文件: " + path);
+            throw FileException("Failed to open Excel file: " + path);
         }
         
         // 获取工作表列表

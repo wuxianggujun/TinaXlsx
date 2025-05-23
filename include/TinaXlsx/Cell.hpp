@@ -27,7 +27,7 @@ public:
     /**
      * @brief 默认构造函数
      */
-    Cell() = default;
+    Cell() : value_(std::monostate{}), position_() {}
     
     /**
      * @brief 构造函数
