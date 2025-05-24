@@ -219,48 +219,59 @@ jobs:
       with:
         path: artifacts
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: TinaXlsx ${{ github.ref_name }}
-        body: |
-          ## TinaXlsx ${{ github.ref_name }} Release
-          
-          高性能Excel读写库，基于libxlsxwriter封装的C++库。
-          
-          ### 下载说明：
-          - **Windows**: 下载 `TinaXlsx-Windows-x64.zip`
-          - **Linux**: 下载 `TinaXlsx-Linux-x64.tar.gz`  
-          - **macOS**: 下载 `TinaXlsx-macOS-x64.tar.gz`
-          
-          ### 使用方法：
-          1. 解压下载的文件
-          2. 将 `lib/` 目录中的所有静态库文件链接到您的项目
-          3. 包含 `include/` 目录到您的头文件搜索路径
-          4. 开始使用 TinaXlsx！
-          
-          ### 依赖库：
-          所有必需的依赖库都已包含在发布包中，无需额外安装。
-          
-          如有问题请提交 Issues。
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Assets
+    - name: Create Release and Upload Assets
       run: |
+        # 提取版本号
+        VERSION=${GITHUB_REF#refs/tags/}
+        
+        # 创建发布说明
+        cat > release_notes.md << EOF
+        ## TinaXlsx ${VERSION} Release
+        
+        高性能Excel读写库，基于libxlsxwriter封装的C++库。
+        
+        ### 📦 下载说明：
+        - **Windows**: 下载 \`TinaXlsx-Windows-x64.zip\`
+        - **Linux**: 下载 \`TinaXlsx-Linux-x64.tar.gz\`  
+        - **macOS**: 下载 \`TinaXlsx-macOS-x64.tar.gz\`
+        
+        ### 🚀 使用方法：
+        1. 解压下载的文件
+        2. 将 \`lib/\` 目录中的所有静态库文件链接到您的项目
+        3. 包含 \`include/\` 目录到您的头文件搜索路径
+        4. 开始使用 TinaXlsx！
+        
+        ### ✅ 依赖库：
+        所有必需的依赖库都已包含在发布包中，无需额外安装。
+        
+        ### 🔧 CMake 集成：
+        \`\`\`cmake
+        find_package(TinaXlsx REQUIRED)
+        target_link_libraries(your_target TinaXlsx::TinaXlsx)
+        \`\`\`
+        
+        如有问题请提交 Issues。
+        EOF
+        
+        # 创建发布
+        gh release create ${VERSION} \
+          --title "TinaXlsx ${VERSION}" \
+          --notes-file release_notes.md \
+          --latest
+        
         # 上传所有平台的编译产物
         for artifact_dir in artifacts/*/; do
-          artifact_name=$(basename "$artifact_dir")
-          for file in "$artifact_dir"*; do
-            if [ -f "$file" ]; then
-              echo "Uploading $file..."
-              gh release upload ${{ github.ref_name }} "$file" --clobber
-            fi
-          done
+          if [ -d "$artifact_dir" ]; then
+            artifact_name=$(basename "$artifact_dir")
+            echo "Processing artifact: $artifact_name"
+            
+            for file in "$artifact_dir"*.{zip,tar.gz}; do
+              if [ -f "$file" ]; then
+                echo "Uploading $file..."
+                gh release upload ${VERSION} "$file" --clobber
+              fi
+            done
+          fi
         done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -272,39 +283,51 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
     - name: Download all artifacts
       uses: actions/download-artifact@v3
       with:
         path: dev-artifacts
 
-    - name: Create development release
-      uses: actions/create-release@v1
-      id: create_dev_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: dev-${{ github.run_number }}
-        release_name: TinaXlsx Development Build #${{ github.run_number }}
-        body: |
-          ## TinaXlsx 开发版本 Build #${{ github.run_number }}
-          
-          这是自动生成的开发版本，包含最新的代码更改。
-          
-          **注意**: 这是开发版本，可能包含未测试的功能或bug，建议仅用于测试。
-          
-          Commit: ${{ github.sha }}
-        draft: false
-        prerelease: true
-
-    - name: Upload Dev Release Assets
+    - name: Create Development Release
       run: |
+        # 生成开发版本标签
+        DEV_TAG="dev-${{ github.run_number }}"
+        
+        # 创建发布说明
+        cat > dev_release_notes.md << EOF
+        ## TinaXlsx 开发版本 Build #${{ github.run_number }}
+        
+        这是自动生成的开发版本，包含最新的代码更改。
+        
+        **⚠️ 注意**: 这是开发版本，可能包含未测试的功能或bug，建议仅用于测试。
+        
+        **📝 Commit**: ${{ github.sha }}
+        **🌐 Branch**: ${{ github.ref_name }}
+        **📅 Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        EOF
+        
+        # 删除已存在的开发版本（如果有）
+        gh release delete ${DEV_TAG} --yes || true
+        
+        # 创建新的开发版本
+        gh release create ${DEV_TAG} \
+          --title "TinaXlsx Development Build #${{ github.run_number }}" \
+          --notes-file dev_release_notes.md \
+          --prerelease
+        
+        # 上传开发版本的编译产物
         for artifact_dir in dev-artifacts/*/; do
-          for file in "$artifact_dir"*; do
-            if [ -f "$file" ]; then
-              echo "Uploading dev $file..."
-              gh release upload dev-${{ github.run_number }} "$file" --clobber
-            fi
-          done
+          if [ -d "$artifact_dir" ]; then
+            for file in "$artifact_dir"*.{zip,tar.gz}; do
+              if [ -f "$file" ]; then
+                echo "Uploading dev $file..."
+                gh release upload ${DEV_TAG} "$file" --clobber
+              fi
+            done
+          fi
         done
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
