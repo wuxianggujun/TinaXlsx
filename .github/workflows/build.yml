@@ -78,15 +78,20 @@ jobs:
       run: |
         brew install pkg-config
 
-    - name: Configure CMake
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cmake -B build -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTINAXLSX_BUILD_SHARED=OFF -DTINAXLSX_BUILD_EXAMPLES=OFF -DTINAXLSX_BUILD_TESTS=ON -DTINAXLSX_ENABLE_PERFORMANCE=ON
+
+    - name: Configure CMake (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
           -DTINAXLSX_BUILD_SHARED=OFF \
           -DTINAXLSX_BUILD_EXAMPLES=OFF \
           -DTINAXLSX_BUILD_TESTS=ON \
-          -DTINAXLSX_ENABLE_PERFORMANCE=ON \
-          ${{ matrix.os == 'windows-latest' && '-A x64' || '' }}
+          -DTINAXLSX_ENABLE_PERFORMANCE=ON
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }} --parallel
@@ -97,40 +102,49 @@ jobs:
 
     - name: Package (Windows)
       if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
         # 创建发布目录
-        mkdir release
-        mkdir release/lib
-        mkdir release/include
-        mkdir release/examples
+        New-Item -ItemType Directory -Path "release" -Force
+        New-Item -ItemType Directory -Path "release/lib" -Force
+        New-Item -ItemType Directory -Path "release/include" -Force
+        New-Item -ItemType Directory -Path "release/examples" -Force
         
         # 复制库文件
-        cp build/Release/TinaXlsx.lib release/lib/
-        cp build/third_party/libxlsxwriter/Release/xlsxwriter.lib release/lib/
-        cp build/third_party/xlsxio/Release/xlsxio_read_STATIC.lib release/lib/
-        cp build/third_party/xlsxio/Release/xlsxio_write_STATIC.lib release/lib/
-        cp build/third_party/zlib/Release/zlibstatic.lib release/lib/
-        cp build/third_party/expat/expat/Release/expat.lib release/lib/
+        Copy-Item "build/Release/TinaXlsx.lib" "release/lib/"
+        Copy-Item "build/third_party/libxlsxwriter/Release/xlsxwriter.lib" "release/lib/"
+        Copy-Item "build/third_party/xlsxio/Release/xlsxio_read_STATIC.lib" "release/lib/"
+        Copy-Item "build/third_party/xlsxio/Release/xlsxio_write_STATIC.lib" "release/lib/"
+        Copy-Item "build/third_party/zlib/Release/zlibstatic.lib" "release/lib/"
+        Copy-Item "build/third_party/expat/expat/Release/expat.lib" "release/lib/"
         
         # 复制头文件
-        cp -r include/* release/include/
+        Copy-Item -Recurse "include/*" "release/include/"
         
         # 复制文档
-        cp README.md release/
-        cp LICENSE release/
+        Copy-Item "README.md" "release/"
+        Copy-Item "LICENSE" "release/"
         
         # 创建使用说明
-        echo "# TinaXlsx Windows x64 Release Package" > release/README.txt
-        echo "" >> release/README.txt
-        echo "## Library Files:" >> release/README.txt
-        echo "- lib/TinaXlsx.lib - Main TinaXlsx static library" >> release/README.txt
-        echo "- lib/xlsxwriter.lib - Excel writing functionality" >> release/README.txt  
-        echo "- lib/xlsxio_*.lib - Excel I/O libraries" >> release/README.txt
-        echo "- lib/zlibstatic.lib - Compression library" >> release/README.txt
-        echo "- lib/expat.lib - XML parsing library" >> release/README.txt
-        echo "" >> release/README.txt
-        echo "## Usage:" >> release/README.txt
-        echo "Link all .lib files to your project and include the headers from include/ directory" >> release/README.txt
+        @"
+        # TinaXlsx Windows x64 Release Package
+
+        ## Library Files:
+        - lib/TinaXlsx.lib - Main TinaXlsx static library
+        - lib/xlsxwriter.lib - Excel writing functionality
+        - lib/xlsxio_*.lib - Excel I/O libraries
+        - lib/zlibstatic.lib - Compression library
+        - lib/expat.lib - XML parsing library
+
+        ## Usage:
+        Link all .lib files to your project and include the headers from include/ directory
+
+        ## CMake Integration:
+        ```cmake
+        find_package(TinaXlsx REQUIRED)
+        target_link_libraries(your_target TinaXlsx::TinaXlsx)
+        ```
+        "@ | Out-File -FilePath "release/README.txt" -Encoding UTF8
 
     - name: Package (Linux/macOS)
       if: matrix.os != 'windows-latest'
@@ -194,9 +208,9 @@ jobs:
 
     - name: Create zip (Windows)
       if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
-        cd release
-        7z a ../${{ matrix.artifact_name }}.zip .
+        Compress-Archive -Path "release/*" -DestinationPath "${{ matrix.artifact_name }}.zip"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
