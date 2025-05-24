@@ -10,7 +10,6 @@ on:
 
 env:
   CMAKE_VERSION: 3.16.0
-  NINJA_VERSION: 1.11.1
 
 jobs:
   build:
@@ -41,27 +40,35 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
 
-    - name: Cache CMake and Ninja
+    - name: Verify submodules and project structure
+      run: |
+        echo "=== Git submodule status ==="
+        git submodule status
+        echo ""
+        echo "=== Third party directory contents ==="
+        ls -la third_party/ || echo "third_party directory not found"
+        echo ""
+        echo "=== CMakeLists.txt exists ==="
+        ls -la CMakeLists.txt
+        echo ""
+        echo "=== Current working directory ==="
+        pwd
+        echo ""
+        echo "=== Project root contents ==="
+        ls -la
+
+    - name: Cache CMake
       uses: actions/cache@v3
       with:
         path: |
           ${{ runner.temp }}/cmake
-          ${{ runner.temp }}/ninja
-        key: ${{ runner.os }}-cmake-${{ env.CMAKE_VERSION }}-ninja-${{ env.NINJA_VERSION }}
+        key: ${{ runner.os }}-cmake-${{ env.CMAKE_VERSION }}
 
     - name: Setup CMake
       uses: jwlawson/actions-setup-cmake@v1.14
       with:
         cmake-version: ${{ env.CMAKE_VERSION }}
-
-    - name: Setup Ninja (Linux/macOS)
-      if: runner.os != 'Windows'
-      uses: seanmiddleditch/gha-setup-ninja@master
-      with:
-        version: ${{ env.NINJA_VERSION }}
 
     - name: Setup MSVC (Windows)
       if: matrix.os == 'windows-latest'
@@ -81,7 +88,7 @@ jobs:
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake -B build -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTINAXLSX_BUILD_SHARED=OFF -DTINAXLSX_BUILD_EXAMPLES=OFF -DTINAXLSX_BUILD_TESTS=ON -DTINAXLSX_ENABLE_PERFORMANCE=ON
+        cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTINAXLSX_BUILD_SHARED=OFF -DTINAXLSX_BUILD_EXAMPLES=OFF -DTINAXLSX_BUILD_TESTS=ON -DTINAXLSX_ENABLE_PERFORMANCE=ON
 
     - name: Configure CMake (Linux/macOS)
       if: matrix.os != 'windows-latest'
