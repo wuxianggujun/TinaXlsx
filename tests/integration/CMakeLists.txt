@@ -1,33 +1,44 @@
-# 集成测试配置
+# ==========================================
+# TinaXlsx Integration Tests
+# ==========================================
 
-# 收集所有集成测试源文件
-file(GLOB_RECURSE INTEGRATION_TEST_SOURCES
-    "*.cpp"
-    "*.hpp"
+message(STATUS "配置 TinaXlsx 集成测试...")
+
+# 添加集成测试程序
+function(add_integration_test test_name source_file)
+    add_executable(${test_name} ${source_file})
+    target_link_libraries(${test_name} PRIVATE TinaXlsx)
+    target_include_directories(${test_name} PRIVATE ${CMAKE_SOURCE_DIR}/include)
+    
+    # 设置输出目录
+    set_target_properties(${test_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/integration
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/tests/integration
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/tests/integration
+    )
+    
+    # 添加到CTest（如果使用CTest）
+    add_test(NAME ${test_name} COMMAND ${test_name})
+    
+    message(STATUS "  添加集成测试: ${test_name}")
+endfunction()
+
+# 添加我们的集成测试
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_reader_functionality.cpp")
+    add_integration_test(test_reader_functionality test_reader_functionality.cpp)
+endif()
+
+# 收集所有其他集成测试源文件（如果有的话）
+file(GLOB_RECURSE OTHER_INTEGRATION_TESTS
+    "test_*.cpp"
 )
 
-# 只有存在测试文件时才创建目标
-if(INTEGRATION_TEST_SOURCES)
-    # 创建集成测试可执行文件
-    add_executable(integration_tests ${INTEGRATION_TEST_SOURCES})
+# 为每个测试文件创建单独的可执行文件
+foreach(test_file ${OTHER_INTEGRATION_TESTS})
+    get_filename_component(test_name ${test_file} NAME_WE)
+    if(NOT test_name STREQUAL "test_reader_functionality")
+        add_integration_test(${test_name} ${test_file})
+    endif()
+endforeach()
 
-    # 设置包含目录
-    target_include_directories(integration_tests PRIVATE ${TEST_INCLUDE_DIRS})
-
-    # 链接库
-    target_link_libraries(integration_tests PRIVATE ${TEST_LINK_LIBRARIES})
-
-    # 设置C++标准
-    set_target_properties(integration_tests PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-    )
-
-    # 添加到CTest
-    gtest_discover_tests(integration_tests
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    )
-else()
-    message(STATUS "没有找到集成测试文件，跳过集成测试构建")
-endif() 
+message(STATUS "集成测试配置完成") 
