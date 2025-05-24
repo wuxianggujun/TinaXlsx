@@ -49,21 +49,34 @@ void Worksheet::writeCell(RowIndex row, ColumnIndex column, const CellValue& val
     
     lxw_format* fmt = format ? format->getInternalFormat() : nullptr;
     
-    std::visit([this, row, column, fmt](const auto& v) {
-        using T = std::decay_t<decltype(v)>;
-        if constexpr (std::is_same_v<T, std::monostate>) {
-            // 空单元格
+    // 使用索引而不是std::visit获得更好的性能
+    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
+    const uint8_t type = value.index();
+    
+    switch (type) {
+        case 0: // std::string
+            worksheet_write_string(pImpl_->worksheet, row, column, 
+                                 std::get<std::string>(value).c_str(), fmt);
+            break;
+        case 1: // double
+            worksheet_write_number(pImpl_->worksheet, row, column, 
+                                 std::get<double>(value), fmt);
+            break;
+        case 2: // int64_t
+            worksheet_write_number(pImpl_->worksheet, row, column, 
+                                 static_cast<double>(std::get<int64_t>(value)), fmt);
+            break;
+        case 3: // bool
+            worksheet_write_boolean(pImpl_->worksheet, row, column, 
+                                  std::get<bool>(value), fmt);
+            break;
+        case 4: // std::monostate
             worksheet_write_blank(pImpl_->worksheet, row, column, fmt);
-        } else if constexpr (std::is_same_v<T, std::string>) {
-            worksheet_write_string(pImpl_->worksheet, row, column, v.c_str(), fmt);
-        } else if constexpr (std::is_same_v<T, double>) {
-            worksheet_write_number(pImpl_->worksheet, row, column, v, fmt);
-        } else if constexpr (std::is_same_v<T, int64_t>) {
-            worksheet_write_number(pImpl_->worksheet, row, column, static_cast<double>(v), fmt);
-        } else if constexpr (std::is_same_v<T, bool>) {
-            worksheet_write_boolean(pImpl_->worksheet, row, column, v, fmt);
-        }
-    }, value);
+            break;
+        default:
+            worksheet_write_blank(pImpl_->worksheet, row, column, fmt);
+            break;
+    }
 }
 
 void Worksheet::writeString(const CellPosition& position, const std::string& value, Format* format) {
@@ -119,8 +132,41 @@ void Worksheet::writeUrl(const CellPosition& position, const std::string& url, c
 void Worksheet::writeRow(RowIndex rowIndex, const RowData& rowData, ColumnIndex startColumn, Format* format) {
     if (!pImpl_->worksheet) return;
     
+    lxw_format* fmt = format ? format->getInternalFormat() : nullptr;
+    
+    // 优化：直接调用底层libxlsxwriter函数，减少中间函数调用
     for (ColumnIndex col = 0; col < rowData.size(); ++col) {
-        writeCell(rowIndex, startColumn + col, rowData[col], format);
+        const ColumnIndex currentCol = startColumn + col;
+        const CellValue& value = rowData[col];
+        
+        // 使用索引而不是std::visit获得更好的性能
+        // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
+        const uint8_t type = value.index();
+        
+        switch (type) {
+            case 0: // std::string
+                worksheet_write_string(pImpl_->worksheet, rowIndex, currentCol, 
+                                     std::get<std::string>(value).c_str(), fmt);
+                break;
+            case 1: // double
+                worksheet_write_number(pImpl_->worksheet, rowIndex, currentCol, 
+                                     std::get<double>(value), fmt);
+                break;
+            case 2: // int64_t
+                worksheet_write_number(pImpl_->worksheet, rowIndex, currentCol, 
+                                     static_cast<double>(std::get<int64_t>(value)), fmt);
+                break;
+            case 3: // bool
+                worksheet_write_boolean(pImpl_->worksheet, rowIndex, currentCol, 
+                                      std::get<bool>(value), fmt);
+                break;
+            case 4: // std::monostate
+                worksheet_write_blank(pImpl_->worksheet, rowIndex, currentCol, fmt);
+                break;
+            default:
+                worksheet_write_blank(pImpl_->worksheet, rowIndex, currentCol, fmt);
+                break;
+        }
     }
 }
 
@@ -134,17 +180,52 @@ void Worksheet::writeTable(const CellPosition& startPosition, const TableData& t
 
 void Worksheet::writeBatch(const CellRange& range, const TableData& tableData, Format* format) {
     if (!range.isValid()) {
-        throw InvalidArgumentException("无效的单元格范围");
+        throw InvalidArgumentException("Invalid cell range");
     }
     
-    RowIndex maxRows = std::min(range.rowCount(), static_cast<RowIndex>(tableData.size()));
+    if (!pImpl_->worksheet) return;
     
+    lxw_format* fmt = format ? format->getInternalFormat() : nullptr;
+    const RowIndex maxRows = std::min(range.rowCount(), static_cast<RowIndex>(tableData.size()));
+    
+    // 优化：使用更直接的循环和内联写入操作
     for (RowIndex row = 0; row < maxRows; ++row) {
         const auto& rowData = tableData[row];
-        ColumnIndex maxCols = std::min(range.columnCount(), static_cast<ColumnIndex>(rowData.size()));
+        const ColumnIndex maxCols = std::min(range.columnCount(), static_cast<ColumnIndex>(rowData.size()));
+        const RowIndex actualRow = range.start.row + row;
         
         for (ColumnIndex col = 0; col < maxCols; ++col) {
-            writeCell(range.start.row + row, range.start.column + col, rowData[col], format);
+            const ColumnIndex actualCol = range.start.column + col;
+            const CellValue& value = rowData[col];
+            
+            // 内联优化的写入操作
+            // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
+            const uint8_t type = value.index();
+            
+            switch (type) {
+                case 0: // std::string
+                    worksheet_write_string(pImpl_->worksheet, actualRow, actualCol, 
+                                         std::get<std::string>(value).c_str(), fmt);
+                    break;
+                case 1: // double
+                    worksheet_write_number(pImpl_->worksheet, actualRow, actualCol, 
+                                         std::get<double>(value), fmt);
+                    break;
+                case 2: // int64_t
+                    worksheet_write_number(pImpl_->worksheet, actualRow, actualCol, 
+                                         static_cast<double>(std::get<int64_t>(value)), fmt);
+                    break;
+                case 3: // bool
+                    worksheet_write_boolean(pImpl_->worksheet, actualRow, actualCol, 
+                                          std::get<bool>(value), fmt);
+                    break;
+                case 4: // std::monostate
+                    worksheet_write_blank(pImpl_->worksheet, actualRow, actualCol, fmt);
+                    break;
+                default:
+                    worksheet_write_blank(pImpl_->worksheet, actualRow, actualCol, fmt);
+                    break;
+            }
         }
     }
 }

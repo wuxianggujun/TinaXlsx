@@ -234,24 +234,27 @@ bool Reader::readNextRow(RowData& rowData, ColumnIndex maxColumns) {
         return false;
     }
     
-    rowData.clear();
-    
-    // 如果没有指定最大列数，使用一个合理的默认值
+    // 预分配容量以减少内存重分配
     if (maxColumns == 0) {
         maxColumns = 100; // 默认最大100列
     }
     
+    rowData.clear();
+    rowData.reserve(maxColumns); // 预分配容量
+    
     ColumnIndex columnIndex = 0;
     XLSXIOCHAR* cellValue = nullptr;
     
-    // 读取当前行的所有单元格
+    // 优化：批量读取单元格以减少函数调用开销
     while (xlsxioread_sheet_next_cell_string(pImpl_->sheet, &cellValue) && columnIndex < maxColumns) {
-        std::string value = cellValue ? cellValue : "";
-        rowData.push_back(stringToCellValue(value));
-        
         if (cellValue) {
+            // 避免不必要的字符串拷贝
+            rowData.emplace_back(stringToCellValue(std::string(cellValue)));
             xlsxioread_free(cellValue);
             cellValue = nullptr;
+        } else {
+            // 空单元格
+            rowData.emplace_back(std::monostate{});
         }
         
         ++columnIndex;
@@ -454,16 +457,18 @@ bool Reader::isEmptyRow(const RowData& rowData) {
 }
 
 bool Reader::isEmptyCell(const CellValue& value) {
-    return std::visit([](const auto& v) -> bool {
-        using T = std::decay_t<decltype(v)>;
-        if constexpr (std::is_same_v<T, std::monostate>) {
+    // 使用索引而不是std::visit获得更好的性能
+    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
+    const uint8_t type = value.index();
+    
+    switch (type) {
+        case 0: // std::string
+            return std::get<std::string>(value).empty();
+        case 4: // std::monostate
             return true;
-        } else if constexpr (std::is_same_v<T, std::string>) {
-            return v.empty();
-        } else {
+        default:
             return false;
-        }
-    }, value);
+    }
 }
 
 CellValue Reader::stringToCellValue(const std::string& str) {
@@ -471,53 +476,116 @@ CellValue Reader::stringToCellValue(const std::string& str) {
         return std::monostate{};
     }
     
-    // 尝试解析为数字
-    if (str.find_first_not_of("0123456789.-+eE") == std::string::npos) {
-        // 尝试解析为整数
-        if (str.find('.') == std::string::npos && str.find('e') == std::string::npos && str.find('E') == std::string::npos) {
+    const char* data = str.data();
+    const size_t len = str.length();
+    
+    // 快速检查第一个字符来优化常见情况
+    const char first = data[0];
+    
+    // 优化数字检测：先快速检查字符集
+    bool couldBeNumber = false;
+    bool couldBeInt = true;
+    bool hasDecimal = false;
+    bool hasExponent = false;
+    
+    // 更高效的数字检查
+    for (size_t i = 0; i < len; ++i) {
+        const char c = data[i];
+        if (c >= '0' && c <= '9') {
+            couldBeNumber = true;
+        } else if (c == '.') {
+            if (hasDecimal) break; // 第二个小数点，不是数字
+            hasDecimal = true;
+            couldBeInt = false;
+            couldBeNumber = true;
+        } else if (c == 'e' || c == 'E') {
+            if (hasExponent) break; // 第二个指数，不是数字
+            hasExponent = true;
+            couldBeInt = false;
+            couldBeNumber = true;
+        } else if (c == '-' || c == '+') {
+            if (i != 0 && data[i-1] != 'e' && data[i-1] != 'E') {
+                couldBeNumber = false;
+                break;
+            }
+            couldBeNumber = true;
+        } else {
+            couldBeNumber = false;
+            break;
+        }
+    }
+    
+    if (couldBeNumber) {
+        if (couldBeInt && !hasDecimal && !hasExponent) {
+            // 尝试解析为整数
             int64_t intValue;
-            auto result = std::from_chars(str.data(), str.data() + str.size(), intValue);
-            if (result.ec == std::errc{}) {
+            auto result = std::from_chars(data, data + len, intValue);
+            if (result.ec == std::errc{} && result.ptr == data + len) {
                 return intValue;
             }
         }
         
         // 尝试解析为浮点数
         double doubleValue;
-        auto result = std::from_chars(str.data(), str.data() + str.size(), doubleValue);
-        if (result.ec == std::errc{}) {
+        auto result = std::from_chars(data, data + len, doubleValue);
+        if (result.ec == std::errc{} && result.ptr == data + len) {
             return doubleValue;
         }
     }
     
-    // 尝试解析为布尔值
-    if (str == "true" || str == "TRUE" || str == "True" || str == "1") {
-        return true;
-    } else if (str == "false" || str == "FALSE" || str == "False" || str == "0") {
-        return false;
+    // 优化布尔值检测：直接检查而不创建子字符串
+    if (len <= 5) { // 最长的布尔值字符串是"false"
+        // 使用预编译的比较函数
+        if ((len == 4 && 
+             (first == 't' || first == 'T') &&
+             (data[1] == 'r' || data[1] == 'R') &&
+             (data[2] == 'u' || data[2] == 'U') &&
+             (data[3] == 'e' || data[3] == 'E')) ||
+            (len == 1 && first == '1')) {
+            return true;
+        }
+        
+        if ((len == 5 && 
+             (first == 'f' || first == 'F') &&
+             (data[1] == 'a' || data[1] == 'A') &&
+             (data[2] == 'l' || data[2] == 'L') &&
+             (data[3] == 's' || data[3] == 'S') &&
+             (data[4] == 'e' || data[4] == 'E')) ||
+            (len == 1 && first == '0')) {
+            return false;
+        }
     }
     
-    // 默认作为字符串
+    // 默认作为字符串，避免额外的拷贝
     return str;
 }
 
 std::string Reader::cellValueToString(const CellValue& value) {
-    return std::visit([](const auto& v) -> std::string {
-        using T = std::decay_t<decltype(v)>;
-        if constexpr (std::is_same_v<T, std::monostate>) {
-            return "";
-        } else if constexpr (std::is_same_v<T, std::string>) {
-            return v;
-        } else if constexpr (std::is_same_v<T, double>) {
-            return std::to_string(v);
-        } else if constexpr (std::is_same_v<T, int64_t>) {
-            return std::to_string(v);
-        } else if constexpr (std::is_same_v<T, bool>) {
-            return v ? "true" : "false";
-        } else {
-            return "";
+    // 使用索引而不是std::visit获得更好的性能
+    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
+    const uint8_t type = value.index();
+    
+    switch (type) {
+        case 0: // std::string
+            return std::get<std::string>(value);
+        case 1: { // double
+            const double val = std::get<double>(value);
+            // 优化：检查是否为整数以避免不必要的小数点
+            if (val == static_cast<int64_t>(val) && 
+                val >= -9007199254740992.0 && val <= 9007199254740992.0) {
+                return std::to_string(static_cast<int64_t>(val));
+            }
+            return std::to_string(val);
         }
-    }, value);
+        case 2: // int64_t
+            return std::to_string(std::get<int64_t>(value));
+        case 3: // bool
+            return std::get<bool>(value) ? "true" : "false";
+        case 4: // std::monostate
+            return "";
+        default:
+            return "";
+    }
 }
 
 } // namespace TinaXlsx
