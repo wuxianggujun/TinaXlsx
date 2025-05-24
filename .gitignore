@@ -4,3 +4,24 @@
 .idea
 build
 .cursorindexingignore
+
+# 排除第三方库的GitHub Actions配置
+third_party/*/.github/
+
+# CMake相关
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+!CMakeLists.txt
+
+# 编译产物
+*.lib
+*.a
+*.so
+*.dll
+*.exe
+
+# 测试输出
+test-build/
+*.xlsx
+*.xls

@@ -1,0 +1,310 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CMAKE_VERSION: 3.16.0
+  NINJA_VERSION: 1.11.1
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        build_type: [Release]
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            generator: "Visual Studio 17 2022"
+            artifact_name: TinaXlsx-Windows-x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            generator: "Unix Makefiles"
+            artifact_name: TinaXlsx-Linux-x64
+          - os: macos-latest
+            platform: macos
+            arch: x64
+            generator: "Unix Makefiles"
+            artifact_name: TinaXlsx-macOS-x64
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache CMake and Ninja
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ runner.temp }}/cmake
+          ${{ runner.temp }}/ninja
+        key: ${{ runner.os }}-cmake-${{ env.CMAKE_VERSION }}-ninja-${{ env.NINJA_VERSION }}
+
+    - name: Setup CMake
+      uses: jwlawson/actions-setup-cmake@v1.14
+      with:
+        cmake-version: ${{ env.CMAKE_VERSION }}
+
+    - name: Setup Ninja (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: seanmiddleditch/gha-setup-ninja@master
+      with:
+        version: ${{ env.NINJA_VERSION }}
+
+    - name: Setup MSVC (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: microsoft/setup-msbuild@v1.3
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential pkg-config
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install pkg-config
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DTINAXLSX_BUILD_SHARED=OFF \
+          -DTINAXLSX_BUILD_EXAMPLES=OFF \
+          -DTINAXLSX_BUILD_TESTS=ON \
+          -DTINAXLSX_ENABLE_PERFORMANCE=ON \
+          ${{ matrix.os == 'windows-latest' && '-A x64' || '' }}
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+    - name: Test
+      working-directory: build
+      run: ctest --build-config ${{ matrix.build_type }} --output-on-failure --parallel
+
+    - name: Package (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # 创建发布目录
+        mkdir release
+        mkdir release/lib
+        mkdir release/include
+        mkdir release/examples
+        
+        # 复制库文件
+        cp build/Release/TinaXlsx.lib release/lib/
+        cp build/third_party/libxlsxwriter/Release/xlsxwriter.lib release/lib/
+        cp build/third_party/xlsxio/Release/xlsxio_read_STATIC.lib release/lib/
+        cp build/third_party/xlsxio/Release/xlsxio_write_STATIC.lib release/lib/
+        cp build/third_party/zlib/Release/zlibstatic.lib release/lib/
+        cp build/third_party/expat/expat/Release/expat.lib release/lib/
+        
+        # 复制头文件
+        cp -r include/* release/include/
+        
+        # 复制文档
+        cp README.md release/
+        cp LICENSE release/
+        
+        # 创建使用说明
+        echo "# TinaXlsx Windows x64 Release Package" > release/README.txt
+        echo "" >> release/README.txt
+        echo "## Library Files:" >> release/README.txt
+        echo "- lib/TinaXlsx.lib - Main TinaXlsx static library" >> release/README.txt
+        echo "- lib/xlsxwriter.lib - Excel writing functionality" >> release/README.txt  
+        echo "- lib/xlsxio_*.lib - Excel I/O libraries" >> release/README.txt
+        echo "- lib/zlibstatic.lib - Compression library" >> release/README.txt
+        echo "- lib/expat.lib - XML parsing library" >> release/README.txt
+        echo "" >> release/README.txt
+        echo "## Usage:" >> release/README.txt
+        echo "Link all .lib files to your project and include the headers from include/ directory" >> release/README.txt
+
+    - name: Package (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        # 创建发布目录
+        mkdir -p release/lib
+        mkdir -p release/include
+        mkdir -p release/examples
+        
+        # 复制库文件
+        cp build/libTinaXlsx.a release/lib/
+        cp build/third_party/libxlsxwriter/libxlsxwriter.a release/lib/
+        cp build/third_party/xlsxio/libxlsxio_read_STATIC.a release/lib/
+        cp build/third_party/xlsxio/libxlsxio_write_STATIC.a release/lib/
+        cp build/third_party/zlib/libz.a release/lib/
+        cp build/third_party/expat/expat/libexpat.a release/lib/
+        
+        # 复制头文件
+        cp -r include/* release/include/
+        
+        # 复制文档
+        cp README.md release/
+        cp LICENSE release/
+        
+        # 创建pkg-config文件
+        cat > release/lib/pkgconfig/tinaxlsx.pc << EOF
+        prefix=${{ github.workspace }}/release
+        libdir=\${prefix}/lib
+        includedir=\${prefix}/include
+        
+        Name: TinaXlsx
+        Description: 高性能Excel读写库
+        Version: 1.0.0
+        Libs: -L\${libdir} -lTinaXlsx -lxlsxwriter -lxlsxio_read_STATIC -lxlsxio_write_STATIC -lz -lexpat
+        Cflags: -I\${includedir}
+        EOF
+        
+        # 创建使用说明
+        cat > release/README.txt << EOF
+        # TinaXlsx ${{ matrix.platform }} x64 Release Package
+        
+        ## Library Files:
+        - lib/libTinaXlsx.a - Main TinaXlsx static library
+        - lib/libxlsxwriter.a - Excel writing functionality  
+        - lib/libxlsxio_*.a - Excel I/O libraries
+        - lib/libz.a - Compression library
+        - lib/libexpat.a - XML parsing library
+        
+        ## Usage:
+        Link all .a files to your project and include the headers from include/ directory
+        
+        Or use pkg-config:
+        pkg-config --libs --cflags tinaxlsx
+        EOF
+
+    - name: Create tarball (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cd release
+        tar -czf ../${{ matrix.artifact_name }}.tar.gz .
+
+    - name: Create zip (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cd release
+        7z a ../${{ matrix.artifact_name }}.zip .
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          ${{ matrix.os == 'windows-latest' && format('{0}.zip', matrix.artifact_name) || format('{0}.tar.gz', matrix.artifact_name) }}
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: TinaXlsx ${{ github.ref_name }}
+        body: |
+          ## TinaXlsx ${{ github.ref_name }} Release
+          
+          高性能Excel读写库，基于libxlsxwriter封装的C++库。
+          
+          ### 下载说明：
+          - **Windows**: 下载 `TinaXlsx-Windows-x64.zip`
+          - **Linux**: 下载 `TinaXlsx-Linux-x64.tar.gz`  
+          - **macOS**: 下载 `TinaXlsx-macOS-x64.tar.gz`
+          
+          ### 使用方法：
+          1. 解压下载的文件
+          2. 将 `lib/` 目录中的所有静态库文件链接到您的项目
+          3. 包含 `include/` 目录到您的头文件搜索路径
+          4. 开始使用 TinaXlsx！
+          
+          ### 依赖库：
+          所有必需的依赖库都已包含在发布包中，无需额外安装。
+          
+          如有问题请提交 Issues。
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      run: |
+        # 上传所有平台的编译产物
+        for artifact_dir in artifacts/*/; do
+          artifact_name=$(basename "$artifact_dir")
+          for file in "$artifact_dir"*; do
+            if [ -f "$file" ]; then
+              echo "Uploading $file..."
+              gh release upload ${{ github.ref_name }} "$file" --clobber
+            fi
+          done
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 开发版本构建 - 只在push到主分支时触发
+  dev-build:
+    if: "!startsWith(github.ref, 'refs/tags/v') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')"
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dev-artifacts
+
+    - name: Create development release
+      uses: actions/create-release@v1
+      id: create_dev_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: dev-${{ github.run_number }}
+        release_name: TinaXlsx Development Build #${{ github.run_number }}
+        body: |
+          ## TinaXlsx 开发版本 Build #${{ github.run_number }}
+          
+          这是自动生成的开发版本，包含最新的代码更改。
+          
+          **注意**: 这是开发版本，可能包含未测试的功能或bug，建议仅用于测试。
+          
+          Commit: ${{ github.sha }}
+        draft: false
+        prerelease: true
+
+    - name: Upload Dev Release Assets
+      run: |
+        for artifact_dir in dev-artifacts/*/; do
+          for file in "$artifact_dir"*; do
+            if [ -f "$file" ]; then
+              echo "Uploading dev $file..."
+              gh release upload dev-${{ github.run_number }} "$file" --clobber
+            fi
+          done
+        done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
