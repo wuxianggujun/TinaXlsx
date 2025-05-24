@@ -1,70 +1,51 @@
 /**
  * @file TinaXlsx.hpp
- * @brief TinaXlsx Excel processing library - Main header file
- * @author TinaXlsx Team
- * @version 1.0.0
- * @date 2025
- * 
- * High performance Excel processing library based on xlsxio and xlsxwriter
- * Features:
- * - C++17 syntax support
- * - Zero overhead abstractions
- * - RAII resource management
- * - Type safety
- * - High performance read/write
+ * @brief TinaXlsx 主要包含文件
  */
 
 #pragma once
 
-// Core classes
+// 核心类型定义
+#include "Types.hpp"
+
+// 异常处理
+#include "Exception.hpp"
+
+// 核心功能类
 #include "Reader.hpp"
 #include "Writer.hpp"
-#include "Workbook.hpp"
-#include "Worksheet.hpp"
-#include "Cell.hpp"
 #include "Format.hpp"
 
-// Utility classes
-#include "Exception.hpp"
-#include "Types.hpp"
-#include "Utils.hpp"
-#include "DiffTool.hpp"
+// 基础设施组件（用于高级定制）
+#include "DataCache.hpp"
+#include "ExcelStructureManager.hpp"
+#include "WorksheetDataParser.hpp"
+#include "XmlParser.hpp"
+#include "ZipReader.hpp"
 
 /**
  * @namespace TinaXlsx
- * @brief TinaXlsx library namespace
+ * @brief TinaXlsx 命名空间，包含所有库的功能
  */
 namespace TinaXlsx {
 
 /**
- * @brief Library version information
+ * @brief 获取库版本信息
+ * @return const char* 版本字符串
  */
-struct Version {
-    static constexpr int major = 1;
-    static constexpr int minor = 0;
-    static constexpr int patch = 0;
-    static constexpr const char* string = "1.0.0";
-};
+inline const char* getVersion() {
+    return "1.0.0";
+}
 
 /**
- * @brief Convenient reader factory - based on minizip-ng and expat
- * @param filePath Excel file path
- * @return std::unique_ptr<Reader> Reader smart pointer
+ * @brief 获取库的详细信息
+ * @return const char* 详细信息字符串
  */
-[[nodiscard]] std::unique_ptr<Reader> createReader(const std::string& filePath);
-
-/**
- * @brief Convenient writer factory
- * @param filePath Excel file path
- * @return std::unique_ptr<Writer> Writer smart pointer
- */
-[[nodiscard]] std::unique_ptr<Writer> createWriter(const std::string& filePath);
-
-/**
- * @brief Convenient workbook factory
- * @param filePath Excel file path
- * @return std::unique_ptr<Workbook> Workbook smart pointer
- */
-[[nodiscard]] std::unique_ptr<Workbook> createWorkbook(const std::string& filePath);
+inline const char* getLibraryInfo() {
+    return "TinaXlsx v1.0.0 - 高性能Excel读写库\n"
+           "基于: libxlsxwriter (写入), minizip-ng (ZIP), expat (XML)\n"
+           "特性: 快速读取, 流式支持, Unicode支持, 线程安全, 智能缓存\n"
+           "GitHub: https://github.com/wuxianggujun/TinaXlsx";
+}
 
 } // namespace TinaXlsx 

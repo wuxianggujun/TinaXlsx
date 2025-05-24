@@ -89,4 +89,22 @@ public:
         : Exception("Invalid argument: " + message) {}
 };
 
+/**
+ * @brief Parse exception
+ */
+class ParseException : public Exception {
+public:
+    explicit ParseException(const std::string& message) 
+        : Exception("Parse error: " + message) {}
+};
+
+/**
+ * @brief Invalid operation exception
+ */
+class InvalidOperationException : public Exception {
+public:
+    explicit InvalidOperationException(const std::string& message) 
+        : Exception("Invalid operation: " + message) {}
+};
+
 } // namespace TinaXlsx 

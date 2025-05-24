@@ -191,6 +191,18 @@ if(TARGET minizip_legacy)
     add_dependencies(test_reader_enhanced minizip_legacy)
 endif()
 
+# 添加简单测试程序
+add_executable(test_simple_reader test_simple_reader_en.cpp)
+target_link_libraries(test_simple_reader PRIVATE TinaXlsx)
+target_include_directories(test_simple_reader PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+# 设置输出目录
+set_target_properties(test_simple_reader PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}
+)
+
 # =============================================================================
 # 测试配置
 # =============================================================================

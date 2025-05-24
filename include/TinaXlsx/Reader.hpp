@@ -7,6 +7,9 @@
 
 #include "Types.hpp"
 #include "Exception.hpp"
+#include "DataCache.hpp"
+#include "ExcelStructureManager.hpp"
+#include "WorksheetDataParser.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,6 +23,14 @@ namespace TinaXlsx {
  * 
  * High performance reader based on minizip-ng and expat, replacing xlsxio
  * Supports streaming and batch reading, uses RAII for resource management, ensures exception safety
+ * 
+ * 重构后的架构：
+ * - Reader: 只负责提供读取接口和管理当前状态
+ * - ExcelStructureManager: 负责Excel文件结构的解析和管理
+ * - WorksheetDataParser: 负责工作表数据的解析
+ * - DataCache: 负责数据的缓存管理
+ * - ZipReader/ExcelZipReader: 负责ZIP文件操作
+ * - XmlParser组件: 负责XML解析
  */
 class Reader {
 public:
@@ -40,8 +51,14 @@ public:
     using CellCallback = std::function<bool(const CellPosition& position, const CellValue& value)>;
 
 private:
-    struct Impl;
-    std::unique_ptr<Impl> pImpl_;
+    // 使用新的组件架构
+    std::unique_ptr<ExcelStructureManager> structureManager_;
+    std::unique_ptr<DataCache> cache_;
+    std::unique_ptr<WorksheetDataParser> parser_;
+    
+    // 当前状态
+    std::optional<ExcelStructureManager::SheetInfo> currentSheet_;
+    RowIndex currentRowIndex_ = 0;
 
 public:
     /**
@@ -202,6 +219,19 @@ public:
      * @return std::string String representation
      */
     [[nodiscard]] static std::string cellValueToString(const CellValue& value);
+
+private:
+    /**
+     * @brief 确保有打开的工作表
+     * @throws InvalidOperationException 如果没有打开工作表
+     */
+    void ensureSheetOpen() const;
+    
+    /**
+     * @brief 获取当前工作表的完整数据（从缓存或解析）
+     * @return TableData 工作表数据
+     */
+    TableData getCurrentSheetData();
 };
 
 } // namespace TinaXlsx 
