@@ -1,6 +1,6 @@
 /**
  * @file Exception.hpp
- * @brief TinaXlsx异常处理
+ * @brief TinaXlsx exception handling
  */
 
 #pragma once
@@ -12,7 +12,7 @@
 namespace TinaXlsx {
 
 /**
- * @brief TinaXlsx基础异常类
+ * @brief TinaXlsx base exception class
  */
 class Exception : public std::runtime_error {
 public:
@@ -27,66 +27,66 @@ public:
 };
 
 /**
- * @brief 文件操作异常
+ * @brief File operation exception
  */
 class FileException : public Exception {
 public:
     explicit FileException(const std::string& message) 
-        : Exception("文件操作错误: " + message) {}
+        : Exception("File operation error: " + message) {}
 };
 
 /**
- * @brief 工作表操作异常
+ * @brief Worksheet operation exception
  */
 class WorksheetException : public Exception {
 public:
     explicit WorksheetException(const std::string& message) 
-        : Exception("工作表操作错误: " + message) {}
+        : Exception("Worksheet operation error: " + message) {}
 };
 
 /**
- * @brief 单元格操作异常
+ * @brief Cell operation exception
  */
 class CellException : public Exception {
 public:
     explicit CellException(const std::string& message) 
-        : Exception("单元格操作错误: " + message) {}
+        : Exception("Cell operation error: " + message) {}
 };
 
 /**
- * @brief 格式操作异常
+ * @brief Format operation exception
  */
 class FormatException : public Exception {
 public:
     explicit FormatException(const std::string& message) 
-        : Exception("格式操作错误: " + message) {}
+        : Exception("Format operation error: " + message) {}
 };
 
 /**
- * @brief 数据类型异常
+ * @brief Data type exception
  */
 class TypeException : public Exception {
 public:
     explicit TypeException(const std::string& message) 
-        : Exception("数据类型错误: " + message) {}
+        : Exception("Data type error: " + message) {}
 };
 
 /**
- * @brief 索引越界异常
+ * @brief Index out of range exception
  */
 class IndexOutOfRangeException : public Exception {
 public:
     explicit IndexOutOfRangeException(const std::string& message) 
-        : Exception("索引越界: " + message) {}
+        : Exception("Index out of range: " + message) {}
 };
 
 /**
- * @brief 无效参数异常
+ * @brief Invalid argument exception
  */
 class InvalidArgumentException : public Exception {
 public:
     explicit InvalidArgumentException(const std::string& message) 
-        : Exception("无效参数: " + message) {}
+        : Exception("Invalid argument: " + message) {}
 };
 
 } // namespace TinaXlsx 

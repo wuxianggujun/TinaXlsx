@@ -7,10 +7,13 @@
 
 #include "Types.hpp"
 #include "Exception.hpp"
-#include <xlsxwriter.h>
 #include <memory>
 #include <string>
 #include <optional>
+
+// 前向声明，避免在公共头文件中包含xlsxwriter.h
+struct lxw_workbook;
+struct lxw_format;
 
 namespace TinaXlsx {
 
@@ -219,6 +222,10 @@ public:
      * @brief 设置自定义数字格式
      * @param formatString 格式字符串
      * @return Format& 返回自身引用，支持链式调用
+     * @example
+     * format.setCustomNumberFormat("0.00");      // 两位小数
+     * format.setCustomNumberFormat("#,##0.00");  // 千分位分隔符
+     * format.setCustomNumberFormat("yyyy-mm-dd"); // 日期格式
      */
     Format& setCustomNumberFormat(const std::string& formatString);
     
@@ -237,23 +244,28 @@ public:
     Format& setHidden(bool hidden = true);
     
     /**
-     * @brief 获取内部格式对象指针（仅供内部使用）
-     * @return lxw_format* 内部格式对象指针
+     * @brief 获取底层的libxlsxwriter格式对象
+     * @return 格式对象指针（内部使用）
      */
-    [[nodiscard]] lxw_format* getInternalFormat() const;
+    void* getNativeFormat() const;
     
     /**
-     * @brief 克隆当前格式
+     * @brief 获取内部格式对象（用于兼容性）
+     * @return 内部格式对象指针
+     */
+    lxw_format* getInternalFormat() const;
+    
+    /**
+     * @brief 克隆格式对象
      * @param workbook 目标工作簿
-     * @return std::unique_ptr<Format> 克隆的格式对象
+     * @return 克隆的格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> clone(lxw_workbook* workbook) const;
 };
 
 /**
- * @brief 格式构建器类
- * 
- * 提供更便捷的格式创建方式
+ * @brief 格式构建器
+ * 提供便捷的方法来创建常用格式
  */
 class FormatBuilder {
 private:
@@ -267,8 +279,8 @@ public:
     explicit FormatBuilder(lxw_workbook* workbook) : workbook_(workbook) {}
     
     /**
-     * @brief 创建基础格式
-     * @return std::unique_ptr<Format> 格式对象
+     * @brief 创建基本格式
+     * @return 基本格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createBasic() const;
     
@@ -276,7 +288,7 @@ public:
      * @brief 创建标题格式
      * @param fontSize 字体大小
      * @param bold 是否粗体
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 标题格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createTitle(double fontSize = 16, bool bold = true) const;
     
@@ -284,48 +296,48 @@ public:
      * @brief 创建表头格式
      * @param backgroundColor 背景颜色
      * @param fontColor 字体颜色
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 表头格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createHeader(
-        Color backgroundColor = Colors::Gray, 
-        Color fontColor = Colors::White) const;
+        Color backgroundColor = Colors::Gray25,
+        Color fontColor = Colors::Black) const;
     
     /**
      * @brief 创建数字格式
      * @param decimalPlaces 小数位数
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 数字格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createNumber(int decimalPlaces = 2) const;
     
     /**
      * @brief 创建百分比格式
      * @param decimalPlaces 小数位数
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 百分比格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createPercentage(int decimalPlaces = 2) const;
     
     /**
      * @brief 创建日期格式
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 日期格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createDate() const;
     
     /**
      * @brief 创建货币格式
      * @param currency 货币符号
-     * @return std::unique_ptr<Format> 格式对象
+     * @return 货币格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createCurrency(const std::string& currency = "¥") const;
     
     /**
-     * @brief 创建边框格式
-     * @param style 边框样式
-     * @param color 边框颜色
-     * @return std::unique_ptr<Format> 格式对象
+     * @brief 创建带边框的格式
+     * @param borderStyle 边框样式
+     * @param borderColor 边框颜色
+     * @return 带边框的格式对象
      */
     [[nodiscard]] std::unique_ptr<Format> createBorder(
-        BorderStyle style = BorderStyle::Thin, 
-        Color color = Colors::Black) const;
+        BorderStyle borderStyle = BorderStyle::Thin,
+        Color borderColor = Colors::Black) const;
 };
 
 } // namespace TinaXlsx 

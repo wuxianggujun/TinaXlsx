@@ -1,6 +1,6 @@
 /**
  * @file Types.hpp
- * @brief TinaXlsx基础类型定义
+ * @brief TinaXlsx basic type definitions
  */
 
 #pragma once
@@ -13,24 +13,24 @@
 namespace TinaXlsx {
 
 // ================================
-// 平台相关类型定义
+// Platform-specific type definitions
 // ================================
 
 #if defined(_WIN32) || defined(_WIN64)
-    // Windows平台
-    using Integer = long long;           // 64位整数
-    using UInteger = unsigned long long; // 64位无符号整数
-    using UInt8 = unsigned char;         // 8位无符号整数
-    using UInt32 = unsigned int;         // 32位无符号整数
+    // Windows platform
+    using Integer = long long;           // 64-bit integer
+    using UInteger = unsigned long long; // 64-bit unsigned integer
+    using UInt8 = unsigned char;         // 8-bit unsigned integer
+    using UInt32 = unsigned int;         // 32-bit unsigned integer
 #elif defined(__linux__) || defined(__APPLE__)
-    // Linux/macOS平台，优先使用标准类型
+    // Linux/macOS platform, prefer standard types
     #include <cstdint>
     using Integer = int64_t;
     using UInteger = uint64_t;
     using UInt8 = uint8_t;
     using UInt32 = uint32_t;
 #else
-    // 其他平台，使用保守的类型定义
+    // Other platforms, use conservative type definitions
     using Integer = long long;
     using UInteger = unsigned long long;
     using UInt8 = unsigned char;
@@ -38,46 +38,46 @@ namespace TinaXlsx {
 #endif
 
 // ================================
-// Excel相关类型定义
+// Excel-related type definitions
 // ================================
 
 /**
- * @brief 行索引类型（0基于）
+ * @brief Row index type (0-based)
  */
 using RowIndex = UInt32;
 
 /**
- * @brief 列索引类型（0基于）
+ * @brief Column index type (0-based)
  */
 using ColumnIndex = UInt32;
 
 /**
- * @brief 工作表索引类型
+ * @brief Worksheet index type
  */
 using SheetIndex = size_t;
 
 /**
- * @brief 颜色类型（RGB值）
+ * @brief Color type (RGB value)
  */
 using Color = UInt32;
 
 // ================================
-// 单元格数据类型
+// Cell data types
 // ================================
 
 /**
- * @brief 单元格数据类型 - 高性能variant
+ * @brief Cell data type - high performance variant
  */
 using CellValue = std::variant<
-    std::string,    // 字符串 - 索引0
-    double,         // 浮点数 - 索引1
-    Integer,        // 整数 - 索引2
-    bool,           // 布尔值 - 索引3
-    std::monostate  // 空值 - 索引4
+    std::string,    // String - index 0
+    double,         // Float - index 1
+    Integer,        // Integer - index 2
+    bool,           // Boolean - index 3
+    std::monostate  // Empty - index 4
 >;
 
 /**
- * @brief CellValue类型索引枚举，确保类型安全和高性能
+ * @brief CellValue type index enum, ensures type safety and high performance
  */
 enum class CellValueType : UInt8 {
     String = 0,      // std::string
@@ -88,35 +88,35 @@ enum class CellValueType : UInt8 {
 };
 
 /**
- * @brief 内联高性能类型获取函数
- * @param value CellValue实例
- * @return CellValueType 对应的类型枚举
+ * @brief Inline high performance type getter function
+ * @param value CellValue instance
+ * @return CellValueType corresponding type enum
  */
 [[nodiscard]] inline CellValueType getCellValueType(const CellValue& value) noexcept {
     return static_cast<CellValueType>(value.index());
 }
 
 // ================================
-// 高性能字符串转换工具
+// High performance string conversion utilities
 // ================================
 
 /**
- * @brief 高性能整数到字符串转换 - 避免std::to_string的开销
+ * @brief High performance integer to string conversion - avoid std::to_string overhead
  */
 namespace FastConvert {
     
     /**
-     * @brief 快速整数转字符串 - 使用栈上缓冲区避免堆分配
+     * @brief Fast integer to string - use stack buffer to avoid heap allocation
      */
     [[nodiscard]] std::string integerToString(Integer value) noexcept;
     
     /**
-     * @brief 快速双精度转字符串 - 优化小数位数和科学计数法
+     * @brief Fast double to string - optimize decimal places and scientific notation
      */
     [[nodiscard]] std::string doubleToString(double value) noexcept;
     
     /**
-     * @brief 快速布尔值转字符串 - 编译时优化
+     * @brief Fast boolean to string - compile-time optimization
      */
     [[nodiscard]] constexpr const char* boolToString(bool value) noexcept {
         return value ? "true" : "false";
@@ -124,28 +124,28 @@ namespace FastConvert {
 }
 
 // ================================
-// CellValue高性能转换函数
+// CellValue high performance conversion functions
 // ================================
 
 /**
- * @brief 高性能CellValue到字符串转换
- * @param value CellValue实例
- * @return std::string 转换后的字符串
+ * @brief High performance CellValue to string conversion
+ * @param value CellValue instance
+ * @return std::string converted string
  */
 [[nodiscard]] std::string cellValueToString(const CellValue& value) noexcept;
 
 /**
- * @brief Excel行数据类型
+ * @brief Excel row data type
  */
 using RowData = std::vector<CellValue>;
 
 /**
- * @brief Excel表格数据类型
+ * @brief Excel table data type
  */
 using TableData = std::vector<RowData>;
 
 /**
- * @brief 边框样式枚举
+ * @brief Border style enum
  */
 enum class BorderStyle : UInt8 {
     None = 0,
@@ -158,7 +158,7 @@ enum class BorderStyle : UInt8 {
 };
 
 /**
- * @brief 对齐方式枚举 - 匹配libxlsxwriter的LXW_ALIGN_*值
+ * @brief Alignment enum - matches libxlsxwriter LXW_ALIGN_* values
  */
 enum class Alignment : UInt8 {
     None = 0,                    // LXW_ALIGN_NONE
@@ -172,7 +172,7 @@ enum class Alignment : UInt8 {
 };
 
 /**
- * @brief 垂直对齐方式枚举 - 匹配libxlsxwriter的LXW_ALIGN_VERTICAL_*值
+ * @brief Vertical alignment enum - matches libxlsxwriter LXW_ALIGN_VERTICAL_* values
  */
 enum class VerticalAlignment : UInt8 {
     Top = 8,          // LXW_ALIGN_VERTICAL_TOP
@@ -183,7 +183,7 @@ enum class VerticalAlignment : UInt8 {
 };
 
 /**
- * @brief 单元格位置结构
+ * @brief Cell position structure
  */
 struct CellPosition {
     RowIndex row;
@@ -192,7 +192,7 @@ struct CellPosition {
     constexpr CellPosition() noexcept : row(0), column(0) {}
     constexpr CellPosition(RowIndex r, ColumnIndex c) noexcept : row(r), column(c) {}
     
-    // 比较操作符
+    // Comparison operators
     constexpr bool operator==(const CellPosition& other) const noexcept {
         return row == other.row && column == other.column;
     }
@@ -207,7 +207,7 @@ struct CellPosition {
 };
 
 /**
- * @brief 单元格范围结构
+ * @brief Cell range structure
  */
 struct CellRange {
     CellPosition start;
@@ -219,28 +219,28 @@ struct CellRange {
         : start(startRow, startCol), end(endRow, endCol) {}
     
     /**
-     * @brief 检查范围是否有效
+     * @brief Check if range is valid
      */
     [[nodiscard]] constexpr bool isValid() const noexcept {
         return start.row <= end.row && start.column <= end.column;
     }
     
     /**
-     * @brief 获取范围的行数
+     * @brief Get number of rows in range
      */
     [[nodiscard]] constexpr RowIndex rowCount() const noexcept {
         return isValid() ? (end.row - start.row + 1) : 0;
     }
     
     /**
-     * @brief 获取范围的列数
+     * @brief Get number of columns in range
      */
     [[nodiscard]] constexpr ColumnIndex columnCount() const noexcept {
         return isValid() ? (end.column - start.column + 1) : 0;
     }
     
     /**
-     * @brief 检查位置是否在范围内
+     * @brief Check if position is within range
      */
     [[nodiscard]] constexpr bool contains(const CellPosition& pos) const noexcept {
         return pos.row >= start.row && pos.row <= end.row &&
@@ -249,31 +249,50 @@ struct CellRange {
 };
 
 /**
- * @brief 预定义的颜色常量
+ * @brief Predefined colors
  */
 namespace Colors {
-    constexpr Color White      = 0xFFFFFF;
-    constexpr Color Black      = 0x000000;
-    constexpr Color Red        = 0xFF0000;
-    constexpr Color Green      = 0x008000;
-    constexpr Color Blue       = 0x0000FF;
-    constexpr Color Yellow     = 0xFFFF00;
-    constexpr Color Cyan       = 0x00FFFF;
-    constexpr Color Magenta    = 0xFF00FF;
-    constexpr Color Silver     = 0xC0C0C0;
-    constexpr Color Gray       = 0x808080;
-    constexpr Color Maroon     = 0x800000;
-    constexpr Color Olive      = 0x808000;
-    constexpr Color Lime       = 0x00FF00;
-    constexpr Color Aqua       = 0x00FFFF;
-    constexpr Color Teal       = 0x008080;
-    constexpr Color Navy       = 0x000080;
-    constexpr Color Fuchsia    = 0xFF00FF;
-    constexpr Color Purple     = 0x800080;
+    constexpr Color White = 0xFFFFFF;
+    constexpr Color Black = 0x000000;
+    constexpr Color Red = 0xFF0000;
+    constexpr Color Green = 0x00FF00;
+    constexpr Color Blue = 0x0000FF;
+    constexpr Color Yellow = 0xFFFF00;
+    constexpr Color Cyan = 0x00FFFF;
+    constexpr Color Magenta = 0xFF00FF;
+    constexpr Color Gray = 0x808080;
+    constexpr Color LightGray = 0xC0C0C0;
+    constexpr Color DarkGray = 0x404040;
+    constexpr Color Silver = 0xC0C0C0;
+    constexpr Color Maroon = 0x800000;
+    constexpr Color Olive = 0x808000;
+    constexpr Color Navy = 0x000080;
+    constexpr Color Purple = 0x800080;
+    constexpr Color Teal = 0x008080;
+    constexpr Color Lime = 0x00FF00;
+    constexpr Color Aqua = 0x00FFFF;
+    constexpr Color Fuchsia = 0xFF00FF;
+    constexpr Color Orange = 0xFFA500;
+    constexpr Color Pink = 0xFFC0CB;
+    constexpr Color Brown = 0xA52A2A;
+    constexpr Color Gold = 0xFFD700;
+    constexpr Color Violet = 0xEE82EE;
+    constexpr Color Indigo = 0x4B0082;
+    constexpr Color Turquoise = 0x40E0D0;
+    constexpr Color Coral = 0xFF7F50;
+    constexpr Color Salmon = 0xFA8072;
+    constexpr Color Khaki = 0xF0E68C;
+    constexpr Color Lavender = 0xE6E6FA;
+    constexpr Color Peach = 0xFFDAB9;
+    constexpr Color Mint = 0x98FB98;
+    constexpr Color Wheat = 0xF5DEB3;
+    constexpr Color Gray25 = 0xC0C0C0;
+    constexpr Color Gray50 = 0x808080;
+    constexpr Color Gray75 = 0x404040;
 }
 
 /**
- * @brief 工作表选项
+ * @brief Worksheet options structure
  */
 struct WorksheetOptions {
     std::optional<double> defaultRowHeight;
@@ -284,31 +303,27 @@ struct WorksheetOptions {
     std::optional<Color> tabColor;
 };
 
+// ================================
+// Utility functions
+// ================================
+
 /**
- * @brief 列A到列名的转换（如A、B、..、Z、AA、AB、...）
- * @param column 列索引（0基于）
- * @return std::string 列名
+ * @brief Convert column index to Excel column name (A, B, C, ..., AA, AB, ...)
  */
 [[nodiscard]] std::string columnIndexToName(ColumnIndex column);
 
 /**
- * @brief 列名到列索引的转换
- * @param columnName 列名
- * @return std::optional<ColumnIndex> 列索引，如果无效则返回空
+ * @brief Convert Excel column name to column index
  */
 [[nodiscard]] std::optional<ColumnIndex> columnNameToIndex(const std::string& columnName);
 
 /**
- * @brief 将单元格位置转换为Excel格式的字符串（如A1、B2等）
- * @param pos 单元格位置
- * @return std::string Excel格式的单元格引用
+ * @brief Convert cell position to Excel reference string (A1, B2, etc.)
  */
 [[nodiscard]] std::string cellPositionToString(const CellPosition& pos);
 
 /**
- * @brief 将Excel格式的字符串解析为单元格位置
- * @param cellRef Excel格式的单元格引用
- * @return std::optional<CellPosition> 单元格位置，如果无效则返回空
+ * @brief Convert Excel reference string to cell position
  */
 [[nodiscard]] std::optional<CellPosition> stringToCellPosition(const std::string& cellRef);
 

@@ -1,6 +1,6 @@
 /**
  * @file Writer.hpp
- * @brief 高性能Excel写入器
+ * @brief High performance Excel writer
  */
 
 #pragma once
@@ -8,22 +8,24 @@
 #include "Types.hpp"
 #include "Exception.hpp"
 #include "Format.hpp"
-#include <xlsxwriter.h>
 #include <memory>
 #include <string>
 #include <vector>
 #include <optional>
 
+// Forward declarations to avoid including xlsxwriter.h in public header
+struct lxw_workbook;
+
 namespace TinaXlsx {
 
-// 前向声明
+// Forward declaration
 class Worksheet;
 
 /**
- * @brief 高性能Excel写入器
+ * @brief High performance Excel writer
  * 
- * 基于libxlsxwriter的高性能写入器，支持批量写入和流式写入
- * 使用RAII管理资源，保证异常安全
+ * High performance writer based on libxlsxwriter, supports batch writing and streaming writing
+ * Uses RAII for resource management, ensures exception safety
  */
 class Writer {
 private:
@@ -32,86 +34,86 @@ private:
 
 public:
     /**
-     * @brief 构造函数
-     * @param filePath Excel文件路径
-     * @throws FileException 如果文件无法创建
+     * @brief Constructor
+     * @param filePath Excel file path
+     * @throws FileException if file cannot be created
      */
     explicit Writer(const std::string& filePath);
     
     /**
-     * @brief 移动构造函数
+     * @brief Move constructor
      */
     Writer(Writer&& other) noexcept;
     
     /**
-     * @brief 移动赋值操作符
+     * @brief Move assignment operator
      */
     Writer& operator=(Writer&& other) noexcept;
     
     /**
-     * @brief 析构函数
+     * @brief Destructor
      */
     ~Writer();
     
-    // 禁用拷贝构造和拷贝赋值
+    // Disable copy constructor and copy assignment
     Writer(const Writer&) = delete;
     Writer& operator=(const Writer&) = delete;
     
     /**
-     * @brief 创建新的工作表
-     * @param sheetName 工作表名称，如果为空则使用默认名称
-     * @return std::shared_ptr<Worksheet> 工作表对象
+     * @brief Create new worksheet
+     * @param sheetName Worksheet name, if empty then use default name
+     * @return std::shared_ptr<Worksheet> Worksheet object
      */
     [[nodiscard]] std::shared_ptr<Worksheet> createWorksheet(const std::string& sheetName = "");
     
     /**
-     * @brief 获取指定名称的工作表
-     * @param sheetName 工作表名称
-     * @return std::shared_ptr<Worksheet> 工作表对象，如果不存在则返回nullptr
+     * @brief Get worksheet by name
+     * @param sheetName Worksheet name
+     * @return std::shared_ptr<Worksheet> Worksheet object, nullptr if not found
      */
     [[nodiscard]] std::shared_ptr<Worksheet> getWorksheet(const std::string& sheetName);
     
     /**
-     * @brief 获取指定索引的工作表
-     * @param index 工作表索引（0基于）
-     * @return std::shared_ptr<Worksheet> 工作表对象，如果不存在则返回nullptr
+     * @brief Get worksheet by index
+     * @param index Worksheet index (0-based)
+     * @return std::shared_ptr<Worksheet> Worksheet object, nullptr if not found
      */
     [[nodiscard]] std::shared_ptr<Worksheet> getWorksheet(SheetIndex index);
     
     /**
-     * @brief 获取所有工作表名称
-     * @return std::vector<std::string> 工作表名称列表
+     * @brief Get all worksheet names
+     * @return std::vector<std::string> List of worksheet names
      */
     [[nodiscard]] std::vector<std::string> getWorksheetNames() const;
     
     /**
-     * @brief 获取工作表数量
-     * @return size_t 工作表数量
+     * @brief Get worksheet count
+     * @return size_t Number of worksheets
      */
     [[nodiscard]] size_t getWorksheetCount() const;
     
     /**
-     * @brief 创建格式对象
-     * @return std::unique_ptr<Format> 格式对象
+     * @brief Create format object
+     * @return std::unique_ptr<Format> Format object
      */
     [[nodiscard]] std::unique_ptr<Format> createFormat();
     
     /**
-     * @brief 获取格式构建器
-     * @return FormatBuilder 格式构建器
+     * @brief Get format builder
+     * @return FormatBuilder Format builder
      */
     [[nodiscard]] FormatBuilder getFormatBuilder();
     
     /**
-     * @brief 设置文档属性
-     * @param title 标题
-     * @param subject 主题
-     * @param author 作者
-     * @param manager 管理者
-     * @param company 公司
-     * @param category 类别
-     * @param keywords 关键词
-     * @param comments 备注
+     * @brief Set document properties
+     * @param title Title
+     * @param subject Subject
+     * @param author Author
+     * @param manager Manager
+     * @param company Company
+     * @param category Category
+     * @param keywords Keywords
+     * @param comments Comments
      */
     void setDocumentProperties(
         const std::string& title = "",
@@ -124,61 +126,61 @@ public:
         const std::string& comments = "");
     
     /**
-     * @brief 设置自定义属性
-     * @param name 属性名称
-     * @param value 属性值
+     * @brief Set custom property (string)
+     * @param name Property name
+     * @param value Property value
      */
     void setCustomProperty(const std::string& name, const std::string& value);
     
     /**
-     * @brief 设置自定义属性（数字）
-     * @param name 属性名称
-     * @param value 属性值
+     * @brief Set custom property (number)
+     * @param name Property name
+     * @param value Property value
      */
     void setCustomProperty(const std::string& name, double value);
     
     /**
-     * @brief 设置自定义属性（布尔值）
-     * @param name 属性名称
-     * @param value 属性值
+     * @brief Set custom property (boolean)
+     * @param name Property name
+     * @param value Property value
      */
     void setCustomProperty(const std::string& name, bool value);
     
     /**
-     * @brief 保存文件
-     * @return bool 是否成功保存
+     * @brief Save file
+     * @return bool Whether successfully saved
      */
     bool save();
     
     /**
-     * @brief 关闭文件（自动调用save）
-     * @return bool 是否成功关闭
+     * @brief Close file (automatically calls save)
+     * @return bool Whether successfully closed
      */
     bool close();
     
     /**
-     * @brief 获取内部工作簿对象指针（仅供内部使用）
-     * @return lxw_workbook* 内部工作簿对象指针
+     * @brief Get internal workbook object pointer (for internal use only)
+     * @return lxw_workbook* Internal workbook object pointer
      */
     [[nodiscard]] lxw_workbook* getInternalWorkbook() const;
     
     /**
-     * @brief 检查文件是否已关闭
-     * @return bool 是否已关闭
+     * @brief Check if file is closed
+     * @return bool Whether closed
      */
     [[nodiscard]] bool isClosed() const;
     
     /**
-     * @brief 设置默认日期格式
-     * @param format 日期格式字符串
+     * @brief Set default date format
+     * @param format Date format string
      */
     void setDefaultDateFormat(const std::string& format);
     
     /**
-     * @brief 定义命名区域
-     * @param name 区域名称
-     * @param sheetName 工作表名称
-     * @param range 单元格范围
+     * @brief Define named range
+     * @param name Range name
+     * @param sheetName Worksheet name
+     * @param range Cell range
      */
     void defineNamedRange(const std::string& name, const std::string& sheetName, const CellRange& range);
 };

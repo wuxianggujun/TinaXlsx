@@ -9,12 +9,13 @@
 #include "Exception.hpp"
 #include "Format.hpp"
 #include "Cell.hpp"
-#include <xlsxwriter.h>
 #include <memory>
 #include <string>
 #include <vector>
 #include <functional>
 #include <optional>
+
+struct lxw_worksheet;
 
 namespace TinaXlsx {
 

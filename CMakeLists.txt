@@ -180,6 +180,17 @@ if(TARGET minizip_legacy)
     add_dependencies(example_reader minizip_legacy)
 endif()
 
+# 添加功能完善测试程序
+add_executable(test_reader_enhanced test_reader_functionality.cpp)
+target_link_libraries(test_reader_enhanced PRIVATE TinaXlsx)
+target_include_directories(test_reader_enhanced PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+add_dependencies(test_reader_enhanced TinaXlsx)
+if(TARGET minizip_legacy)
+    add_dependencies(test_reader_enhanced minizip_legacy)
+endif()
+
 # =============================================================================
 # 测试配置
 # =============================================================================

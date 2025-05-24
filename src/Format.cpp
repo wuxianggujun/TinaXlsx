@@ -229,6 +229,10 @@ Format& Format::setHidden(bool hidden) {
     return *this;
 }
 
+void* Format::getNativeFormat() const {
+    return pImpl_->format;
+}
+
 lxw_format* Format::getInternalFormat() const {
     return pImpl_->format;
 }

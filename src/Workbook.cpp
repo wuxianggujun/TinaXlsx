@@ -4,6 +4,7 @@
  */
 
 #include "TinaXlsx/Workbook.hpp"
+#include <xlsxwriter.h>
 #include <filesystem>
 
 namespace TinaXlsx {

@@ -107,11 +107,21 @@ struct Reader::Impl {
     // 缓存的数据
     std::optional<std::pair<RowIndex, ColumnIndex>> cachedDimensions;
     
+    // 流式解析状态
+    XML_Parser xmlParser = nullptr;
+    TableData cachedTableData; // 缓存的表格数据
+    bool tableDataCached = false; // 标记是否已缓存数据
+    
     ~Impl() {
         cleanup();
     }
     
     void cleanup() {
+        if (xmlParser) {
+            XML_ParserFree(xmlParser);
+            xmlParser = nullptr;
+        }
+        
         if (zipHandle) {
             mz_zip_reader_close(zipHandle);
             mz_zip_reader_delete(&zipHandle);
@@ -132,6 +142,8 @@ struct Reader::Impl {
         atEnd = false;
         currentRowIndex = 0;
         cachedDimensions.reset();
+        cachedTableData.clear();
+        tableDataCached = false;
     }
     
     bool openFile(const std::string& path) {
@@ -427,9 +439,7 @@ struct Reader::Impl {
         for (auto& sheet : sheets) {
             if (sheet.name == sheetName) {
                 currentSheet = &sheet;
-                currentRowIndex = 0;
-                atEnd = false;
-                parseContext.reset();
+                resetSheet();
                 return true;
             }
         }
@@ -439,9 +449,7 @@ struct Reader::Impl {
     bool openSheet(SheetIndex sheetIndex) {
         if (sheetIndex < sheets.size()) {
             currentSheet = &sheets[sheetIndex];
-            currentRowIndex = 0;
-            atEnd = false;
-            parseContext.reset();
+            resetSheet();
             return true;
         }
         return false;
@@ -587,6 +595,99 @@ struct Reader::Impl {
         
         return result;
     }
+    
+    // 确保表格数据被缓存
+    void ensureTableDataCached() {
+        if (!tableDataCached && currentSheet) {
+            cachedTableData = parseSheetData(currentSheet->filePath);
+            tableDataCached = true;
+            
+            // 计算维度
+            if (!cachedTableData.empty()) {
+                RowIndex maxRow = cachedTableData.size();
+                ColumnIndex maxCol = 0;
+                
+                for (const auto& row : cachedTableData) {
+                    if (row.size() > maxCol) {
+                        maxCol = row.size();
+                    }
+                }
+                
+                cachedDimensions = std::make_pair(maxRow, maxCol);
+            } else {
+                cachedDimensions = std::make_pair(0, 0);
+            }
+        }
+    }
+    
+    // 读取特定行
+    std::optional<RowData> getRow(RowIndex rowIndex, ColumnIndex maxColumns = 0) {
+        ensureTableDataCached();
+        
+        if (rowIndex >= cachedTableData.size()) {
+            return std::nullopt;
+        }
+        
+        RowData result = cachedTableData[rowIndex];
+        
+        // 应用最大列限制
+        if (maxColumns > 0 && result.size() > maxColumns) {
+            result.resize(maxColumns);
+        }
+        
+        return result;
+    }
+    
+    // 读取特定单元格
+    std::optional<CellValue> getCell(const CellPosition& position) {
+        ensureTableDataCached();
+        
+        if (position.row >= cachedTableData.size()) {
+            return std::nullopt;
+        }
+        
+        const auto& row = cachedTableData[position.row];
+        if (position.column >= row.size()) {
+            return std::nullopt;
+        }
+        
+        return row[position.column];
+    }
+    
+    // 读取范围数据
+    TableData getRange(const CellRange& range) {
+        ensureTableDataCached();
+        
+        TableData result;
+        
+        RowIndex startRow = std::min(range.start.row, static_cast<RowIndex>(cachedTableData.size()));
+        RowIndex endRow = std::min(range.end.row + 1, static_cast<RowIndex>(cachedTableData.size()));
+        
+        for (RowIndex r = startRow; r < endRow; ++r) {
+            const auto& sourceRow = cachedTableData[r];
+            RowData resultRow;
+            
+            ColumnIndex startCol = std::min(range.start.column, static_cast<ColumnIndex>(sourceRow.size()));
+            ColumnIndex endCol = std::min(range.end.column + 1, static_cast<ColumnIndex>(sourceRow.size()));
+            
+            for (ColumnIndex c = startCol; c < endCol; ++c) {
+                resultRow.push_back(sourceRow[c]);
+            }
+            
+            result.push_back(resultRow);
+        }
+        
+        return result;
+    }
+    
+    // 重置工作表状态
+    void resetSheet() {
+        currentRowIndex = 0;
+        atEnd = false;
+        parseContext.reset();
+        tableDataCached = false;
+        cachedTableData.clear();
+    }
 };
 
 Reader::Reader(const std::string& filePath) 
@@ -624,7 +725,13 @@ bool Reader::openSheet(SheetIndex sheetIndex) {
 }
 
 std::optional<RowIndex> Reader::getRowCount() const {
-    // 需要实现维度解析来获取行数
+    if (!pImpl_->currentSheet) {
+        return std::nullopt;
+    }
+    
+    // 确保维度已缓存
+    const_cast<Reader::Impl*>(pImpl_.get())->ensureTableDataCached();
+    
     if (pImpl_->cachedDimensions) {
         return pImpl_->cachedDimensions->first;
     }
@@ -632,7 +739,13 @@ std::optional<RowIndex> Reader::getRowCount() const {
 }
 
 std::optional<ColumnIndex> Reader::getColumnCount() const {
-    // 需要实现维度解析来获取列数  
+    if (!pImpl_->currentSheet) {
+        return std::nullopt;
+    }
+    
+    // 确保维度已缓存
+    const_cast<Reader::Impl*>(pImpl_.get())->ensureTableDataCached();
+    
     if (pImpl_->cachedDimensions) {
         return pImpl_->cachedDimensions->second;
     }
@@ -644,22 +757,31 @@ bool Reader::readNextRow(RowData& rowData, ColumnIndex maxColumns) {
         return false;
     }
     
-    // 这里需要实现工作表XML的流式解析
-    // 暂时返回false，表示已到达末尾
-    // 完整实现需要XML流式解析器
-    pImpl_->atEnd = true;
-    return false;
+    auto row = pImpl_->getRow(pImpl_->currentRowIndex, maxColumns);
+    if (row) {
+        rowData = *row;
+        pImpl_->currentRowIndex++;
+        return true;
+    } else {
+        pImpl_->atEnd = true;
+        return false;
+    }
 }
 
 std::optional<RowData> Reader::readRow(RowIndex rowIndex, ColumnIndex maxColumns) {
-    // 需要实现特定行的读取
-    // 暂时返回空值
-    return std::nullopt;
+    if (!pImpl_->currentSheet) {
+        return std::nullopt;
+    }
+    
+    return pImpl_->getRow(rowIndex, maxColumns);
 }
 
 std::optional<CellValue> Reader::readCell(const CellPosition& position) {
-    // 需要实现特定单元格的读取
-    return std::nullopt;
+    if (!pImpl_->currentSheet) {
+        return std::nullopt;
+    }
+    
+    return pImpl_->getCell(position);
 }
 
 TableData Reader::readRange(const CellRange& range) {
@@ -667,8 +789,11 @@ TableData Reader::readRange(const CellRange& range) {
         throw InvalidArgumentException("无效的单元格范围");
     }
     
-    // 需要实现范围读取
-    return {};
+    if (!pImpl_->currentSheet) {
+        return {};
+    }
+    
+    return pImpl_->getRange(range);
 }
 
 TableData Reader::readAll(RowIndex maxRows, ColumnIndex maxColumns, bool skipEmptyRows) {
@@ -708,17 +833,30 @@ RowIndex Reader::readAllRows(const RowCallback& callback, ColumnIndex maxColumns
         return 0;
     }
     
-    RowIndex rowCount = 0;
-    RowData rowData;
+    if (!pImpl_->currentSheet) {
+        return 0;
+    }
     
+    RowIndex rowCount = 0;
     reset();
     
-    while (readNextRow(rowData, maxColumns)) {
-        if (skipEmptyRows && isEmptyRow(rowData)) {
+    // 确保数据已缓存
+    pImpl_->ensureTableDataCached();
+    
+    for (RowIndex i = 0; i < pImpl_->cachedTableData.size(); ++i) {
+        const auto& row = pImpl_->cachedTableData[i];
+        
+        // 应用最大列限制
+        RowData processedRow = row;
+        if (maxColumns > 0 && processedRow.size() > maxColumns) {
+            processedRow.resize(maxColumns);
+        }
+        
+        if (skipEmptyRows && isEmptyRow(processedRow)) {
             continue;
         }
         
-        if (!callback(rowCount, rowData)) {
+        if (!callback(rowCount, processedRow)) {
             break;
         }
         
@@ -733,6 +871,10 @@ size_t Reader::readAllCells(const CellCallback& callback, const std::optional<Ce
         return 0;
     }
     
+    if (!pImpl_->currentSheet) {
+        return 0;
+    }
+    
     size_t cellCount = 0;
     
     // 确定读取范围
@@ -741,48 +883,63 @@ size_t Reader::readAllCells(const CellCallback& callback, const std::optional<Ce
         actualRange = *range;
     } else {
         // 读取整个工作表
-        actualRange = CellRange{0, 0, UINT32_MAX, UINT32_MAX};
+        pImpl_->ensureTableDataCached();
+        RowIndex maxRow = pImpl_->cachedTableData.size();
+        ColumnIndex maxCol = 0;
+        
+        for (const auto& row : pImpl_->cachedTableData) {
+            if (row.size() > maxCol) {
+                maxCol = row.size();
+            }
+        }
+        
+        actualRange = CellRange{0, 0, maxRow > 0 ? maxRow - 1 : 0, maxCol > 0 ? maxCol - 1 : 0};
     }
     
     reset();
+    pImpl_->ensureTableDataCached();
     
-    RowData rowData;
-    RowIndex rowIndex = 0;
+    RowIndex endRow = std::min(actualRange.end.row + 1, static_cast<RowIndex>(pImpl_->cachedTableData.size()));
     
-    while (readNextRow(rowData)) {
-        if (rowIndex < actualRange.start.row) {
-            ++rowIndex;
-            continue;
-        }
-        
-        if (rowIndex > actualRange.end.row) {
+    for (RowIndex rowIndex = actualRange.start.row; rowIndex < endRow; ++rowIndex) {
+        if (rowIndex >= pImpl_->cachedTableData.size()) {
             break;
         }
         
-        for (ColumnIndex col = actualRange.start.column; 
-             col <= actualRange.end.column && col < rowData.size(); ++col) {
+        const auto& row = pImpl_->cachedTableData[rowIndex];
+        ColumnIndex endCol = std::min(actualRange.end.column + 1, static_cast<ColumnIndex>(row.size()));
+        
+        for (ColumnIndex col = actualRange.start.column; col < endCol; ++col) {
+            if (col >= row.size()) {
+                break;
+            }
             
             CellPosition pos(rowIndex, col);
-            if (!callback(pos, rowData[col])) {
+            if (!callback(pos, row[col])) {
                 return cellCount;
             }
             ++cellCount;
         }
-        
-        ++rowIndex;
     }
     
     return cellCount;
 }
 
 void Reader::reset() {
-    pImpl_->currentRowIndex = 0;
-    pImpl_->atEnd = false;
-    pImpl_->parseContext.reset();
+    pImpl_->resetSheet();
 }
 
 bool Reader::isAtEnd() const {
-    return pImpl_->atEnd;
+    if (!pImpl_->currentSheet) {
+        return true;
+    }
+    
+    // 如果还没有缓存数据，检查是否有数据
+    if (!pImpl_->tableDataCached) {
+        const_cast<Reader::Impl*>(pImpl_.get())->ensureTableDataCached();
+    }
+    
+    return pImpl_->atEnd || pImpl_->currentRowIndex >= pImpl_->cachedTableData.size();
 }
 
 RowIndex Reader::getCurrentRowIndex() const {

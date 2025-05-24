@@ -1,22 +1,22 @@
 /**
  * @file TinaXlsx.hpp
- * @brief TinaXlsx Excel处理库 - 主头文件
- * @author TinaXlsx团队
+ * @brief TinaXlsx Excel processing library - Main header file
+ * @author TinaXlsx Team
  * @version 1.0.0
  * @date 2025
  * 
- * 基于xlsxio和xlsxwriter的高性能Excel处理库
- * 特性：
- * - C++17语法支持
- * - 零开销抽象
- * - RAII资源管理
- * - 类型安全
- * - 高性能读写
+ * High performance Excel processing library based on xlsxio and xlsxwriter
+ * Features:
+ * - C++17 syntax support
+ * - Zero overhead abstractions
+ * - RAII resource management
+ * - Type safety
+ * - High performance read/write
  */
 
 #pragma once
 
-// 核心类
+// Core classes
 #include "Reader.hpp"
 #include "Writer.hpp"
 #include "Workbook.hpp"
@@ -24,7 +24,7 @@
 #include "Cell.hpp"
 #include "Format.hpp"
 
-// 工具类
+// Utility classes
 #include "Exception.hpp"
 #include "Types.hpp"
 #include "Utils.hpp"
@@ -32,12 +32,12 @@
 
 /**
  * @namespace TinaXlsx
- * @brief TinaXlsx库的命名空间
+ * @brief TinaXlsx library namespace
  */
 namespace TinaXlsx {
 
 /**
- * @brief 库版本信息
+ * @brief Library version information
  */
 struct Version {
     static constexpr int major = 1;
@@ -47,23 +47,23 @@ struct Version {
 };
 
 /**
- * @brief 便捷创建读取器 - 基于minizip-ng和expat实现
- * @param filePath Excel文件路径
- * @return std::unique_ptr<Reader> 读取器智能指针
+ * @brief Convenient reader factory - based on minizip-ng and expat
+ * @param filePath Excel file path
+ * @return std::unique_ptr<Reader> Reader smart pointer
  */
 [[nodiscard]] std::unique_ptr<Reader> createReader(const std::string& filePath);
 
 /**
- * @brief 便捷创建写入器
- * @param filePath Excel文件路径
- * @return std::unique_ptr<Writer> 写入器智能指针
+ * @brief Convenient writer factory
+ * @param filePath Excel file path
+ * @return std::unique_ptr<Writer> Writer smart pointer
  */
 [[nodiscard]] std::unique_ptr<Writer> createWriter(const std::string& filePath);
 
 /**
- * @brief 便捷创建工作簿
- * @param filePath Excel文件路径
- * @return std::unique_ptr<Workbook> 工作簿智能指针
+ * @brief Convenient workbook factory
+ * @param filePath Excel file path
+ * @return std::unique_ptr<Workbook> Workbook smart pointer
  */
 [[nodiscard]] std::unique_ptr<Workbook> createWorkbook(const std::string& filePath);
 
