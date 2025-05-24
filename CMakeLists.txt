@@ -51,7 +51,9 @@ endif()
 
 add_library(minizip STATIC ${MINIZIP_SOURCES})
 target_include_directories(minizip 
-    PUBLIC third_party/libxlsxwriter/third_party/minizip
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/third_party/libxlsxwriter/third_party/minizip>
+        $<INSTALL_INTERFACE:include/minizip>
 )
 target_link_libraries(minizip PUBLIC ZLIB::ZLIB)
 target_compile_definitions(minizip PRIVATE NOCRYPT NOUNCRYPT)
@@ -152,12 +154,15 @@ target_include_directories(TinaXlsx
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libxlsxwriter/include
 )
 
-# 链接库
+# 链接库 - 使用PRIVATE确保依赖不会传播，并通过库文件直接链接
 target_link_libraries(TinaXlsx
     PRIVATE
-        xlsxwriter
-        xlsxio_read_STATIC
-        xlsxio_write_STATIC
+        $<TARGET_FILE:xlsxwriter>
+        $<TARGET_FILE:xlsxio_read_STATIC>
+        $<TARGET_FILE:xlsxio_write_STATIC>
+        $<TARGET_FILE:zlibstatic>
+        $<TARGET_FILE:expat>
+        $<TARGET_FILE:minizip>
 )
 
 # Windows特定设置
@@ -216,17 +221,114 @@ endif()
 # =============================================================================
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
+# 创建别名目标（供内部和外部使用）
+add_library(TinaXlsx::TinaXlsx ALIAS TinaXlsx)
+
+# 安装目标 - 只安装TinaXlsx，依赖库已静态链接
 install(TARGETS TinaXlsx
+    EXPORT TinaXlsxTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+# 注意：第三方库不需要单独安装，因为它们已经静态链接到TinaXlsx中
+
+# 安装头文件
 install(DIRECTORY include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     FILES_MATCHING PATTERN "*.hpp"
 )
+
+# 安装文档
+install(FILES README.md LICENSE
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}
+)
+
+# 导出目标配置
+install(EXPORT TinaXlsxTargets
+    FILE TinaXlsxTargets.cmake
+    NAMESPACE TinaXlsx::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinaXlsx
+)
+
+# 创建配置文件
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/TinaXlsxConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/TinaXlsxConfig.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinaXlsx
+)
+
+# 创建版本文件
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/TinaXlsxConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+# 安装配置文件
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/TinaXlsxConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/TinaXlsxConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TinaXlsx
+)
+
+# =============================================================================
+# 打包配置 (CPack)
+# =============================================================================
+
+set(CPACK_PACKAGE_NAME "TinaXlsx")
+set(CPACK_PACKAGE_VENDOR "TinaXlsx Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "高性能Excel读写库，基于libxlsxwriter封装")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "TinaXlsx")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+# 平台特定的包配置
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP;NSIS")
+    set(CPACK_NSIS_DISPLAY_NAME "TinaXlsx ${PROJECT_VERSION}")
+    set(CPACK_NSIS_PACKAGE_NAME "TinaXlsx")
+    set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/wuxianggujun/TinaXlsx")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+elseif(APPLE)
+    set(CPACK_GENERATOR "TGZ;DragNDrop")
+    set(CPACK_DMG_FORMAT "UDBZ")
+    set(CPACK_DMG_VOLUME_NAME "TinaXlsx")
+else()
+    set(CPACK_GENERATOR "TGZ;DEB;RPM")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "TinaXlsx Project")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "libs")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6, libstdc++6")
+    set(CPACK_RPM_PACKAGE_GROUP "Development/Libraries")
+    set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+endif()
+
+include(CPack)
+
+# =============================================================================
+# 开发环境配置
+# =============================================================================
+
+# 导出编译命令（用于IDE和代码分析工具）
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# 创建符号链接到build目录（方便IDE）
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND UNIX)
+    add_custom_target(dev-setup
+        COMMAND ${CMAKE_COMMAND} -E create_symlink 
+            ${CMAKE_CURRENT_SOURCE_DIR}/include 
+            ${CMAKE_CURRENT_BINARY_DIR}/include
+        COMMENT "Creating development symlinks"
+    )
+endif()
 
 # =============================================================================
 # 输出信息
@@ -239,4 +341,11 @@ message(STATUS "库类型: ${TINAXLSX_BUILD_SHARED}")
 message(STATUS "性能优化: ${TINAXLSX_ENABLE_PERFORMANCE}")
 message(STATUS "构建测试: ${TINAXLSX_BUILD_TESTS}")
 message(STATUS "安装前缀: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "编译器: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C++标准: ${CMAKE_CXX_STANDARD}")
+if(TINAXLSX_BUILD_SHARED)
+    message(STATUS "构建类型: 动态库")
+else()
+    message(STATUS "构建类型: 静态库")
+endif()
 message(STATUS "========================================================") 

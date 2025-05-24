@@ -2,8 +2,8 @@
 
 include(CMakeFindDependencyMacro)
 
-# 查找依赖
-find_dependency(PkgConfig QUIET)
+# 注意：TinaXlsx是自包含的静态库，所有依赖都已内置
+# 无需查找外部依赖
 
 # TinaXlsx库的配置信息
 set(TinaXlsx_VERSION @PROJECT_VERSION@)
@@ -35,8 +35,10 @@ if(TinaXlsx_FOUND)
         if(_tinaxlsx_type STREQUAL "SHARED_LIBRARY")
             message(STATUS "TinaXlsx: 动态库")
         elseif(_tinaxlsx_type STREQUAL "STATIC_LIBRARY")
-            message(STATUS "TinaXlsx: 静态库")
+            message(STATUS "TinaXlsx: 静态库（包含所有依赖）")
         endif()
+        
+        message(STATUS "使用方法: target_link_libraries(your_target TinaXlsx::TinaXlsx)")
     endif()
 endif()
 
