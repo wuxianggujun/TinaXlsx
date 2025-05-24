@@ -166,7 +166,7 @@ bool String::isInteger(const std::string& str) {
         return false;
     }
     
-    int64_t value;
+    long long value;
     auto result = std::from_chars(str.data(), str.data() + str.size(), value);
     return result.ec == std::errc{} && result.ptr == str.data() + str.size();
 }
@@ -262,29 +262,53 @@ CellValue Convert::stringToCellValue(const std::string& str, bool autoDetectType
 }
 
 std::string Convert::cellValueToString(const CellValue& value, const std::string& format) {
-    return std::visit([&format](const auto& v) -> std::string {
-        using T = std::decay_t<decltype(v)>;
-        if constexpr (std::is_same_v<T, std::monostate>) {
-            return "";
-        } else if constexpr (std::is_same_v<T, std::string>) {
-            return v;
-        } else if constexpr (std::is_same_v<T, double>) {
-            if (format.empty()) {
-                return std::to_string(v);
-            } else {
+    if (format.empty()) {
+        // 使用基本的类型安全枚举转换
+        const CellValueType type = getCellValueType(value);
+        
+        switch (type) {
+            case CellValueType::String:
+                return std::get<std::string>(value);
+            case CellValueType::Double: {
+                const double val = std::get<double>(value);
+                // 优化：检查是否为整数以避免不必要的小数点
+                if (val == static_cast<long long>(val) && 
+                    val >= -9007199254740992.0 && val <= 9007199254740992.0) {
+                    return std::to_string(static_cast<long long>(val));
+                }
+                return std::to_string(val);
+            }
+            case CellValueType::Integer:
+                return std::to_string(std::get<long long>(value));
+            case CellValueType::Boolean:
+                return std::get<bool>(value) ? "true" : "false";
+            case CellValueType::Empty:
+                return "";
+            default:
+                return "";
+        }
+    } else {
+        // 带格式化的转换（保留原有逻辑用于格式化）
+        return std::visit([&format](const auto& v) -> std::string {
+            using T = std::decay_t<decltype(v)>;
+            if constexpr (std::is_same_v<T, std::monostate>) {
+                return "";
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                return v;
+            } else if constexpr (std::is_same_v<T, double>) {
                 // 简化的格式化，实际实现可能需要更复杂的逻辑
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(2) << v;
                 return ss.str();
+            } else if constexpr (std::is_same_v<T, long long>) {
+                return std::to_string(v);
+            } else if constexpr (std::is_same_v<T, bool>) {
+                return v ? "true" : "false";
+            } else {
+                return "";
             }
-        } else if constexpr (std::is_same_v<T, int64_t>) {
-            return std::to_string(v);
-        } else if constexpr (std::is_same_v<T, bool>) {
-            return v ? "true" : "false";
-        } else {
-            return "";
-        }
-    }, value);
+        }, value);
+    }
 }
 
 std::vector<std::string> Convert::rowDataToStrings(const RowData& rowData) {
@@ -397,8 +421,8 @@ size_t Performance::estimateMemoryUsage(const TableData& tableData) {
                     return v.size() + sizeof(std::string);
                 } else if constexpr (std::is_same_v<T, double>) {
                     return sizeof(double);
-                } else if constexpr (std::is_same_v<T, int64_t>) {
-                    return sizeof(int64_t);
+                } else if constexpr (std::is_same_v<T, long long>) {
+                    return sizeof(long long);
                 } else if constexpr (std::is_same_v<T, bool>) {
                     return sizeof(bool);
                 } else {
@@ -463,10 +487,10 @@ std::string ColorUtils::toHex(Color color) {
     return ss.str();
 }
 
-std::tuple<uint8_t, uint8_t, uint8_t> ColorUtils::toRgb(Color color) {
-    uint8_t r = (color >> 16) & 0xFF;
-    uint8_t g = (color >> 8) & 0xFF;
-    uint8_t b = color & 0xFF;
+std::tuple<unsigned char, unsigned char, unsigned char> ColorUtils::toRgb(Color color) {
+    unsigned char r = (color >> 16) & 0xFF;
+    unsigned char g = (color >> 8) & 0xFF;
+    unsigned char b = color & 0xFF;
     return std::make_tuple(r, g, b);
 }
 

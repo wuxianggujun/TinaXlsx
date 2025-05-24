@@ -457,14 +457,13 @@ bool Reader::isEmptyRow(const RowData& rowData) {
 }
 
 bool Reader::isEmptyCell(const CellValue& value) {
-    // 使用索引而不是std::visit获得更好的性能
-    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
-    const uint8_t type = value.index();
+    // 使用类型安全枚举而不是硬编码数字
+    const CellValueType type = getCellValueType(value);
     
     switch (type) {
-        case 0: // std::string
+        case CellValueType::String:
             return std::get<std::string>(value).empty();
-        case 4: // std::monostate
+        case CellValueType::Empty:
             return true;
         default:
             return false;
@@ -518,7 +517,7 @@ CellValue Reader::stringToCellValue(const std::string& str) {
     if (couldBeNumber) {
         if (couldBeInt && !hasDecimal && !hasExponent) {
             // 尝试解析为整数
-            int64_t intValue;
+            long long intValue;
             auto result = std::from_chars(data, data + len, intValue);
             if (result.ec == std::errc{} && result.ptr == data + len) {
                 return intValue;
@@ -561,27 +560,26 @@ CellValue Reader::stringToCellValue(const std::string& str) {
 }
 
 std::string Reader::cellValueToString(const CellValue& value) {
-    // 使用索引而不是std::visit获得更好的性能
-    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
-    const uint8_t type = value.index();
+    // 使用类型安全枚举而不是硬编码数字
+    const CellValueType type = getCellValueType(value);
     
     switch (type) {
-        case 0: // std::string
+        case CellValueType::String:
             return std::get<std::string>(value);
-        case 1: { // double
+        case CellValueType::Double: {
             const double val = std::get<double>(value);
             // 优化：检查是否为整数以避免不必要的小数点
-            if (val == static_cast<int64_t>(val) && 
+            if (val == static_cast<long long>(val) && 
                 val >= -9007199254740992.0 && val <= 9007199254740992.0) {
-                return std::to_string(static_cast<int64_t>(val));
+                return std::to_string(static_cast<long long>(val));
             }
             return std::to_string(val);
         }
-        case 2: // int64_t
-            return std::to_string(std::get<int64_t>(value));
-        case 3: // bool
+        case CellValueType::Integer:
+            return std::to_string(std::get<long long>(value));
+        case CellValueType::Boolean:
             return std::get<bool>(value) ? "true" : "false";
-        case 4: // std::monostate
+        case CellValueType::Empty:
             return "";
         default:
             return "";

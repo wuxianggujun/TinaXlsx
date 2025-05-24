@@ -90,7 +90,7 @@ public:
      * @return bool 是否包含整数
      */
     [[nodiscard]] bool isInteger() const {
-        return std::holds_alternative<int64_t>(value_);
+        return std::holds_alternative<Integer>(value_);
     }
     
     /**
@@ -125,11 +125,11 @@ public:
     
     /**
      * @brief 获取整数值
-     * @return std::optional<int64_t> 整数值，如果类型不匹配则返回空
+     * @return std::optional<Integer> 整数值，如果类型不匹配则返回空
      */
-    [[nodiscard]] std::optional<int64_t> getInteger() const {
+    [[nodiscard]] std::optional<Integer> getInteger() const {
         if (isInteger()) {
-            return std::get<int64_t>(value_);
+            return std::get<Integer>(value_);
         }
         return std::nullopt;
     }
@@ -158,10 +158,10 @@ public:
     [[nodiscard]] std::optional<double> toNumber() const;
     
     /**
-     * @brief 尝试转换为整数
-     * @return std::optional<int64_t> 转换后的整数，如果转换失败则返回空
+     * @brief 转换为整数类型
+     * @return std::optional<Integer> 如果可以转换则返回整数值，否则返回空
      */
-    [[nodiscard]] std::optional<int64_t> toInteger() const;
+    [[nodiscard]] std::optional<Integer> toInteger() const;
     
     /**
      * @brief 尝试转换为布尔值

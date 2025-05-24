@@ -49,28 +49,27 @@ void Worksheet::writeCell(RowIndex row, ColumnIndex column, const CellValue& val
     
     lxw_format* fmt = format ? format->getInternalFormat() : nullptr;
     
-    // 使用索引而不是std::visit获得更好的性能
-    // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
-    const uint8_t type = value.index();
+    // 使用类型安全枚举而不是硬编码数字
+    const CellValueType type = getCellValueType(value);
     
     switch (type) {
-        case 0: // std::string
+        case CellValueType::String:
             worksheet_write_string(pImpl_->worksheet, row, column, 
                                  std::get<std::string>(value).c_str(), fmt);
             break;
-        case 1: // double
+        case CellValueType::Double:
             worksheet_write_number(pImpl_->worksheet, row, column, 
                                  std::get<double>(value), fmt);
             break;
-        case 2: // int64_t
+        case CellValueType::Integer:
             worksheet_write_number(pImpl_->worksheet, row, column, 
-                                 static_cast<double>(std::get<int64_t>(value)), fmt);
+                                 static_cast<double>(std::get<Integer>(value)), fmt);
             break;
-        case 3: // bool
+        case CellValueType::Boolean:
             worksheet_write_boolean(pImpl_->worksheet, row, column, 
                                   std::get<bool>(value), fmt);
             break;
-        case 4: // std::monostate
+        case CellValueType::Empty:
             worksheet_write_blank(pImpl_->worksheet, row, column, fmt);
             break;
         default:
@@ -93,7 +92,7 @@ void Worksheet::writeNumber(const CellPosition& position, double value, Format* 
     worksheet_write_number(pImpl_->worksheet, position.row, position.column, value, fmt);
 }
 
-void Worksheet::writeInteger(const CellPosition& position, int64_t value, Format* format) {
+void Worksheet::writeInteger(const CellPosition& position, Integer value, Format* format) {
     writeNumber(position, static_cast<double>(value), format);
 }
 
@@ -139,28 +138,27 @@ void Worksheet::writeRow(RowIndex rowIndex, const RowData& rowData, ColumnIndex 
         const ColumnIndex currentCol = startColumn + col;
         const CellValue& value = rowData[col];
         
-        // 使用索引而不是std::visit获得更好的性能
-        // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
-        const uint8_t type = value.index();
+        // 使用类型安全枚举而不是硬编码数字
+        const CellValueType type = getCellValueType(value);
         
         switch (type) {
-            case 0: // std::string
+            case CellValueType::String:
                 worksheet_write_string(pImpl_->worksheet, rowIndex, currentCol, 
                                      std::get<std::string>(value).c_str(), fmt);
                 break;
-            case 1: // double
+            case CellValueType::Double:
                 worksheet_write_number(pImpl_->worksheet, rowIndex, currentCol, 
                                      std::get<double>(value), fmt);
                 break;
-            case 2: // int64_t
+            case CellValueType::Integer:
                 worksheet_write_number(pImpl_->worksheet, rowIndex, currentCol, 
-                                     static_cast<double>(std::get<int64_t>(value)), fmt);
+                                     static_cast<double>(std::get<Integer>(value)), fmt);
                 break;
-            case 3: // bool
+            case CellValueType::Boolean:
                 worksheet_write_boolean(pImpl_->worksheet, rowIndex, currentCol, 
                                       std::get<bool>(value), fmt);
                 break;
-            case 4: // std::monostate
+            case CellValueType::Empty:
                 worksheet_write_blank(pImpl_->worksheet, rowIndex, currentCol, fmt);
                 break;
             default:
@@ -198,28 +196,27 @@ void Worksheet::writeBatch(const CellRange& range, const TableData& tableData, F
             const ColumnIndex actualCol = range.start.column + col;
             const CellValue& value = rowData[col];
             
-            // 内联优化的写入操作
-            // 正确的类型索引：0=string, 1=double, 2=int64_t, 3=bool, 4=monostate
-            const uint8_t type = value.index();
+            // 内联优化的写入操作 - 使用类型安全枚举
+            const CellValueType type = getCellValueType(value);
             
             switch (type) {
-                case 0: // std::string
+                case CellValueType::String:
                     worksheet_write_string(pImpl_->worksheet, actualRow, actualCol, 
                                          std::get<std::string>(value).c_str(), fmt);
                     break;
-                case 1: // double
+                case CellValueType::Double:
                     worksheet_write_number(pImpl_->worksheet, actualRow, actualCol, 
                                          std::get<double>(value), fmt);
                     break;
-                case 2: // int64_t
+                case CellValueType::Integer:
                     worksheet_write_number(pImpl_->worksheet, actualRow, actualCol, 
-                                         static_cast<double>(std::get<int64_t>(value)), fmt);
+                                         static_cast<double>(std::get<Integer>(value)), fmt);
                     break;
-                case 3: // bool
+                case CellValueType::Boolean:
                     worksheet_write_boolean(pImpl_->worksheet, actualRow, actualCol, 
                                           std::get<bool>(value), fmt);
                     break;
-                case 4: // std::monostate
+                case CellValueType::Empty:
                     worksheet_write_blank(pImpl_->worksheet, actualRow, actualCol, fmt);
                     break;
                 default:
@@ -243,11 +240,11 @@ void Worksheet::mergeCells(const CellRange& range, const CellValue& value, Forma
             if constexpr (std::is_same_v<T, std::string>) {
                 cellText = v;
             } else if constexpr (std::is_same_v<T, double>) {
-                cellText = std::to_string(v);
-            } else if constexpr (std::is_same_v<T, int64_t>) {
-                cellText = std::to_string(v);
+                cellText = FastConvert::doubleToString(v);
+            } else if constexpr (std::is_same_v<T, Integer>) {
+                cellText = FastConvert::integerToString(v);
             } else if constexpr (std::is_same_v<T, bool>) {
-                cellText = v ? "TRUE" : "FALSE";
+                cellText = FastConvert::boolToString(v);
             }
         }, value);
     }

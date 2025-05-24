@@ -262,13 +262,13 @@ public:
 class ColorUtils {
 public:
     /**
-     * @brief 从RGB值创建颜色
-     * @param r 红色分量（0-255）
-     * @param g 绿色分量（0-255）
-     * @param b 蓝色分量（0-255）
+     * @brief 从RGB分量创建颜色
+     * @param r 红色分量 (0-255)
+     * @param g 绿色分量 (0-255) 
+     * @param b 蓝色分量 (0-255)
      * @return Color 颜色值
      */
-    [[nodiscard]] static constexpr Color rgb(uint8_t r, uint8_t g, uint8_t b) {
+    [[nodiscard]] static constexpr Color rgb(UInt8 r, UInt8 g, UInt8 b) {
         return (static_cast<Color>(r) << 16) | (static_cast<Color>(g) << 8) | static_cast<Color>(b);
     }
     
@@ -287,11 +287,11 @@ public:
     [[nodiscard]] static std::string toHex(Color color);
     
     /**
-     * @brief 提取RGB分量
+     * @brief 将颜色转换为RGB分量
      * @param color 颜色值
-     * @return std::tuple<uint8_t, uint8_t, uint8_t> RGB分量
+     * @return std::tuple<UInt8, UInt8, UInt8> RGB分量
      */
-    [[nodiscard]] static std::tuple<uint8_t, uint8_t, uint8_t> toRgb(Color color);
+    [[nodiscard]] static std::tuple<UInt8, UInt8, UInt8> toRgb(Color color);
 };
 
 } // namespace Utils

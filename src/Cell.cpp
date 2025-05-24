@@ -14,18 +14,6 @@ namespace TinaXlsx {
 
 // 内联工具函数，避免重复的std::visit调用
 namespace {
-    // 快速类型判断，避免std::visit
-    inline constexpr uint8_t getValueType(const CellValue& value) noexcept {
-        return value.index();
-    }
-    
-    // 正确的类型索引常量 - 与Types.hpp中CellValue的定义顺序匹配
-    constexpr uint8_t TYPE_STRING = 0;      // std::string
-    constexpr uint8_t TYPE_DOUBLE = 1;      // double
-    constexpr uint8_t TYPE_INT64 = 2;       // int64_t
-    constexpr uint8_t TYPE_BOOL = 3;        // bool
-    constexpr uint8_t TYPE_MONOSTATE = 4;   // std::monostate
-    
     // 优化的字符串转数字函数
     inline bool fastStringToDouble(const std::string& str, double& result) noexcept {
         if (str.empty()) return false;
@@ -46,7 +34,7 @@ namespace {
         }
     }
     
-    inline bool fastStringToInt64(const std::string& str, int64_t& result) noexcept {
+    inline bool fastStringToInteger(const std::string& str, Integer& result) noexcept {
         if (str.empty()) return false;
         
         // 快速路径：使用std::from_chars
@@ -109,77 +97,56 @@ namespace {
 }
 
 std::string Cell::toString() const {
-    // 使用索引而不是std::visit以获得更好的性能
-    const uint8_t type = getValueType(value_);
-    
-    switch (type) {
-        case TYPE_STRING:
-            return std::get<std::string>(value_);
-        case TYPE_DOUBLE: {
-            const double val = std::get<double>(value_);
-            // 优化：检查是否为整数以避免不必要的小数点
-            if (val == static_cast<int64_t>(val) && val >= -9007199254740992.0 && val <= 9007199254740992.0) {
-                return std::to_string(static_cast<int64_t>(val));
-            }
-            return std::to_string(val);
-        }
-        case TYPE_INT64:
-            return std::to_string(std::get<int64_t>(value_));
-        case TYPE_BOOL:
-            return std::get<bool>(value_) ? "true" : "false";
-        case TYPE_MONOSTATE:
-            return "";
-        default:
-            return "";
-    }
+    // 使用高性能的cellValueToString全局函数
+    return cellValueToString(value_);
 }
 
 std::optional<double> Cell::toNumber() const {
-    const uint8_t type = getValueType(value_);
+    const CellValueType type = getCellValueType(value_);
     
     switch (type) {
-        case TYPE_STRING: {
+        case CellValueType::String: {
             const auto& str = std::get<std::string>(value_);
             double result;
             return fastStringToDouble(str, result) ? std::optional<double>(result) : std::nullopt;
         }
-        case TYPE_DOUBLE:
+        case CellValueType::Double:
             return std::get<double>(value_);
-        case TYPE_INT64:
-            return static_cast<double>(std::get<int64_t>(value_));
-        case TYPE_BOOL:
+        case CellValueType::Integer:
+            return static_cast<double>(std::get<Integer>(value_));
+        case CellValueType::Boolean:
             return std::get<bool>(value_) ? 1.0 : 0.0;
-        case TYPE_MONOSTATE:
+        case CellValueType::Empty:
             return std::nullopt;
         default:
             return std::nullopt;
     }
 }
 
-std::optional<int64_t> Cell::toInteger() const {
-    const uint8_t type = getValueType(value_);
+std::optional<Integer> Cell::toInteger() const {
+    const CellValueType type = getCellValueType(value_);
     
     switch (type) {
-        case TYPE_STRING: {
+        case CellValueType::String: {
             const auto& str = std::get<std::string>(value_);
-            int64_t result;
-            return fastStringToInt64(str, result) ? std::optional<int64_t>(result) : std::nullopt;
+            Integer result;
+            return fastStringToInteger(str, result) ? std::optional<Integer>(result) : std::nullopt;
         }
-        case TYPE_DOUBLE: {
+        case CellValueType::Double: {
             const double val = std::get<double>(value_);
             // 优化：更精确的整数检查
-            if (val >= static_cast<double>(std::numeric_limits<int64_t>::min()) &&
-                val <= static_cast<double>(std::numeric_limits<int64_t>::max()) &&
+            if (val >= static_cast<double>(std::numeric_limits<Integer>::min()) &&
+                val <= static_cast<double>(std::numeric_limits<Integer>::max()) &&
                 val == std::floor(val)) {
-                return static_cast<int64_t>(val);
+                return static_cast<Integer>(val);
             }
             return std::nullopt;
         }
-        case TYPE_INT64:
-            return std::get<int64_t>(value_);
-        case TYPE_BOOL:
+        case CellValueType::Integer:
+            return std::get<Integer>(value_);
+        case CellValueType::Boolean:
             return std::get<bool>(value_) ? 1 : 0;
-        case TYPE_MONOSTATE:
+        case CellValueType::Empty:
             return std::nullopt;
         default:
             return std::nullopt;
@@ -187,10 +154,10 @@ std::optional<int64_t> Cell::toInteger() const {
 }
 
 std::optional<bool> Cell::toBoolean() const {
-    const uint8_t type = getValueType(value_);
+    const CellValueType type = getCellValueType(value_);
     
     switch (type) {
-        case TYPE_STRING: {
+        case CellValueType::String: {
             const auto& str = std::get<std::string>(value_);
             if (str.empty()) return std::nullopt;
             
@@ -199,13 +166,13 @@ std::optional<bool> Cell::toBoolean() const {
             if (isFalseString(str)) return false;
             return std::nullopt;
         }
-        case TYPE_DOUBLE:
+        case CellValueType::Double:
             return std::get<double>(value_) != 0.0;
-        case TYPE_INT64:
-            return std::get<int64_t>(value_) != 0;
-        case TYPE_BOOL:
+        case CellValueType::Integer:
+            return std::get<Integer>(value_) != 0;
+        case CellValueType::Boolean:
             return std::get<bool>(value_);
-        case TYPE_MONOSTATE:
+        case CellValueType::Empty:
             return std::nullopt;
         default:
             return std::nullopt;

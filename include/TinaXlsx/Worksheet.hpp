@@ -103,12 +103,12 @@ public:
     void writeNumber(const CellPosition& position, double value, Format* format = nullptr);
     
     /**
-     * @brief 写入整数
+     * @brief 写入整数值到指定位置
      * @param position 单元格位置
      * @param value 整数值
      * @param format 格式（可选）
      */
-    void writeInteger(const CellPosition& position, int64_t value, Format* format = nullptr);
+    void writeInteger(const CellPosition& position, Integer value, Format* format = nullptr);
     
     /**
      * @brief 写入布尔值

@@ -9,20 +9,130 @@
 #include <vector>
 #include <variant>
 #include <optional>
-#include <cstdint>
 
 namespace TinaXlsx {
 
+// ================================
+// 平台相关类型定义
+// ================================
+
+#if defined(_WIN32) || defined(_WIN64)
+    // Windows平台
+    using Integer = long long;           // 64位整数
+    using UInteger = unsigned long long; // 64位无符号整数
+    using UInt8 = unsigned char;         // 8位无符号整数
+    using UInt32 = unsigned int;         // 32位无符号整数
+#elif defined(__linux__) || defined(__APPLE__)
+    // Linux/macOS平台，优先使用标准类型
+    #include <cstdint>
+    using Integer = int64_t;
+    using UInteger = uint64_t;
+    using UInt8 = uint8_t;
+    using UInt32 = uint32_t;
+#else
+    // 其他平台，使用保守的类型定义
+    using Integer = long long;
+    using UInteger = unsigned long long;
+    using UInt8 = unsigned char;
+    using UInt32 = unsigned int;
+#endif
+
+// ================================
+// Excel相关类型定义
+// ================================
+
 /**
- * @brief 单元格数据类型
+ * @brief 行索引类型（0基于）
+ */
+using RowIndex = UInt32;
+
+/**
+ * @brief 列索引类型（0基于）
+ */
+using ColumnIndex = UInt32;
+
+/**
+ * @brief 工作表索引类型
+ */
+using SheetIndex = size_t;
+
+/**
+ * @brief 颜色类型（RGB值）
+ */
+using Color = UInt32;
+
+// ================================
+// 单元格数据类型
+// ================================
+
+/**
+ * @brief 单元格数据类型 - 高性能variant
  */
 using CellValue = std::variant<
-    std::string,    // 字符串
-    double,         // 数字
-    int64_t,        // 整数
-    bool,           // 布尔值
-    std::monostate  // 空值
+    std::string,    // 字符串 - 索引0
+    double,         // 浮点数 - 索引1
+    Integer,        // 整数 - 索引2
+    bool,           // 布尔值 - 索引3
+    std::monostate  // 空值 - 索引4
 >;
+
+/**
+ * @brief CellValue类型索引枚举，确保类型安全和高性能
+ */
+enum class CellValueType : UInt8 {
+    String = 0,      // std::string
+    Double = 1,      // double  
+    Integer = 2,     // Integer (int64_t/long long)
+    Boolean = 3,     // bool
+    Empty = 4        // std::monostate
+};
+
+/**
+ * @brief 内联高性能类型获取函数
+ * @param value CellValue实例
+ * @return CellValueType 对应的类型枚举
+ */
+[[nodiscard]] inline CellValueType getCellValueType(const CellValue& value) noexcept {
+    return static_cast<CellValueType>(value.index());
+}
+
+// ================================
+// 高性能字符串转换工具
+// ================================
+
+/**
+ * @brief 高性能整数到字符串转换 - 避免std::to_string的开销
+ */
+namespace FastConvert {
+    
+    /**
+     * @brief 快速整数转字符串 - 使用栈上缓冲区避免堆分配
+     */
+    [[nodiscard]] std::string integerToString(Integer value) noexcept;
+    
+    /**
+     * @brief 快速双精度转字符串 - 优化小数位数和科学计数法
+     */
+    [[nodiscard]] std::string doubleToString(double value) noexcept;
+    
+    /**
+     * @brief 快速布尔值转字符串 - 编译时优化
+     */
+    [[nodiscard]] constexpr const char* boolToString(bool value) noexcept {
+        return value ? "true" : "false";
+    }
+}
+
+// ================================
+// CellValue高性能转换函数
+// ================================
+
+/**
+ * @brief 高性能CellValue到字符串转换
+ * @param value CellValue实例
+ * @return std::string 转换后的字符串
+ */
+[[nodiscard]] std::string cellValueToString(const CellValue& value) noexcept;
 
 /**
  * @brief Excel行数据类型
@@ -35,29 +145,9 @@ using RowData = std::vector<CellValue>;
 using TableData = std::vector<RowData>;
 
 /**
- * @brief 行索引类型（0基于）
- */
-using RowIndex = uint32_t;
-
-/**
- * @brief 列索引类型（0基于）
- */
-using ColumnIndex = uint32_t;
-
-/**
- * @brief 工作表索引类型
- */
-using SheetIndex = size_t;
-
-/**
- * @brief 颜色类型（RGB值）
- */
-using Color = uint32_t;
-
-/**
  * @brief 边框样式枚举
  */
-enum class BorderStyle : uint8_t {
+enum class BorderStyle : UInt8 {
     None = 0,
     Thin = 1,
     Medium = 2,
@@ -70,7 +160,7 @@ enum class BorderStyle : uint8_t {
 /**
  * @brief 对齐方式枚举 - 匹配libxlsxwriter的LXW_ALIGN_*值
  */
-enum class Alignment : uint8_t {
+enum class Alignment : UInt8 {
     None = 0,                    // LXW_ALIGN_NONE
     Left = 1,                    // LXW_ALIGN_LEFT
     Center = 2,                  // LXW_ALIGN_CENTER
@@ -84,7 +174,7 @@ enum class Alignment : uint8_t {
 /**
  * @brief 垂直对齐方式枚举 - 匹配libxlsxwriter的LXW_ALIGN_VERTICAL_*值
  */
-enum class VerticalAlignment : uint8_t {
+enum class VerticalAlignment : UInt8 {
     Top = 8,          // LXW_ALIGN_VERTICAL_TOP
     Bottom = 9,       // LXW_ALIGN_VERTICAL_BOTTOM
     VCenter = 10,     // LXW_ALIGN_VERTICAL_CENTER
