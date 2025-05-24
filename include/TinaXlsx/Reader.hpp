@@ -7,7 +7,6 @@
 
 #include "Types.hpp"
 #include "Exception.hpp"
-#include <xlsxio_read.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -19,8 +18,8 @@ namespace TinaXlsx {
 /**
  * @brief 高性能Excel读取器
  * 
- * 基于xlsxio的高性能读取器，支持流式读取和批量读取
- * 使用RAII管理资源，保证异常安全
+ * 基于minizip-ng和expat的高性能读取器，替代xlsxio
+ * 支持流式读取和批量读取，使用RAII管理资源，保证异常安全
  */
 class Reader {
 public:

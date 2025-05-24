@@ -47,7 +47,7 @@ struct Version {
 };
 
 /**
- * @brief 便捷创建读取器
+ * @brief 便捷创建读取器 - 基于minizip-ng和expat实现
  * @param filePath Excel文件路径
  * @return std::unique_ptr<Reader> 读取器智能指针
  */
