@@ -2,6 +2,7 @@
 #include <pugixml.hpp>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 namespace TinaXlsx {
 
@@ -72,8 +73,14 @@ public:
         std::ostringstream oss;
         unsigned int save_flags = formatted ? pugi::format_indent : pugi::format_raw;
         
-        // 确保包含XML声明
-        document_.save(oss, "  ", save_flags | pugi::format_save_file_text, pugi::encoding_utf8);
+        // 手动添加XML声明并保存文档
+        oss << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+        if (formatted) {
+            oss << "\n";
+        }
+        
+        // 保存文档内容（使用 format_no_declaration 避免重复XML声明）
+        document_.save(oss, "  ", save_flags | pugi::format_no_declaration, pugi::encoding_utf8);
         return oss.str();
     }
 
@@ -83,10 +90,25 @@ public:
             return false;
         }
 
+        std::ofstream file(filename);
+        if (!file.is_open()) {
+            const_cast<Impl*>(this)->last_error_ = "Failed to open file for writing: " + filename;
+            return false;
+        }
+
         unsigned int save_flags = formatted ? pugi::format_indent : pugi::format_raw;
-        bool result = document_.save_file(filename.c_str(), "  ", save_flags | pugi::format_save_file_text, pugi::encoding_utf8);
-        if (!result) {
-            const_cast<Impl*>(this)->last_error_ = "Failed to save XML file: " + filename;
+        
+        // 手动添加XML声明
+        file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+        if (formatted) {
+            file << "\n";
+        }
+        
+        // 保存文档内容
+        document_.save(file, "  ", save_flags | pugi::format_no_declaration, pugi::encoding_utf8);
+        
+        if (file.fail()) {
+            const_cast<Impl*>(this)->last_error_ = "Failed to write XML file: " + filename;
             return false;
         }
 

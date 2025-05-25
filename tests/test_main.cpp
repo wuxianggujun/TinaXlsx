@@ -26,6 +26,13 @@ TEST_F(TXWorkbookTest, CreateWorkbookInstance) {
 
 // 测试功能：加载XLSX文件
 TEST_F(TXWorkbookTest, LoadXlsxFile) {
+    // 首先创建一个测试文件
+    TinaXlsx::TXWorkbook temp_workbook;
+    temp_workbook.addSheet("TestSheet");
+    bool saved = temp_workbook.saveToFile("test.xlsx");
+    ASSERT_TRUE(saved);
+    
+    // 然后加载这个文件
     bool loaded = workbook_.loadFromFile("test.xlsx");
     EXPECT_TRUE(loaded);
 }

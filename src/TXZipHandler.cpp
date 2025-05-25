@@ -277,31 +277,33 @@ TXZipHandler& TXZipHandler::operator=(TXZipHandler&& other) noexcept {
 }
 
 bool TXZipHandler::open(const std::string& filename, OpenMode mode) {
-    return pImpl->open(filename, mode);
+    return pImpl && pImpl->open(filename, mode);
 }
 
 void TXZipHandler::close() {
-    pImpl->close();
+    if (pImpl) {
+        pImpl->close();
+    }
 }
 
 bool TXZipHandler::isOpen() const {
-    return pImpl->isOpen();
+    return pImpl && pImpl->isOpen();
 }
 
 std::vector<TXZipHandler::ZipEntry> TXZipHandler::getEntries() const {
-    return pImpl->getEntries();
+    return pImpl ? pImpl->getEntries() : std::vector<TXZipHandler::ZipEntry>{};
 }
 
 bool TXZipHandler::hasFile(const std::string& filename) const {
-    return pImpl->hasFile(filename);
+    return pImpl && pImpl->hasFile(filename);
 }
 
 std::string TXZipHandler::readFileToString(const std::string& filename) const {
-    return pImpl->readFileToString(filename);
+    return pImpl ? pImpl->readFileToString(filename) : std::string{};
 }
 
 std::vector<uint8_t> TXZipHandler::readFileToBytes(const std::string& filename) const {
-    return pImpl->readFileToBytes(filename);
+    return pImpl ? pImpl->readFileToBytes(filename) : std::vector<uint8_t>{};
 }
 
 bool TXZipHandler::writeFile(const std::string& filename, const std::string& content, int compression_level) {
@@ -309,29 +311,30 @@ bool TXZipHandler::writeFile(const std::string& filename, const std::string& con
 }
 
 bool TXZipHandler::writeFile(const std::string& filename, const std::vector<uint8_t>& data, int compression_level) {
-    return pImpl->writeFile(filename, data, compression_level);
+    return pImpl && pImpl->writeFile(filename, data, compression_level);
 }
 
 bool TXZipHandler::removeFile(const std::string& filename) {
-    return pImpl->removeFile(filename);
+    return pImpl && pImpl->removeFile(filename);
 }
 
 const std::string& TXZipHandler::getLastError() const {
-    return pImpl->getLastError();
+    static std::string empty_error;
+    return pImpl ? pImpl->getLastError() : empty_error;
 }
 
 std::size_t TXZipHandler::readMultipleFiles(
     const std::vector<std::string>& filenames,
     std::function<void(const std::string&, const std::string&)> callback
 ) const {
-    return pImpl->readMultipleFiles(filenames, callback);
+    return pImpl ? pImpl->readMultipleFiles(filenames, callback) : 0;
 }
 
 std::size_t TXZipHandler::writeMultipleFiles(
     const std::unordered_map<std::string, std::string>& files,
     int compression_level
 ) {
-    return pImpl->writeMultipleFiles(files, compression_level);
+    return pImpl ? pImpl->writeMultipleFiles(files, compression_level) : 0;
 }
 
 } // namespace TinaXlsx 
