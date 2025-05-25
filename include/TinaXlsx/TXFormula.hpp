@@ -78,6 +78,7 @@ public:
 
 public:
     TXFormula();
+    explicit TXFormula(const std::string& formula);
     ~TXFormula();
     
     // 禁用拷贝，支持移动

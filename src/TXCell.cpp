@@ -179,7 +179,11 @@ public:
     void setFormula(const std::string& formula) {
         formula_ = formula;
         if (!formula.empty()) {
-            type_ = TXCell::CellType::Formula;
+            formula_object_ = std::make_unique<TXFormula>(formula);
+            type_ = CellType::Formula;
+        }else
+        {
+            formula_object_.reset();
         }
     }
 

@@ -371,6 +371,14 @@ public:
 
 TXFormula::TXFormula() : pImpl(std::make_unique<Impl>()) {}
 
+TXFormula::TXFormula(const std::string& formula):pImpl(std::make_unique<Impl>())
+{
+    if (!pImpl->parseFormula(formula))
+    {
+        throw std::invalid_argument("Invalid formula: " + formula);
+    }
+}
+
 TXFormula::~TXFormula() = default;
 
 TXFormula::TXFormula(TXFormula&& other) noexcept : pImpl(std::move(other.pImpl)) {}
@@ -480,7 +488,8 @@ TXFormula::FormulaValue TXFormula::ifFunction(const std::vector<FormulaValue>& a
     bool condition = valueToBool(args[0]);
     if (condition) {
         return args[1];
-    } else if (args.size() > 2) {
+    }
+    if (args.size() > 2) {
         return args[2];
     }
     return std::monostate{};
@@ -495,7 +504,7 @@ TXFormula::FormulaValue TXFormula::concatenateFunction(const std::vector<Formula
 }
 
 TXFormula::FormulaValue TXFormula::lenFunction(const std::vector<FormulaValue>& args) {
-    if (args.empty()) return 0;
+    if (args.empty()) return static_cast<int64_t>(0);
     
     std::string str = valueToString(args[0]);
     return static_cast<int64_t>(str.length());
