@@ -20,7 +20,7 @@ public:
     /**
      * @brief 单元格值类型
      */
-    using CellValue = std::variant<std::string, double, int64_t, bool>;
+    using CellValue = std::variant<std::monostate, std::string, double, int64_t, bool>;
 
     /**
      * @brief 单元格坐标

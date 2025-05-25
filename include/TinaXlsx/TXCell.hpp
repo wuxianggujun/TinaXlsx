@@ -16,7 +16,7 @@ public:
     /**
      * @brief 单元格值类型
      */
-    using CellValue = std::variant<std::string, double, int64_t, bool>;
+    using CellValue = std::variant<std::monostate, std::string, double, int64_t, bool>;
 
     /**
      * @brief 单元格类型枚举
@@ -204,6 +204,7 @@ public:
      * @brief 赋值操作符
      */
     TXCell& operator=(const std::string& value);
+    TXCell& operator=(const char* value);
     TXCell& operator=(double value);
     TXCell& operator=(int64_t value);
     TXCell& operator=(int value);

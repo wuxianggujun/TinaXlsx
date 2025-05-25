@@ -175,34 +175,40 @@ public:
             return false;
         }
 
-        mz_zip_file file_info = {};
+        mz_zip_file file_info;
+        memset(&file_info, 0, sizeof(mz_zip_file));
+        
         file_info.filename = filename.c_str();
+        file_info.filename_size = static_cast<uint16_t>(filename.length());
         file_info.compression_method = MZ_COMPRESS_METHOD_DEFLATE;
-        file_info.uncompressed_size = data.size();
+        file_info.uncompressed_size = static_cast<uint64_t>(data.size());
+        file_info.compressed_size = 0;
         
         time_t current_time = time(nullptr);
         file_info.modified_date = current_time;
-
+        
+        // 设置压缩级别
         mz_zip_writer_set_compress_level(zip_writer_, compression_level);
         
+        // 开始写入条目
         int32_t result = mz_zip_writer_entry_open(zip_writer_, &file_info);
         if (result != MZ_OK) {
-            last_error_ = "Failed to open entry for writing: " + filename;
+            last_error_ = "Failed to open entry for writing: " + filename + " (error: " + std::to_string(result) + ")";
             return false;
         }
 
         if (!data.empty()) {
-            result = mz_zip_writer_entry_write(zip_writer_, data.data(), data.size());
-            if (result != MZ_OK) {
+            result = mz_zip_writer_entry_write(zip_writer_, data.data(), static_cast<int32_t>(data.size()));
+            if (result != static_cast<int32_t>(data.size())) {
                 mz_zip_writer_entry_close(zip_writer_);
-                last_error_ = "Failed to write entry: " + filename;
+                last_error_ = "Failed to write entry data: " + filename + " (wrote " + std::to_string(result) + " of " + std::to_string(data.size()) + " bytes)";
                 return false;
             }
         }
 
         result = mz_zip_writer_entry_close(zip_writer_);
         if (result != MZ_OK) {
-            last_error_ = "Failed to close entry: " + filename;
+            last_error_ = "Failed to close entry: " + filename + " (error: " + std::to_string(result) + ")";
             return false;
         }
 
@@ -299,7 +305,7 @@ std::vector<uint8_t> TXZipHandler::readFileToBytes(const std::string& filename) 
 }
 
 bool TXZipHandler::writeFile(const std::string& filename, const std::string& content, int compression_level) {
-    return pImpl->writeFile(filename, content, compression_level);
+    return writeFile(filename, std::vector<uint8_t>(content.begin(), content.end()), compression_level);
 }
 
 bool TXZipHandler::writeFile(const std::string& filename, const std::vector<uint8_t>& data, int compression_level) {

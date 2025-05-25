@@ -1,26 +1,62 @@
+//
+// Created by wuxianggujun on 2025/5/25.
+//
+
 #include <gtest/gtest.h>
 #include "TinaXlsx/TXCell.hpp"
 
 class TXCellTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // 在每个测试开始前的设置
+        // 在每个测试用例前调用，做初始化
     }
 
     void TearDown() override {
-        // 在每个测试结束后的清理
+        // 在每个测试用例后调用，做清理工作
     }
 };
+
+TEST_F(TXCellTest, VeryBasicTest) {
+    // 最基本的测试，只创建对象
+    TinaXlsx::TXCell cell;
+    // 不做任何操作，只是确保对象能创建
+    EXPECT_TRUE(true);  // 总是通过的测试
+}
 
 TEST_F(TXCellTest, DefaultConstructor) {
     TinaXlsx::TXCell cell;
     
+    // 测试默认状态
     EXPECT_TRUE(cell.isEmpty());
     EXPECT_EQ(cell.getType(), TinaXlsx::TXCell::CellType::Empty);
     EXPECT_EQ(cell.getStringValue(), "");
     EXPECT_EQ(cell.getNumberValue(), 0.0);
     EXPECT_EQ(cell.getIntegerValue(), 0);
     EXPECT_FALSE(cell.getBooleanValue());
+}
+
+TEST_F(TXCellTest, SimpleStringTest) {
+    TinaXlsx::TXCell cell;
+    
+    // 只测试setStringValue，不使用赋值操作符
+    cell.setStringValue("Hello");
+    
+    // 检查结果
+    EXPECT_FALSE(cell.isEmpty());
+    EXPECT_EQ(cell.getStringValue(), "Hello");
+    EXPECT_EQ(cell.getType(), TinaXlsx::TXCell::CellType::String);
+}
+
+TEST_F(TXCellTest, AssignmentOperatorTest) {
+    TinaXlsx::TXCell cell;
+    
+    // 测试赋值操作符
+    cell = "Test String";
+    
+    // 检查结果
+    EXPECT_FALSE(cell.isEmpty());
+    EXPECT_EQ(cell.getStringValue(), "Test String");
+    EXPECT_EQ(cell.getType(), TinaXlsx::TXCell::CellType::String);
 }
 
 TEST_F(TXCellTest, StringValue) {

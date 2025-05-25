@@ -2,12 +2,13 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <iostream>
 
 namespace TinaXlsx {
 
 class TXCell::Impl {
 public:
-    Impl() : value_(""), type_(TXCell::CellType::Empty), 
+    Impl() : value_(std::monostate{}), type_(TXCell::CellType::Empty), 
              number_format_(TXCell::NumberFormat::General), 
              custom_format_(""), formula_("") {}
     
@@ -15,6 +16,21 @@ public:
              number_format_(TXCell::NumberFormat::General), 
              custom_format_(""), formula_("") {
         updateType();
+    }
+
+    Impl(const Impl& other) : value_(other.value_), type_(other.type_),
+             number_format_(other.number_format_), 
+             custom_format_(other.custom_format_), formula_(other.formula_) {}
+
+    Impl& operator=(const Impl& other) {
+        if (this != &other) {
+            value_ = other.value_;
+            type_ = other.type_;
+            number_format_ = other.number_format_;
+            custom_format_ = other.custom_format_;
+            formula_ = other.formula_;
+        }
+        return *this;
     }
 
     void setValue(const CellValue& value) {
@@ -32,15 +48,18 @@ public:
     }
 
     bool isEmpty() const {
-        return type_ == TXCell::CellType::Empty;
+        return std::holds_alternative<std::monostate>(value_);
     }
 
     void updateType() {
-        if (std::holds_alternative<std::string>(value_)) {
+        // 调试信息
+        std::size_t index = value_.index();
+        
+        if (std::holds_alternative<std::monostate>(value_)) {
+            type_ = TXCell::CellType::Empty;
+        } else if (std::holds_alternative<std::string>(value_)) {
             const auto& str = std::get<std::string>(value_);
-            if (str.empty()) {
-                type_ = TXCell::CellType::Empty;
-            } else if (!formula_.empty()) {
+            if (!formula_.empty()) {
                 type_ = TXCell::CellType::Formula;
             } else {
                 type_ = TXCell::CellType::String;
@@ -54,6 +73,11 @@ public:
         } else {
             type_ = TXCell::CellType::Empty;
         }
+        
+        // 调试输出
+        #ifdef DEBUG
+        std::cout << "updateType: variant index=" << index << ", type=" << static_cast<int>(type_) << std::endl;
+        #endif
     }
 
     std::string getStringValue() const {
@@ -135,7 +159,7 @@ public:
     }
 
     void clear() {
-        value_ = std::string("");
+        value_ = std::monostate{};
         type_ = TXCell::CellType::Empty;
         formula_.clear();
         custom_format_.clear();
@@ -327,6 +351,11 @@ bool TXCell::fromString(const std::string& str, bool auto_detect_type) {
 
 TXCell& TXCell::operator=(const std::string& value) {
     setStringValue(value);
+    return *this;
+}
+
+TXCell& TXCell::operator=(const char* value) {
+    setStringValue(std::string(value));
     return *this;
 }
 

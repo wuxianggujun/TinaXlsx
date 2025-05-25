@@ -12,7 +12,26 @@ option(BUILD_TESTS "Build the unit tests" ON)
 add_subdirectory(third_party/pugixml)
 # pugixml 将提供 pugixml::pugixml 目标供链接使用
 
+# -------------- 配置 zlib-ng --------------
+# zlib-ng 的构建选项
+set(ZLIB_COMPAT ON CACHE BOOL "" FORCE)  # 启用zlib兼容性
+set(ZLIB_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(WITH_GTEST OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(third_party/zlib-ng)
+# zlib-ng 提供 zlib 目标
+
 # -------------- 配置 minizip-ng --------------
+# 确保 minizip-ng 能找到 zlib
+find_package(ZLIB QUIET)
+if(NOT ZLIB_FOUND)
+    # 手动设置 zlib 变量指向 zlib-ng
+    set(ZLIB_LIBRARY zlibstatic)
+    set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/zlib-ng)
+    set(ZLIB_LIBRARIES ${ZLIB_LIBRARY})
+    set(ZLIB_FOUND TRUE)
+endif()
+
 # minizip-ng 的构建选项
 set(MZ_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MZ_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -22,6 +41,8 @@ set(MZ_BUILD_ZSTD OFF CACHE BOOL "" FORCE)
 set(MZ_COMPAT OFF CACHE BOOL "" FORCE)
 set(MZ_FETCH_LIBS OFF CACHE BOOL "" FORCE)
 set(MZ_FORCE_FETCH_LIBS OFF CACHE BOOL "" FORCE)
+# 启用 zlib 支持
+set(MZ_ZLIB ON CACHE BOOL "" FORCE)
 
 add_subdirectory(third_party/minizip-ng)
 # minizip 提供 minizip 目标

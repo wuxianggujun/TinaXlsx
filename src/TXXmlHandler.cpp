@@ -71,7 +71,9 @@ public:
 
         std::ostringstream oss;
         unsigned int save_flags = formatted ? pugi::format_indent : pugi::format_raw;
-        document_.save(oss, "  ", save_flags, pugi::encoding_utf8);
+        
+        // 确保包含XML声明
+        document_.save(oss, "  ", save_flags | pugi::format_save_file_text, pugi::encoding_utf8);
         return oss.str();
     }
 
@@ -82,7 +84,7 @@ public:
         }
 
         unsigned int save_flags = formatted ? pugi::format_indent : pugi::format_raw;
-        bool result = document_.save_file(filename.c_str(), "  ", save_flags, pugi::encoding_utf8);
+        bool result = document_.save_file(filename.c_str(), "  ", save_flags | pugi::format_save_file_text, pugi::encoding_utf8);
         if (!result) {
             const_cast<Impl*>(this)->last_error_ = "Failed to save XML file: " + filename;
             return false;
@@ -93,7 +95,7 @@ public:
     }
 
     bool isValid() const {
-        return !document_.empty();
+        return !document_.empty() && document_.document_element();
     }
 
     std::string getRootName() const {
