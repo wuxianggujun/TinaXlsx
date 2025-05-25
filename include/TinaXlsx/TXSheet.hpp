@@ -1,6 +1,8 @@
 #pragma once
 
 #include "TXCoordinate.hpp"
+#include "TXCell.hpp"
+#include "TXTypes.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -21,7 +23,7 @@ public:
     /**
      * @brief 单元格值类型
      */
-    using CellValue = std::variant<std::monostate, std::string, double, int64_t, bool>;
+    using CellValue = TXTypes::CellValue;
     
     // 使用统一的坐标系统
     using Coordinate = TXCoordinate;  ///< 坐标类型别名
@@ -235,6 +237,163 @@ public:
      * @return 值的二维数组
      */
     std::vector<std::vector<CellValue>> getRangeValues(const Range& range) const;
+
+    // ==================== 合并单元格操作 ====================
+
+    /**
+     * @brief 合并单元格区域
+     * @param startRow 起始行
+     * @param startCol 起始列
+     * @param endRow 结束行
+     * @param endCol 结束列
+     * @return 成功返回true，失败返回false
+     */
+    bool mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
+                   TXTypes::RowIndex endRow, TXTypes::ColIndex endCol);
+
+    /**
+     * @brief 合并单元格区域
+     * @param range 要合并的范围
+     * @return 成功返回true，失败返回false
+     */
+    bool mergeCells(const Range& range);
+
+    /**
+     * @brief 合并单元格区域（使用A1格式）
+     * @param rangeStr 范围字符串，如"A1:C3"
+     * @return 成功返回true，失败返回false
+     */
+    bool mergeCells(const std::string& rangeStr);
+
+    /**
+     * @brief 拆分包含指定单元格的合并区域
+     * @param row 单元格行号
+     * @param col 单元格列号
+     * @return 成功返回true，失败返回false
+     */
+    bool unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col);
+
+    /**
+     * @brief 拆分指定范围的所有合并区域
+     * @param range 范围
+     * @return 拆分的区域数量
+     */
+    std::size_t unmergeCellsInRange(const Range& range);
+
+    /**
+     * @brief 检查单元格是否被合并
+     * @param row 行号
+     * @param col 列号
+     * @return 被合并返回true，否则返回false
+     */
+    bool isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+
+    /**
+     * @brief 获取包含指定单元格的合并区域
+     * @param row 行号
+     * @param col 列号
+     * @return 合并区域，如果不存在返回空Range
+     */
+    Range getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+
+    /**
+     * @brief 获取所有合并区域
+     * @return 合并区域列表
+     */
+    std::vector<Range> getAllMergeRegions() const;
+
+    /**
+     * @brief 获取合并区域数量
+     * @return 合并区域数量
+     */
+    std::size_t getMergeCount() const;
+
+    // ==================== 公式计算 ====================
+
+    /**
+     * @brief 计算所有公式
+     * @return 成功计算的公式数量
+     */
+    std::size_t calculateAllFormulas();
+
+    /**
+     * @brief 计算指定范围内的公式
+     * @param range 范围
+     * @return 成功计算的公式数量
+     */
+    std::size_t calculateFormulasInRange(const Range& range);
+
+    /**
+     * @brief 设置单元格公式
+     * @param row 行号
+     * @param col 列号
+     * @param formula 公式字符串
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col, const std::string& formula);
+
+    /**
+     * @brief 获取单元格公式
+     * @param row 行号
+     * @param col 列号
+     * @return 公式字符串，如果不是公式返回空字符串
+     */
+    std::string getCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+
+    /**
+     * @brief 批量设置公式（高性能版本）
+     * @param formulas 坐标到公式的映射
+     * @return 成功设置的公式数量
+     */
+    std::size_t setCellFormulas(const std::vector<std::pair<Coordinate, std::string>>& formulas);
+
+    // ==================== 格式化操作 ====================
+
+    /**
+     * @brief 设置单元格数字格式
+     * @param row 行号
+     * @param col 列号
+     * @param formatType 格式类型
+     * @param decimalPlaces 小数位数
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellNumberFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+                           TXCell::NumberFormat formatType, int decimalPlaces = 2);
+
+    /**
+     * @brief 设置单元格自定义格式
+     * @param row 行号
+     * @param col 列号
+     * @param formatString 格式字符串
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellCustomFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+                           const std::string& formatString);
+
+    /**
+     * @brief 设置范围内单元格的格式
+     * @param range 范围
+     * @param formatType 格式类型
+     * @param decimalPlaces 小数位数
+     * @return 成功设置的单元格数量
+     */
+    std::size_t setRangeNumberFormat(const Range& range, TXCell::NumberFormat formatType, 
+                                   int decimalPlaces = 2);
+
+    /**
+     * @brief 获取单元格格式化后的值
+     * @param row 行号
+     * @param col 列号
+     * @return 格式化后的字符串
+     */
+    std::string getCellFormattedValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+
+    /**
+     * @brief 批量设置格式（高性能版本）
+     * @param formats 坐标到格式的映射
+     * @return 成功设置的格式数量
+     */
+    std::size_t setCellFormats(const std::vector<std::pair<Coordinate, TXCell::NumberFormat>>& formats);
 
     // ==================== 便捷方法 ====================
 

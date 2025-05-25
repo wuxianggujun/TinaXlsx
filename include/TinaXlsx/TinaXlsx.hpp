@@ -18,6 +18,11 @@
 // ==================== 样式系统 ====================
 #include "TXStyle.hpp"         ///< 完整样式系统
 
+// ==================== 新增功能模块 ====================
+#include "TXFormula.hpp"       ///< 公式处理类
+#include "TXMergedCells.hpp"   ///< 合并单元格管理类
+#include "TXNumberFormat.hpp"  ///< 数字格式化类
+
 // ==================== 核心业务类 ====================
 #include "TXCell.hpp"          ///< 单元格类
 #include "TXSheet.hpp"         ///< 工作表类
@@ -51,11 +56,14 @@ namespace Version {
  * @brief 库特性标志
  */
 namespace Features {
-    constexpr bool HAS_STYLES = true;        ///< 是否支持样式
-    constexpr bool HAS_COLORS = true;        ///< 是否支持颜色
-    constexpr bool HAS_COORDINATES = true;   ///< 是否支持坐标系统
-    constexpr bool HAS_ZIP_SUPPORT = true;   ///< 是否支持ZIP
-    constexpr bool HAS_XML_SUPPORT = true;   ///< 是否支持XML
+    constexpr bool HAS_STYLES = true;           ///< 是否支持样式
+    constexpr bool HAS_COLORS = true;           ///< 是否支持颜色
+    constexpr bool HAS_COORDINATES = true;      ///< 是否支持坐标系统
+    constexpr bool HAS_ZIP_SUPPORT = true;      ///< 是否支持ZIP
+    constexpr bool HAS_XML_SUPPORT = true;      ///< 是否支持XML
+    constexpr bool HAS_FORMULAS = true;         ///< 是否支持公式
+    constexpr bool HAS_MERGED_CELLS = true;     ///< 是否支持合并单元格
+    constexpr bool HAS_NUMBER_FORMAT = true;    ///< 是否支持数字格式化
 }
 
 /**
@@ -68,6 +76,9 @@ using Style = TXCellStyle;
 using Color = TXColor;
 using Coordinate = TXCoordinate;
 using Range = TXRange;
+using Formula = TXFormula;
+using MergedCells = TXMergedCells;
+using NumberFormat = TXNumberFormat;
 
 // 常用类型别名
 using RowIndex = TXTypes::RowIndex;
@@ -104,5 +115,11 @@ std::string getVersion();
  * @return 构建信息字符串
  */
 std::string getBuildInfo();
+
+/**
+ * @brief 获取支持的特性列表
+ * @return 特性描述字符串
+ */
+std::string getSupportedFeatures();
 
 } // namespace TinaXlsx 

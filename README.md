@@ -1,4 +1,4 @@
-# TinaXlsx 项目设计文档
+# TinaXlsx 项目设计文档（中文）
 
 ## 一、项目简介
 
@@ -44,7 +44,13 @@ TXWorkbook
                                └─ depends on ─ minizip-ng
 ```
 
-## 三、项目要求与依赖库
+## 三、已实现功能
+
+* XLSX 文件读取和写入
+* 单元格颜色设置
+* 字体和样式设置（大小、类型、粗体、斜体等）
+
+## 四、项目要求与依赖库
 
 ### 项目基础要求：
 
@@ -58,8 +64,18 @@ TXWorkbook
 | **minizip-ng** | ZIP文件的压缩解压操作 | [https://github.com/zlib-ng/minizip-ng](https://github.com/zlib-ng/minizip-ng) |
 | **pugixml**    | XML文件解析与生成   | [https://github.com/zeux/pugixml](https://github.com/zeux/pugixml)             |
 | **googletest** | 单元测试框架       | [https://github.com/google/googletest](https://github.com/google/googletest)   |
+| **zlib-ng**    | 压缩算法支持库      | [https://github.com/zlib-ng/zlib-ng](https://github.com/zlib-ng/zlib-ng)       |
 
-## 四、项目构建与测试
+### 依赖库克隆命令：
+
+```shell
+git clone https://github.com/zlib-ng/minizip-ng.git third_party/minizip-ng
+git clone https://github.com/zeux/pugixml.git third_party/pugixml
+git clone https://github.com/google/googletest.git third_party/googletest
+git clone https://github.com/zlib-ng/zlib-ng.git third_party/zlib-ng
+```
+
+## 五、项目构建与测试
 
 ### 构建步骤：
 
@@ -76,13 +92,27 @@ cd build
 ctest --verbose
 ```
 
-## 五、开发规范与要求
+## 六、开发规范与要求
 
 * 创建一个新的类时，必须同时创建对应的单元测试类，确保测试覆盖。
 * 严格使用现代C++标准，推荐使用智能指针（`std::unique_ptr` 和 `std::shared_ptr`）代替传统指针。
 
-## 六、扩展与维护
+## 七、下阶段任务
+
+下一阶段任务需实现以下功能：
+
+1. **公式支持（Formula）**
+
+    * 支持单元格公式的读取和写入功能，例如`SUM()`、`AVERAGE()`等。
+
+2. **单元格合并与拆分**
+
+    * 实现合并多个单元格和拆分已合并单元格的功能。
+
+3. **数字格式化（Number Formatting）**
+
+    * 实现数字、日期、百分比、小数点精度等格式化支持。
+
+## 八、扩展与维护
 
 本项目采用模块化设计，新增功能只需添加对应的类即可，建议所有新类名以`TX`为前缀，以保持项目结构一致性。
-
----

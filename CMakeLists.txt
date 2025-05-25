@@ -58,7 +58,11 @@ add_library(${PROJECT_NAME} STATIC ${CORE_SOURCES})
 
 # 设置编译器特定选项
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+    target_compile_options(${PROJECT_NAME} PRIVATE 
+        /W4 
+        /utf-8  # 设置源和执行字符集为UTF-8
+        /wd4819  # 禁用C4819编码警告
+    )
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 endif()
@@ -101,7 +105,11 @@ if(BUILD_TESTS)
 
     # 为测试添加更宽松的编译选项
     if(MSVC)
-        target_compile_options(${PROJECT_NAME}_test PRIVATE /W3)
+        target_compile_options(${PROJECT_NAME}_test PRIVATE 
+            /W3 
+            /utf-8  # 设置源和执行字符集为UTF-8
+            /wd4819  # 禁用C4819编码警告
+        )
     else()
         target_compile_options(${PROJECT_NAME}_test PRIVATE -Wall -Wno-unused-parameter)
     endif()

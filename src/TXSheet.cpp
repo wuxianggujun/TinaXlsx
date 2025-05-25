@@ -1,5 +1,6 @@
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXMergedCells.hpp"
 #include <unordered_map>
 #include <regex>
 #include <algorithm>
@@ -16,7 +17,7 @@ struct CoordinateHash {
 
 class TXSheet::Impl {
 public:
-    explicit Impl(const std::string& name) : name_(name), last_error_("") {}
+    explicit Impl(const std::string& name) : name_(name), last_error_(""), merged_cells_() {}
 
     const std::string& getName() const {
         return name_;
@@ -216,6 +217,7 @@ public:
 
     void clear() {
         cells_.clear();
+        merged_cells_.clear();
         last_error_.clear();
     }
 
@@ -294,10 +296,150 @@ public:
         return last_error_;
     }
 
+    // ==================== 合并单元格功能实现 ====================
+
+    bool mergeCells(const TXSheet::Range& range) {
+        if (!range.isValid()) {
+            last_error_ = "Invalid range for merging";
+            return false;
+        }
+
+        // 检查范围是否已经有合并的单元格
+        auto overlappingRegions = merged_cells_.getOverlappingRegions(range);
+        if (!overlappingRegions.empty()) {
+            last_error_ = "Range overlaps with existing merged cells";
+            return false;
+        }
+
+        // 添加合并区域
+        if (!merged_cells_.mergeCells(range)) {
+            last_error_ = "Failed to add merge region";
+            return false;
+        }
+
+        // 设置主单元格和从属单元格
+        auto start = range.getStart();
+        auto end = range.getEnd();
+
+        for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
+            for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+                Coordinate coord(row, col);
+                TXCell* cell = getCell(coord);
+                if (cell) {
+                    cell->setMerged(true);
+                    if (row == start.getRow() && col == start.getCol()) {
+                        // 主单元格
+                        cell->setMasterCell(true);
+                    } else {
+                        // 从属单元格
+                        cell->setMasterCell(false);
+                        cell->setMasterCellPosition(start.getRow(), start.getCol());
+                    }
+                }
+            }
+        }
+
+        last_error_.clear();
+        return true;
+    }
+
+    bool unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+        const auto* region = merged_cells_.getMergeRegion(row, col);
+        if (!region) {
+            last_error_ = "Cell is not in a merged region";
+            return false;
+        }
+
+        // 移除合并区域
+        if (!merged_cells_.unmergeCells(*region)) {
+            last_error_ = "Failed to remove merge region";
+            return false;
+        }
+
+        // 更新单元格状态
+        for (TXTypes::RowIndex r = region->startRow; r <= region->endRow; ++r) {
+            for (TXTypes::ColIndex c = region->startCol; c <= region->endCol; ++c) {
+                Coordinate cell_coord(r, c);
+                TXCell* cell = getCell(cell_coord);
+                if (cell) {
+                    cell->setMerged(false);
+                    cell->setMasterCell(false);
+                    cell->setMasterCellPosition(0, 0);
+                }
+            }
+        }
+
+        last_error_.clear();
+        return true;
+    }
+
+    std::size_t unmergeCellsInRange(const TXSheet::Range& range) {
+        return merged_cells_.unmergeCellsInRange(range);
+    }
+
+    bool isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+        return merged_cells_.isMerged(row, col);
+    }
+
+    TXSheet::Range getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+        const auto* region = merged_cells_.getMergeRegion(row, col);
+        if (region) {
+            return TXSheet::Range(region->startRow, region->startCol, region->endRow, region->endCol);
+        }
+        return TXSheet::Range(); // 返回无效范围
+    }
+
+    std::vector<TXSheet::Range> getAllMergeRegions() const {
+        auto regions = merged_cells_.getAllMergeRegions();
+        std::vector<TXSheet::Range> result;
+        result.reserve(regions.size());
+        for (const auto& region : regions) {
+            result.emplace_back(region.startRow, region.startCol, region.endRow, region.endCol);
+        }
+        return result;
+    }
+
+    std::size_t getMergeCount() const {
+        return merged_cells_.getMergeCount();
+    }
+
+    // ==================== 公式功能实现 ====================
+    
+    std::size_t calculateAllFormulas() {
+        std::size_t count = 0;
+        for (auto& pair : cells_) {
+            TXCell& cell = pair.second;
+            if (cell.isFormula()) {
+                // 注意：这里暂时简化，实际上需要解决循环依赖等问题
+                count++;
+            }
+        }
+        return count;
+    }
+
+    std::size_t calculateFormulasInRange(const TXSheet::Range& range) {
+        std::size_t count = 0;
+        auto start = range.getStart();
+        auto end = range.getEnd();
+        
+        for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
+            for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+                Coordinate coord(row, col);
+                auto it = cells_.find(coord);
+                if (it != cells_.end() && it->second.isFormula()) {
+                    // 注意：这里暂时简化，实际上需要解决循环依赖等问题
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
 private:
     std::string name_;
     std::unordered_map<Coordinate, TXCell, CoordinateHash> cells_;
     mutable std::string last_error_;
+    TXMergedCells merged_cells_;
 };
 
 // TXSheet 实现
@@ -421,6 +563,149 @@ std::vector<std::vector<TXSheet::CellValue>> TXSheet::getRangeValues(const Range
 
 const std::string& TXSheet::getLastError() const {
     return pImpl->getLastError();
+}
+
+// ==================== 合并单元格功能公共接口 ====================
+
+bool TXSheet::mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
+                        TXTypes::RowIndex endRow, TXTypes::ColIndex endCol) {
+    Range range(Coordinate(startRow, startCol), Coordinate(endRow, endCol));
+    return pImpl->mergeCells(range);
+}
+
+bool TXSheet::mergeCells(const Range& range) {
+    return pImpl->mergeCells(range);
+}
+
+bool TXSheet::mergeCells(const std::string& rangeStr) {
+    try {
+        Range range = addressToRange(rangeStr);
+        return pImpl->mergeCells(range);
+    } catch (const std::exception& e) {
+        return false;
+    }
+}
+
+bool TXSheet::unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+    return pImpl->unmergeCells(row, col);
+}
+
+std::size_t TXSheet::unmergeCellsInRange(const Range& range) {
+    return pImpl->unmergeCellsInRange(range);
+}
+
+bool TXSheet::isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    return pImpl->isCellMerged(row, col);
+}
+
+TXSheet::Range TXSheet::getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    return pImpl->getMergeRegion(row, col);
+}
+
+std::vector<TXSheet::Range> TXSheet::getAllMergeRegions() const {
+    return pImpl->getAllMergeRegions();
+}
+
+std::size_t TXSheet::getMergeCount() const {
+    return pImpl->getMergeCount();
+}
+
+// ==================== 公式功能公共接口 ====================
+
+std::size_t TXSheet::calculateAllFormulas() {
+    return pImpl->calculateAllFormulas();
+}
+
+std::size_t TXSheet::calculateFormulasInRange(const Range& range) {
+    return pImpl->calculateFormulasInRange(range);
+}
+
+bool TXSheet::setCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col, const std::string& formula) {
+    TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return false;
+    }
+    
+    cell->setFormula(formula);
+    return true;
+}
+
+std::string TXSheet::getCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    const TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return "";
+    }
+    
+    return cell->getFormula();
+}
+
+std::size_t TXSheet::setCellFormulas(const std::vector<std::pair<Coordinate, std::string>>& formulas) {
+    std::size_t count = 0;
+    for (const auto& pair : formulas) {
+        if (setCellFormula(pair.first.getRow(), pair.first.getCol(), pair.second)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+// ==================== 数字格式化功能公共接口 ====================
+
+bool TXSheet::setCellNumberFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+                                 TXCell::NumberFormat formatType, int decimalPlaces) {
+    TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return false;
+    }
+    
+    cell->setPredefinedFormat(formatType, decimalPlaces);
+    return true;
+}
+
+bool TXSheet::setCellCustomFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+                                 const std::string& formatString) {
+    TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return false;
+    }
+    
+    cell->setCustomFormat(formatString);
+    return true;
+}
+
+std::size_t TXSheet::setRangeNumberFormat(const Range& range, TXCell::NumberFormat formatType, 
+                                         int decimalPlaces) {
+    std::size_t count = 0;
+    auto start = range.getStart();
+    auto end = range.getEnd();
+    
+    for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
+        for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+            if (setCellNumberFormat(row, col, formatType, decimalPlaces)) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+std::string TXSheet::getCellFormattedValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    const TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return "";
+    }
+    
+    return cell->getFormattedValue();
+}
+
+std::size_t TXSheet::setCellFormats(const std::vector<std::pair<Coordinate, TXCell::NumberFormat>>& formats) {
+    std::size_t count = 0;
+    for (const auto& pair : formats) {
+        if (setCellNumberFormat(pair.first.getRow(), pair.first.getCol(), pair.second)) {
+            count++;
+        }
+    }
+    return count;
 }
 
 } // namespace TinaXlsx 

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <limits>
+#include <variant>
 
 namespace TinaXlsx {
 
@@ -29,6 +30,13 @@ namespace TXTypes {
     
     using CellDouble = double;           ///< 单元格浮点数类型
     using CellInteger = std::int64_t;    ///< 单元格整数类型
+    
+    // ==================== 统一值类型 ====================
+    
+    /**
+     * @brief 统一的值类型，用于单元格、公式计算和格式化
+     */
+    using CellValue = std::variant<std::monostate, std::string, double, std::int64_t, bool>;
     
     // ==================== 常量定义 ====================
     

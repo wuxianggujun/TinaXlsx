@@ -1,4 +1,6 @@
 #include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXFormula.hpp"
+#include "TinaXlsx/TXNumberFormat.hpp"
 #include <sstream>
 #include <algorithm>
 #include <cctype>
@@ -10,17 +12,35 @@ class TXCell::Impl {
 public:
     Impl() : value_(std::monostate{}), type_(TXCell::CellType::Empty), 
              number_format_(TXCell::NumberFormat::General), 
-             custom_format_(""), formula_("") {}
+             custom_format_(""), formula_(""),
+             is_merged_(false), is_master_cell_(false),
+             master_row_(0), master_col_(0) {}
     
     explicit Impl(const CellValue& value) : value_(value), 
              number_format_(TXCell::NumberFormat::General), 
-             custom_format_(""), formula_("") {
+             custom_format_(""), formula_(""),
+             is_merged_(false), is_master_cell_(false),
+             master_row_(0), master_col_(0) {
         updateType();
     }
 
     Impl(const Impl& other) : value_(other.value_), type_(other.type_),
              number_format_(other.number_format_), 
-             custom_format_(other.custom_format_), formula_(other.formula_) {}
+             custom_format_(other.custom_format_), formula_(other.formula_),
+             is_merged_(other.is_merged_), is_master_cell_(other.is_master_cell_),
+             master_row_(other.master_row_), master_col_(other.master_col_) {
+        // 注意：TXFormula禁用了拷贝构造，所以暂时不拷贝公式对象
+        // 只拷贝公式字符串，需要时重新解析
+        if (other.formula_object_) {
+            // TODO: 实现公式对象的深拷贝或序列化/反序列化
+            // formula_object_ = std::make_unique<TXFormula>(*other.formula_object_);
+        }
+        
+        // 深拷贝数字格式对象
+        if (other.number_format_object_) {
+            number_format_object_ = std::make_unique<TXNumberFormat>(*other.number_format_object_);
+        }
+    }
 
     Impl& operator=(const Impl& other) {
         if (this != &other) {
@@ -29,6 +49,27 @@ public:
             number_format_ = other.number_format_;
             custom_format_ = other.custom_format_;
             formula_ = other.formula_;
+            is_merged_ = other.is_merged_;
+            is_master_cell_ = other.is_master_cell_;
+            master_row_ = other.master_row_;
+            master_col_ = other.master_col_;
+            
+            // 注意：TXFormula禁用了拷贝构造，所以暂时不拷贝公式对象
+            // 只拷贝公式字符串，需要时重新解析
+            if (other.formula_object_) {
+                // TODO: 实现公式对象的深拷贝或序列化/反序列化
+                // formula_object_ = std::make_unique<TXFormula>(*other.formula_object_);
+                formula_object_.reset();
+            } else {
+                formula_object_.reset();
+            }
+            
+            // 深拷贝数字格式对象
+            if (other.number_format_object_) {
+                number_format_object_ = std::make_unique<TXNumberFormat>(*other.number_format_object_);
+            } else {
+                number_format_object_.reset();
+            }
         }
         return *this;
     }
@@ -36,6 +77,7 @@ public:
     void setValue(const CellValue& value) {
         value_ = value;
         formula_.clear();
+        formula_object_.reset();
         updateType();
     }
 
@@ -52,14 +94,10 @@ public:
     }
 
     void updateType() {
-        // 调试信息
-        std::size_t index = value_.index();
-        
         if (std::holds_alternative<std::monostate>(value_)) {
             type_ = TXCell::CellType::Empty;
         } else if (std::holds_alternative<std::string>(value_)) {
-            const auto& str = std::get<std::string>(value_);
-            if (!formula_.empty()) {
+            if (!formula_.empty() || formula_object_) {
                 type_ = TXCell::CellType::Formula;
             } else {
                 type_ = TXCell::CellType::String;
@@ -73,11 +111,6 @@ public:
         } else {
             type_ = TXCell::CellType::Empty;
         }
-        
-        // 调试输出
-        #ifdef DEBUG
-        std::cout << "updateType: variant index=" << index << ", type=" << static_cast<int>(type_) << std::endl;
-        #endif
     }
 
     std::string getStringValue() const {
@@ -162,8 +195,13 @@ public:
         value_ = std::monostate{};
         type_ = TXCell::CellType::Empty;
         formula_.clear();
+        formula_object_.reset();
         custom_format_.clear();
         number_format_ = TXCell::NumberFormat::General;
+        is_merged_ = false;
+        is_master_cell_ = false;
+        master_row_ = 0;
+        master_col_ = 0;
     }
 
     bool fromString(const std::string& str, bool auto_detect_type) {
@@ -228,12 +266,94 @@ public:
         custom_format_ = format;
     }
 
+    // ==================== 新功能的访问方法 ====================
+    
+    const std::unique_ptr<TXFormula>& getFormulaObject() const {
+        return formula_object_;
+    }
+    
+    void setFormulaObject(std::unique_ptr<TXFormula> formula) {
+        formula_object_ = std::move(formula);
+        if (formula_object_) {
+            formula_ = formula_object_->getFormulaString();
+            type_ = TXCell::CellType::Formula;
+        } else {
+            formula_.clear();
+            updateType();
+        }
+    }
+    
+    const std::unique_ptr<TXNumberFormat>& getNumberFormatObject() const {
+        return number_format_object_;
+    }
+    
+    void setNumberFormatObject(std::unique_ptr<TXNumberFormat> numberFormat) {
+        number_format_object_ = std::move(numberFormat);
+    }
+    
+    std::string getFormattedValue() const {
+        if (number_format_object_) {
+            // 使用新的TXNumberFormat对象
+            if (std::holds_alternative<double>(value_)) {
+                return number_format_object_->formatNumber(std::get<double>(value_));
+            } else if (std::holds_alternative<int64_t>(value_)) {
+                return number_format_object_->formatNumber(static_cast<double>(std::get<int64_t>(value_)));
+            }
+        }
+        
+        // 回退到基本格式化
+        return getStringValue();
+    }
+    
+    bool isMerged() const {
+        return is_merged_;
+    }
+    
+    void setMerged(bool merged) {
+        is_merged_ = merged;
+    }
+    
+    bool isMasterCell() const {
+        return is_master_cell_;
+    }
+    
+    void setMasterCell(bool master) {
+        is_master_cell_ = master;
+    }
+    
+    std::pair<uint32_t, uint32_t> getMasterCellPosition() const {
+        return {master_row_, master_col_};
+    }
+    
+    void setMasterCellPosition(uint32_t row, uint32_t col) {
+        master_row_ = row;
+        master_col_ = col;
+    }
+    
+    void copyFormatTo(Impl& target) const {
+        target.number_format_ = number_format_;
+        target.custom_format_ = custom_format_;
+        
+        // 深拷贝格式对象
+        if (number_format_object_) {
+            target.number_format_object_ = std::make_unique<TXNumberFormat>(*number_format_object_);
+        } else {
+            target.number_format_object_.reset();
+        }
+    }
+
 private:
     CellValue value_;
     TXCell::CellType type_;
     TXCell::NumberFormat number_format_;
     std::string custom_format_;
     std::string formula_;
+    bool is_merged_;
+    bool is_master_cell_;
+    int master_row_;
+    int master_col_;
+    std::unique_ptr<TXFormula> formula_object_;
+    std::unique_ptr<TXNumberFormat> number_format_object_;
 };
 
 // TXCell 实现
@@ -385,6 +505,139 @@ bool TXCell::operator==(const TXCell& other) const {
 
 bool TXCell::operator!=(const TXCell& other) const {
     return !(*this == other);
+}
+
+// ==================== 公式功能实现 ====================
+
+const TXFormula* TXCell::getFormulaObject() const {
+    return pImpl->getFormulaObject().get();
+}
+
+void TXCell::setFormulaObject(std::unique_ptr<TXFormula> formula) {
+    pImpl->setFormulaObject(std::move(formula));
+}
+
+TXCell::CellValue TXCell::evaluateFormula(const TXSheet* sheet, uint32_t currentRow, uint32_t currentCol) {
+    const auto& formulaObj = pImpl->getFormulaObject();
+    if (!formulaObj) {
+        return std::monostate{};
+    }
+    
+    try {
+        auto result = formulaObj->evaluate(sheet, currentRow, currentCol);
+        
+        // 将FormulaValue转换为CellValue
+        if (std::holds_alternative<double>(result)) {
+            return std::get<double>(result);
+        } else if (std::holds_alternative<std::string>(result)) {
+            return std::get<std::string>(result);
+        } else if (std::holds_alternative<int64_t>(result)) {
+            return std::get<int64_t>(result);
+        } else if (std::holds_alternative<bool>(result)) {
+            return std::get<bool>(result);
+        } else if (std::holds_alternative<std::monostate>(result)) {
+            // 错误或空值情况
+            return std::monostate{};
+        }
+    } catch (const std::exception& e) {
+        return std::string("#ERROR: ") + e.what();
+    }
+    
+    return std::monostate{};
+}
+
+// ==================== 数字格式化功能实现 ====================
+
+const TXNumberFormat* TXCell::getNumberFormatObject() const {
+    return pImpl->getNumberFormatObject().get();
+}
+
+void TXCell::setNumberFormatObject(std::unique_ptr<TXNumberFormat> numberFormat) {
+    pImpl->setNumberFormatObject(std::move(numberFormat));
+}
+
+std::string TXCell::getFormattedValue() const {
+    return pImpl->getFormattedValue();
+}
+
+void TXCell::setPredefinedFormat(NumberFormat type, int decimalPlaces, bool useThousandSeparator) {
+    // 创建对应的TXNumberFormat对象
+    auto formatObject = std::make_unique<TXNumberFormat>();
+    
+    TXNumberFormat::FormatType formatType;
+    switch (type) {
+        case NumberFormat::Number:
+            formatType = TXNumberFormat::FormatType::Number;
+            break;
+        case NumberFormat::Currency:
+            formatType = TXNumberFormat::FormatType::Currency;
+            break;
+        case NumberFormat::Percentage:
+            formatType = TXNumberFormat::FormatType::Percentage;
+            break;
+        case NumberFormat::Date:
+            formatType = TXNumberFormat::FormatType::Date;
+            break;
+        case NumberFormat::Time:
+            formatType = TXNumberFormat::FormatType::Time;
+            break;
+        case NumberFormat::Scientific:
+            formatType = TXNumberFormat::FormatType::Scientific;
+            break;
+        default:
+            formatType = TXNumberFormat::FormatType::General;
+            break;
+    }
+    
+    TXNumberFormat::FormatOptions options;
+    options.decimalPlaces = decimalPlaces;
+    options.useThousandSeparator = useThousandSeparator;
+    
+    formatObject->setFormat(formatType, options);
+    setNumberFormatObject(std::move(formatObject));
+    
+    // 同时设置兼容性格式
+    pImpl->setNumberFormat(type);
+}
+
+// ==================== 合并单元格功能实现 ====================
+
+bool TXCell::isMerged() const {
+    return pImpl->isMerged();
+}
+
+void TXCell::setMerged(bool merged) {
+    pImpl->setMerged(merged);
+}
+
+bool TXCell::isMasterCell() const {
+    return pImpl->isMasterCell();
+}
+
+void TXCell::setMasterCell(bool master) {
+    pImpl->setMasterCell(master);
+}
+
+std::pair<uint32_t, uint32_t> TXCell::getMasterCellPosition() const {
+    return pImpl->getMasterCellPosition();
+}
+
+void TXCell::setMasterCellPosition(uint32_t row, uint32_t col) {
+    pImpl->setMasterCellPosition(row, col);
+}
+
+// ==================== 其他功能实现 ====================
+
+std::unique_ptr<TXCell> TXCell::clone() const {
+    return std::make_unique<TXCell>(*this);
+}
+
+void TXCell::copyFormatTo(TXCell& target) const {
+    pImpl->copyFormatTo(*target.pImpl);
+}
+
+bool TXCell::isValueEqual(const TXCell& other) const {
+    return pImpl->getValue() == other.pImpl->getValue();
 }
 
 } // namespace TinaXlsx 
