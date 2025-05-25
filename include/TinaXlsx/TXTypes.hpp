@@ -2,152 +2,141 @@
 
 #include <cstdint>
 #include <string>
+#include <limits>
 
 namespace TinaXlsx {
 
 /**
- * @brief 全局类型定义类
+ * @brief 统一类型定义
  * 
- * 统一管理所有基础类型定义，便于维护和修改
+ * 提供TinaXlsx库中使用的所有基础类型定义和常量
  */
-class TXTypes {
-public:
-    // ==================== 基础数值类型 ====================
-    using RowIndex = uint32_t;        ///< 行索引类型 (1-based)
-    using ColIndex = uint32_t;        ///< 列索引类型 (1-based)
-    using CellIndex = uint64_t;       ///< 单元格索引类型
-    using SheetIndex = uint16_t;      ///< 工作表索引类型
+namespace TXTypes {
+
+    // ==================== 基础索引类型 ====================
+    
+    using RowIndex = std::uint32_t;      ///< 行索引类型（从1开始）
+    using ColIndex = std::uint32_t;      ///< 列索引类型（从1开始）
+    using SheetIndex = std::uint32_t;    ///< 工作表索引类型（从0开始）
     
     // ==================== 样式相关类型 ====================
-    using FontSize = uint16_t;        ///< 字体大小类型 (点数)
-    using ColorValue = uint32_t;      ///< 颜色值类型 (ARGB)
-    using BorderWidth = uint8_t;      ///< 边框宽度类型
-    using StyleId = uint32_t;         ///< 样式ID类型
     
-    // ==================== 文件相关类型 ====================
-    using FileSize = uint64_t;        ///< 文件大小类型
-    using CompressionLevel = int8_t;  ///< 压缩级别类型 (-1 到 9)
+    using ColorValue = std::uint32_t;    ///< 颜色值类型（ARGB格式）
+    using FontSize = std::uint32_t;      ///< 字体大小类型
+    using BorderWidth = std::uint32_t;   ///< 边框宽度类型
+    
+    // ==================== 数值类型 ====================
+    
+    using CellDouble = double;           ///< 单元格浮点数类型
+    using CellInteger = std::int64_t;    ///< 单元格整数类型
     
     // ==================== 常量定义 ====================
-    static constexpr RowIndex MAX_ROWS = 1048576;     ///< Excel最大行数
-    static constexpr ColIndex MAX_COLS = 16384;       ///< Excel最大列数
-    static constexpr SheetIndex MAX_SHEETS = 255;     ///< 最大工作表数
-    static constexpr FontSize DEFAULT_FONT_SIZE = 11; ///< 默认字体大小
-    static constexpr ColorValue DEFAULT_COLOR = 0xFF000000; ///< 默认颜色(黑色)
     
-    // ==================== 无效值定义 ====================
-    static constexpr RowIndex INVALID_ROW = 0;        ///< 无效行索引
-    static constexpr ColIndex INVALID_COL = 0;        ///< 无效列索引
-    static constexpr StyleId INVALID_STYLE_ID = 0;    ///< 无效样式ID
+    /// Excel 限制常量
+    constexpr RowIndex MAX_ROWS = 1048576;    ///< Excel最大行数
+    constexpr ColIndex MAX_COLS = 16384;      ///< Excel最大列数
+    constexpr std::size_t MAX_SHEET_NAME = 31; ///< 工作表名称最大长度
     
-    // ==================== 工具函数 ====================
+    /// 无效值常量
+    constexpr RowIndex INVALID_ROW = 0;       ///< 无效行号
+    constexpr ColIndex INVALID_COL = 0;       ///< 无效列号
+    constexpr SheetIndex INVALID_SHEET = std::numeric_limits<SheetIndex>::max();
+    
+    /// 默认值常量
+    constexpr FontSize DEFAULT_FONT_SIZE = 11;    ///< 默认字体大小
+    constexpr ColorValue DEFAULT_COLOR = 0xFF000000; ///< 默认颜色（黑色）
+    constexpr BorderWidth DEFAULT_BORDER_WIDTH = 1;  ///< 默认边框宽度
+    
+    // ==================== 文件格式常量 ====================
+    
+    /// 支持的文件扩展名
+    constexpr const char* XLSX_EXTENSION = ".xlsx";
+    constexpr const char* XLS_EXTENSION = ".xls";
+    constexpr const char* CSV_EXTENSION = ".csv";
+    
+    /// MIME类型
+    constexpr const char* XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    constexpr const char* XLS_MIME_TYPE = "application/vnd.ms-excel";
+    constexpr const char* CSV_MIME_TYPE = "text/csv";
+    
+    // ==================== 验证函数 ====================
     
     /**
-     * @brief 检查行索引是否有效
-     * @param row 行索引
-     * @return 有效返回true，无效返回false
+     * @brief 检查行号是否有效
+     * @param row 行号
+     * @return 有效返回true，否则返回false
      */
-    static bool isValidRow(RowIndex row) {
-        return row > 0 && row <= MAX_ROWS;
+    constexpr bool isValidRow(RowIndex row) {
+        return row >= 1 && row <= MAX_ROWS;
     }
     
     /**
-     * @brief 检查列索引是否有效
-     * @param col 列索引
-     * @return 有效返回true，无效返回false
+     * @brief 检查列号是否有效
+     * @param col 列号
+     * @return 有效返回true，否则返回false
      */
-    static bool isValidCol(ColIndex col) {
-        return col > 0 && col <= MAX_COLS;
+    constexpr bool isValidCol(ColIndex col) {
+        return col >= 1 && col <= MAX_COLS;
     }
     
     /**
      * @brief 检查坐标是否有效
-     * @param row 行索引
-     * @param col 列索引
-     * @return 有效返回true，无效返回false
+     * @param row 行号
+     * @param col 列号
+     * @return 有效返回true，否则返回false
      */
-    static bool isValidCoordinate(RowIndex row, ColIndex col) {
+    constexpr bool isValidCoordinate(RowIndex row, ColIndex col) {
         return isValidRow(row) && isValidCol(col);
     }
     
     /**
-     * @brief 列索引转换为Excel列名 (A, B, C, ..., AA, AB, ...)
-     * @param col 列索引 (1-based)
-     * @return Excel列名
+     * @brief 检查字体大小是否有效
+     * @param size 字体大小
+     * @return 有效返回true，否则返回false
      */
-    static std::string colIndexToName(ColIndex col);
-    
-    /**
-     * @brief Excel列名转换为列索引
-     * @param name Excel列名 (A, B, C, ..., AA, AB, ...)
-     * @return 列索引 (1-based)，无效返回INVALID_COL
-     */
-    static ColIndex colNameToIndex(const std::string& name);
-    
-    /**
-     * @brief 坐标转换为A1格式地址
-     * @param row 行索引 (1-based)
-     * @param col 列索引 (1-based)
-     * @return A1格式地址 (如 "A1", "B5", "AA10")
-     */
-    static std::string coordinateToAddress(RowIndex row, ColIndex col);
-    
-    /**
-     * @brief A1格式地址转换为坐标
-     * @param address A1格式地址 (如 "A1", "B5", "AA10")
-     * @return 坐标对 {row, col}，无效返回 {INVALID_ROW, INVALID_COL}
-     */
-    static std::pair<RowIndex, ColIndex> addressToCoordinate(const std::string& address);
-    
-    /**
-     * @brief 创建RGB颜色值
-     * @param r 红色分量 (0-255)
-     * @param g 绿色分量 (0-255)
-     * @param b 蓝色分量 (0-255)
-     * @param a 透明度分量 (0-255, 默认255不透明)
-     * @return ARGB颜色值
-     */
-    static ColorValue createColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) {
-        return (static_cast<ColorValue>(a) << 24) |
-               (static_cast<ColorValue>(r) << 16) |
-               (static_cast<ColorValue>(g) << 8)  |
-               static_cast<ColorValue>(b);
+    constexpr bool isValidFontSize(FontSize size) {
+        return size >= 1 && size <= 72; // 通常字体大小范围
     }
     
     /**
-     * @brief 从16进制字符串创建颜色值
-     * @param hex 16进制颜色字符串 (如 "#FF0000", "FF0000", "#FFFF0000")
-     * @return 颜色值
+     * @brief 检查工作表名称是否有效
+     * @param name 工作表名称
+     * @return 有效返回true，否则返回false
      */
-    static ColorValue createColorFromHex(const std::string& hex);
+    bool isValidSheetName(const std::string& name);
+    
+    // ==================== 工具函数 ====================
     
     /**
-     * @brief 提取颜色分量
-     * @param color 颜色值
-     * @return {r, g, b, a}
+     * @brief 计算曼哈顿距离
+     * @param row1 起始行
+     * @param col1 起始列
+     * @param row2 结束行
+     * @param col2 结束列
+     * @return 曼哈顿距离
      */
-    static std::tuple<uint8_t, uint8_t, uint8_t, uint8_t> extractColorComponents(ColorValue color) {
-        uint8_t a = static_cast<uint8_t>((color >> 24) & 0xFF);
-        uint8_t r = static_cast<uint8_t>((color >> 16) & 0xFF);
-        uint8_t g = static_cast<uint8_t>((color >> 8) & 0xFF);
-        uint8_t b = static_cast<uint8_t>(color & 0xFF);
-        return {r, g, b, a};
+    constexpr std::size_t manhattanDistance(RowIndex row1, ColIndex col1, 
+                                           RowIndex row2, ColIndex col2) {
+        return static_cast<std::size_t>(
+            (row1 > row2 ? row1 - row2 : row2 - row1) + 
+            (col1 > col2 ? col1 - col2 : col2 - col1)
+        );
     }
-};
+    
+    /**
+     * @brief 获取文件扩展名
+     * @param filename 文件名
+     * @return 扩展名（含点号）
+     */
+    std::string getFileExtension(const std::string& filename);
+    
+    /**
+     * @brief 检查是否为Excel文件
+     * @param filename 文件名
+     * @return 是Excel文件返回true，否则返回false
+     */
+    bool isExcelFile(const std::string& filename);
 
-// ==================== 常用颜色预定义 ====================
-namespace Colors {
-    constexpr TXTypes::ColorValue BLACK   = 0xFF000000;
-    constexpr TXTypes::ColorValue WHITE   = 0xFFFFFFFF;
-    constexpr TXTypes::ColorValue RED     = 0xFFFF0000;
-    constexpr TXTypes::ColorValue GREEN   = 0xFF00FF00;
-    constexpr TXTypes::ColorValue BLUE    = 0xFF0000FF;
-    constexpr TXTypes::ColorValue YELLOW  = 0xFFFFFF00;
-    constexpr TXTypes::ColorValue CYAN    = 0xFF00FFFF;
-    constexpr TXTypes::ColorValue MAGENTA = 0xFFFF00FF;
-    constexpr TXTypes::ColorValue GRAY    = 0xFF808080;
-    constexpr TXTypes::ColorValue DARK_GRAY = 0xFF404040;
-    constexpr TXTypes::ColorValue LIGHT_GRAY = 0xFFC0C0C0;
-}
+} // namespace TXTypes
 
 } // namespace TinaXlsx 

@@ -77,37 +77,37 @@ bool TXAlignment::operator==(const TXAlignment& other) const {
 
 // ==================== TXBorder 实现 ====================
 
-TXBorder& TXBorder::setAllBorders(BorderStyle style, TXTypes::ColorValue color) {
+TXBorder& TXBorder::setAllBorders(BorderStyle style, const TXColor& color) {
     leftStyle = rightStyle = topStyle = bottomStyle = style;
     leftColor = rightColor = topColor = bottomColor = color;
     return *this;
 }
 
-TXBorder& TXBorder::setLeftBorder(BorderStyle style, TXTypes::ColorValue color) {
+TXBorder& TXBorder::setLeftBorder(BorderStyle style, const TXColor& color) {
     leftStyle = style;
     leftColor = color;
     return *this;
 }
 
-TXBorder& TXBorder::setRightBorder(BorderStyle style, TXTypes::ColorValue color) {
+TXBorder& TXBorder::setRightBorder(BorderStyle style, const TXColor& color) {
     rightStyle = style;
     rightColor = color;
     return *this;
 }
 
-TXBorder& TXBorder::setTopBorder(BorderStyle style, TXTypes::ColorValue color) {
+TXBorder& TXBorder::setTopBorder(BorderStyle style, const TXColor& color) {
     topStyle = style;
     topColor = color;
     return *this;
 }
 
-TXBorder& TXBorder::setBottomBorder(BorderStyle style, TXTypes::ColorValue color) {
+TXBorder& TXBorder::setBottomBorder(BorderStyle style, const TXColor& color) {
     bottomStyle = style;
     bottomColor = color;
     return *this;
 }
 
-TXBorder& TXBorder::setDiagonalBorder(BorderStyle style, TXTypes::ColorValue color, bool up, bool down) {
+TXBorder& TXBorder::setDiagonalBorder(BorderStyle style, const TXColor& color, bool up, bool down) {
     diagonalStyle = style;
     diagonalColor = color;
     diagonalUp = up;
@@ -132,10 +132,10 @@ bool TXBorder::operator==(const TXBorder& other) const {
 
 // ==================== TXFill 实现 ====================
 
-TXFill& TXFill::setSolidFill(TXTypes::ColorValue color) {
+TXFill& TXFill::setSolidFill(const TXColor& color) {
     pattern = FillPattern::Solid;
     foregroundColor = color;
-    backgroundColor = Colors::WHITE;
+    backgroundColor = ColorConstants::WHITE;
     return *this;
 }
 
@@ -153,16 +153,14 @@ public:
     TXAlignment alignment_;
     TXBorder border_;
     TXFill fill_;
-    TXTypes::StyleId styleId_;
     
-    Impl() : styleId_(TXTypes::INVALID_STYLE_ID) {}
+    Impl() {}
     
     Impl(const Impl& other) 
         : font_(other.font_)
         , alignment_(other.alignment_)
         , border_(other.border_)
         , fill_(other.fill_)
-        , styleId_(other.styleId_)
     {}
     
     bool operator==(const Impl& other) const {
@@ -253,8 +251,13 @@ TXCellStyle& TXCellStyle::setFont(const std::string& name, TXTypes::FontSize siz
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setFontColor(TXTypes::ColorValue color) {
+TXCellStyle& TXCellStyle::setFontColor(const TXColor& color) {
     pImpl->font_.setColor(color);
+    return *this;
+}
+
+TXCellStyle& TXCellStyle::setFontColor(TXTypes::ColorValue color) {
+    pImpl->font_.setColor(TXColor(color));
     return *this;
 }
 
@@ -273,18 +276,19 @@ TXCellStyle& TXCellStyle::setVerticalAlignment(VerticalAlignment alignment) {
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setBackgroundColor(TXTypes::ColorValue color) {
+TXCellStyle& TXCellStyle::setBackgroundColor(const TXColor& color) {
     pImpl->fill_.setSolidFill(color);
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setAllBorders(BorderStyle style, TXTypes::ColorValue color) {
-    pImpl->border_.setAllBorders(style, color);
+TXCellStyle& TXCellStyle::setBackgroundColor(TXTypes::ColorValue color) {
+    pImpl->fill_.setSolidFill(TXColor(color));
     return *this;
 }
 
-TXTypes::StyleId TXCellStyle::getStyleId() const {
-    return pImpl->styleId_;
+TXCellStyle& TXCellStyle::setAllBorders(BorderStyle style, const TXColor& color) {
+    pImpl->border_.setAllBorders(style, color);
+    return *this;
 }
 
 void TXCellStyle::reset() {
@@ -302,19 +306,19 @@ namespace Styles {
 TXCellStyle createHeaderStyle() {
     TXCellStyle style;
     style.setFont("Calibri", 14)
-         .setFontColor(Colors::BLACK)
+         .setFontColor(ColorConstants::BLACK)
          .setFontStyle(FontStyle::Bold)
          .setHorizontalAlignment(HorizontalAlignment::Center)
          .setVerticalAlignment(VerticalAlignment::Middle)
-         .setBackgroundColor(Colors::LIGHT_GRAY)
-         .setAllBorders(BorderStyle::Thin, Colors::BLACK);
+         .setBackgroundColor(ColorConstants::LIGHT_GRAY)
+         .setAllBorders(BorderStyle::Thin, ColorConstants::BLACK);
     return style;
 }
 
 TXCellStyle createDataStyle() {
     TXCellStyle style;
     style.setFont("Calibri", 11)
-         .setFontColor(Colors::BLACK)
+         .setFontColor(ColorConstants::BLACK)
          .setHorizontalAlignment(HorizontalAlignment::Left)
          .setVerticalAlignment(VerticalAlignment::Middle);
     return style;
@@ -323,16 +327,16 @@ TXCellStyle createDataStyle() {
 TXCellStyle createNumberStyle() {
     TXCellStyle style;
     style.setFont("Calibri", 11)
-         .setFontColor(Colors::BLACK)
+         .setFontColor(ColorConstants::BLACK)
          .setHorizontalAlignment(HorizontalAlignment::Right)
          .setVerticalAlignment(VerticalAlignment::Middle);
     return style;
 }
 
-TXCellStyle createHighlightStyle(TXTypes::ColorValue backgroundColor) {
+TXCellStyle createHighlightStyle(const TXColor& backgroundColor) {
     TXCellStyle style;
     style.setFont("Calibri", 11)
-         .setFontColor(Colors::BLACK)
+         .setFontColor(ColorConstants::BLACK)
          .setFontStyle(FontStyle::Bold)
          .setHorizontalAlignment(HorizontalAlignment::Left)
          .setVerticalAlignment(VerticalAlignment::Middle)
@@ -343,10 +347,10 @@ TXCellStyle createHighlightStyle(TXTypes::ColorValue backgroundColor) {
 TXCellStyle createTableStyle() {
     TXCellStyle style;
     style.setFont("Calibri", 11)
-         .setFontColor(Colors::BLACK)
+         .setFontColor(ColorConstants::BLACK)
          .setHorizontalAlignment(HorizontalAlignment::Left)
          .setVerticalAlignment(VerticalAlignment::Middle)
-         .setAllBorders(BorderStyle::Thin, Colors::GRAY);
+         .setAllBorders(BorderStyle::Thin, ColorConstants::GRAY);
     return style;
 }
 

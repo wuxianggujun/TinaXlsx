@@ -37,12 +37,12 @@ void cleanup() {
 }
 
 std::string getVersion() {
-    return Version::getString();
+    return Version::STRING;
 }
 
 std::string getBuildInfo() {
-    return "TinaXlsx " + Version::getString() + 
-           " built on " + __DATE__ + " " + __TIME__ +
+    return "TinaXlsx " + std::string(Version::STRING) + 
+           " built on " + Version::BUILD_DATE +
            " with C++17";
 }
 

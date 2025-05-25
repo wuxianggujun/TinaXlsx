@@ -135,12 +135,12 @@ TEST_F(PerformanceExampleTest, BatchOperationPerformance) {
     const int CELL_COUNT = 500;
     
     // 准备批量数据
-    std::vector<std::pair<TinaXlsx::TXSheet::CellCoordinate, TinaXlsx::TXSheet::CellValue>> batch_data;
+    std::vector<std::pair<TinaXlsx::TXCoordinate, TinaXlsx::TXSheet::CellValue>> batch_data;
     batch_data.reserve(CELL_COUNT);
     
     for (int i = 1; i <= CELL_COUNT; ++i) {
         batch_data.emplace_back(
-            TinaXlsx::TXSheet::CellCoordinate{static_cast<size_t>(i), 1},
+            TinaXlsx::TXCoordinate(static_cast<TinaXlsx::TXTypes::RowIndex>(i), 1),
             std::string("BatchData_") + std::to_string(i)
         );
     }

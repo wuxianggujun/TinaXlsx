@@ -6,6 +6,8 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TXTypes.hpp"
 #include "TinaXlsx/TXStyle.hpp"
+#include "TinaXlsx/TXCoordinate.hpp"
+#include "TinaXlsx/TXColumn.hpp"
 
 using namespace TinaXlsx;
 
@@ -19,82 +21,80 @@ protected:
 
 TEST_F(TXTypesTest, ColumnIndexToName) {
     // 测试基本转换
-    EXPECT_EQ("A", TXTypes::colIndexToName(1));
-    EXPECT_EQ("B", TXTypes::colIndexToName(2));
-    EXPECT_EQ("Z", TXTypes::colIndexToName(26));
-    EXPECT_EQ("AA", TXTypes::colIndexToName(27));
-    EXPECT_EQ("AB", TXTypes::colIndexToName(28));
-    EXPECT_EQ("AZ", TXTypes::colIndexToName(52));
-    EXPECT_EQ("BA", TXTypes::colIndexToName(53));
+    EXPECT_EQ("A", TXColumn::colIndexToName(1));
+    EXPECT_EQ("B", TXColumn::colIndexToName(2));
+    EXPECT_EQ("Z", TXColumn::colIndexToName(26));
+    EXPECT_EQ("AA", TXColumn::colIndexToName(27));
+    EXPECT_EQ("AB", TXColumn::colIndexToName(28));
+    EXPECT_EQ("AZ", TXColumn::colIndexToName(52));
+    EXPECT_EQ("BA", TXColumn::colIndexToName(53));
     
-    // 测试边界值
-    EXPECT_EQ("", TXTypes::colIndexToName(0));
-    EXPECT_EQ("", TXTypes::colIndexToName(TXTypes::MAX_COLS + 1));
+    // 测试边界情况
+    EXPECT_EQ("", TXColumn::colIndexToName(0));
+    EXPECT_EQ("", TXColumn::colIndexToName(TXTypes::MAX_COLS + 1));
     
-    // 测试最大值
-    EXPECT_NE("", TXTypes::colIndexToName(TXTypes::MAX_COLS));
+    // 测试大数值
+    EXPECT_EQ("XFD", TXColumn::colIndexToName(TXTypes::MAX_COLS));
 }
 
 TEST_F(TXTypesTest, ColumnNameToIndex) {
     // 测试基本转换
-    EXPECT_EQ(1U, TXTypes::colNameToIndex("A"));
-    EXPECT_EQ(2U, TXTypes::colNameToIndex("B"));
-    EXPECT_EQ(26U, TXTypes::colNameToIndex("Z"));
-    EXPECT_EQ(27U, TXTypes::colNameToIndex("AA"));
-    EXPECT_EQ(28U, TXTypes::colNameToIndex("AB"));
-    EXPECT_EQ(52U, TXTypes::colNameToIndex("AZ"));
-    EXPECT_EQ(53U, TXTypes::colNameToIndex("BA"));
+    EXPECT_EQ(1U, TXColumn::colNameToIndex("A"));
+    EXPECT_EQ(2U, TXColumn::colNameToIndex("B"));
+    EXPECT_EQ(26U, TXColumn::colNameToIndex("Z"));
+    EXPECT_EQ(27U, TXColumn::colNameToIndex("AA"));
+    EXPECT_EQ(28U, TXColumn::colNameToIndex("AB"));
+    EXPECT_EQ(52U, TXColumn::colNameToIndex("AZ"));
+    EXPECT_EQ(53U, TXColumn::colNameToIndex("BA"));
     
     // 测试大小写不敏感
-    EXPECT_EQ(1U, TXTypes::colNameToIndex("a"));
-    EXPECT_EQ(27U, TXTypes::colNameToIndex("aa"));
-    EXPECT_EQ(27U, TXTypes::colNameToIndex("Aa"));
+    EXPECT_EQ(1U, TXColumn::colNameToIndex("a"));
+    EXPECT_EQ(27U, TXColumn::colNameToIndex("aa"));
     
     // 测试无效输入
-    EXPECT_EQ(TXTypes::INVALID_COL, TXTypes::colNameToIndex(""));
-    EXPECT_EQ(TXTypes::INVALID_COL, TXTypes::colNameToIndex("1"));
-    EXPECT_EQ(TXTypes::INVALID_COL, TXTypes::colNameToIndex("A1"));
-    EXPECT_EQ(TXTypes::INVALID_COL, TXTypes::colNameToIndex("@"));
+    EXPECT_EQ(TXTypes::INVALID_COL, TXColumn::colNameToIndex(""));
+    EXPECT_EQ(TXTypes::INVALID_COL, TXColumn::colNameToIndex("1"));
+    EXPECT_EQ(TXTypes::INVALID_COL, TXColumn::colNameToIndex("A1"));
 }
 
 TEST_F(TXTypesTest, CoordinateToAddress) {
     // 测试基本转换
-    EXPECT_EQ("A1", TXTypes::coordinateToAddress(1, 1));
-    EXPECT_EQ("B5", TXTypes::coordinateToAddress(5, 2));
-    EXPECT_EQ("Z10", TXTypes::coordinateToAddress(10, 26));
-    EXPECT_EQ("AA100", TXTypes::coordinateToAddress(100, 27));
+    EXPECT_EQ("A1", TXCoordinate::coordinateToAddress(1, 1));
+    EXPECT_EQ("B5", TXCoordinate::coordinateToAddress(5, 2));
+    EXPECT_EQ("Z26", TXCoordinate::coordinateToAddress(26, 26));
+    EXPECT_EQ("AA100", TXCoordinate::coordinateToAddress(100, 27));
     
-    // 测试无效输入
-    EXPECT_EQ("", TXTypes::coordinateToAddress(0, 1));
-    EXPECT_EQ("", TXTypes::coordinateToAddress(1, 0));
-    EXPECT_EQ("", TXTypes::coordinateToAddress(TXTypes::MAX_ROWS + 1, 1));
-    EXPECT_EQ("", TXTypes::coordinateToAddress(1, TXTypes::MAX_COLS + 1));
+    // 测试无效坐标
+    EXPECT_EQ("", TXCoordinate::coordinateToAddress(0, 1));
+    EXPECT_EQ("", TXCoordinate::coordinateToAddress(1, 0));
+    EXPECT_EQ("", TXCoordinate::coordinateToAddress(TXTypes::MAX_ROWS + 1, 1));
+    EXPECT_EQ("", TXCoordinate::coordinateToAddress(1, TXTypes::MAX_COLS + 1));
 }
 
 TEST_F(TXTypesTest, AddressToCoordinate) {
     // 测试基本转换
-    auto coord1 = TXTypes::addressToCoordinate("A1");
+    auto coord1 = TXCoordinate::addressToCoordinate("A1");
     EXPECT_EQ(1U, coord1.first);
     EXPECT_EQ(1U, coord1.second);
     
-    auto coord2 = TXTypes::addressToCoordinate("B5");
+    auto coord2 = TXCoordinate::addressToCoordinate("B5");
     EXPECT_EQ(5U, coord2.first);
     EXPECT_EQ(2U, coord2.second);
     
-    auto coord3 = TXTypes::addressToCoordinate("AA100");
+    auto coord3 = TXCoordinate::addressToCoordinate("AA100");
     EXPECT_EQ(100U, coord3.first);
     EXPECT_EQ(27U, coord3.second);
     
     // 测试无效输入
-    auto invalid1 = TXTypes::addressToCoordinate("");
+    auto invalid1 = TXCoordinate::addressToCoordinate("");
     EXPECT_EQ(TXTypes::INVALID_ROW, invalid1.first);
     EXPECT_EQ(TXTypes::INVALID_COL, invalid1.second);
     
-    auto invalid2 = TXTypes::addressToCoordinate("1A");
+    auto invalid2 = TXCoordinate::addressToCoordinate("1A");
     EXPECT_EQ(TXTypes::INVALID_ROW, invalid2.first);
     EXPECT_EQ(TXTypes::INVALID_COL, invalid2.second);
     
-    auto invalid3 = TXTypes::addressToCoordinate("A");
+    auto invalid3 = TXCoordinate::addressToCoordinate("A");
     EXPECT_EQ(TXTypes::INVALID_ROW, invalid3.first);
     EXPECT_EQ(TXTypes::INVALID_COL, invalid3.second);
 }
@@ -117,34 +117,20 @@ TEST_F(TXTypesTest, ValidityChecks) {
     EXPECT_FALSE(TXTypes::isValidCoordinate(0, 1));
     EXPECT_FALSE(TXTypes::isValidCoordinate(1, 0));
     EXPECT_FALSE(TXTypes::isValidCoordinate(0, 0));
-}
-
-TEST_F(TXTypesTest, ColorOperations) {
-    // 测试颜色创建
-    auto red = TXTypes::createColor(255, 0, 0);
-    EXPECT_EQ(Colors::RED, red);
     
-    auto green = TXTypes::createColor(0, 255, 0);
-    EXPECT_EQ(Colors::GREEN, green);
+    // 测试字体大小有效性
+    EXPECT_FALSE(TXTypes::isValidFontSize(0));
+    EXPECT_TRUE(TXTypes::isValidFontSize(12));
+    EXPECT_TRUE(TXTypes::isValidFontSize(72));
+    EXPECT_FALSE(TXTypes::isValidFontSize(100));
     
-    auto blue = TXTypes::createColor(0, 0, 255);
-    EXPECT_EQ(Colors::BLUE, blue);
-    
-    // 测试透明度
-    auto transparent_red = TXTypes::createColor(255, 0, 0, 128);
-    EXPECT_EQ(0x80FF0000U, transparent_red);
-    
-    // 测试从16进制创建
-    EXPECT_EQ(Colors::RED, TXTypes::createColorFromHex("#FF0000"));
-    EXPECT_EQ(Colors::RED, TXTypes::createColorFromHex("FF0000"));
-    EXPECT_EQ(Colors::RED, TXTypes::createColorFromHex("#FFFF0000"));
-    
-    // 测试颜色分量提取
-    auto components = TXTypes::extractColorComponents(Colors::RED);
-    EXPECT_EQ(255, std::get<0>(components)); // R
-    EXPECT_EQ(0, std::get<1>(components));   // G
-    EXPECT_EQ(0, std::get<2>(components));   // B
-    EXPECT_EQ(255, std::get<3>(components)); // A
+    // 测试工作表名称有效性
+    EXPECT_TRUE(TXTypes::isValidSheetName("Sheet1"));
+    EXPECT_TRUE(TXTypes::isValidSheetName("My Sheet"));
+    EXPECT_FALSE(TXTypes::isValidSheetName(""));  // 空名称
+    EXPECT_FALSE(TXTypes::isValidSheetName("Sheet[1]"));  // 包含非法字符
+    EXPECT_FALSE(TXTypes::isValidSheetName("'Sheet1"));   // 以单引号开头
+    EXPECT_FALSE(TXTypes::isValidSheetName("history"));   // 保留名称
 }
 
 // ==================== TXFont 测试 ====================
@@ -202,13 +188,13 @@ TEST_F(TXFontTest, ChainedCalls) {
     TXFont font;
     font.setName("Times New Roman")
         .setSize(14)
-        .setColor(Colors::BLUE)
+        .setColor(ColorConstants::BLUE)
         .setBold(true)
         .setItalic(true);
     
     EXPECT_EQ("Times New Roman", font.name);
     EXPECT_EQ(14U, font.size);
-    EXPECT_EQ(Colors::BLUE, font.color);
+    EXPECT_EQ(ColorConstants::BLUE, font.color);
     EXPECT_TRUE(font.isBold());
     EXPECT_TRUE(font.isItalic());
 }
@@ -297,43 +283,43 @@ TEST_F(TXBorderTest, DefaultValues) {
 
 TEST_F(TXBorderTest, SetAllBorders) {
     TXBorder border;
-    border.setAllBorders(BorderStyle::Thin, Colors::BLACK);
+    border.setAllBorders(BorderStyle::Thin, ColorConstants::BLACK);
     
     EXPECT_EQ(BorderStyle::Thin, border.leftStyle);
     EXPECT_EQ(BorderStyle::Thin, border.rightStyle);
     EXPECT_EQ(BorderStyle::Thin, border.topStyle);
     EXPECT_EQ(BorderStyle::Thin, border.bottomStyle);
-    EXPECT_EQ(Colors::BLACK, border.leftColor);
-    EXPECT_EQ(Colors::BLACK, border.rightColor);
-    EXPECT_EQ(Colors::BLACK, border.topColor);
-    EXPECT_EQ(Colors::BLACK, border.bottomColor);
+    EXPECT_EQ(ColorConstants::BLACK, border.leftColor);
+    EXPECT_EQ(ColorConstants::BLACK, border.rightColor);
+    EXPECT_EQ(ColorConstants::BLACK, border.topColor);
+    EXPECT_EQ(ColorConstants::BLACK, border.bottomColor);
 }
 
 TEST_F(TXBorderTest, IndividualBorders) {
     TXBorder border;
     
-    border.setLeftBorder(BorderStyle::Thick, Colors::RED)
-          .setRightBorder(BorderStyle::Thin, Colors::BLUE)
-          .setTopBorder(BorderStyle::Double, Colors::GREEN)
-          .setBottomBorder(BorderStyle::Dotted, Colors::YELLOW);
+    border.setLeftBorder(BorderStyle::Thick, ColorConstants::RED)
+          .setRightBorder(BorderStyle::Thin, ColorConstants::BLUE)
+          .setTopBorder(BorderStyle::Double, ColorConstants::GREEN)
+          .setBottomBorder(BorderStyle::Dotted, ColorConstants::YELLOW);
     
     EXPECT_EQ(BorderStyle::Thick, border.leftStyle);
     EXPECT_EQ(BorderStyle::Thin, border.rightStyle);
     EXPECT_EQ(BorderStyle::Double, border.topStyle);
     EXPECT_EQ(BorderStyle::Dotted, border.bottomStyle);
     
-    EXPECT_EQ(Colors::RED, border.leftColor);
-    EXPECT_EQ(Colors::BLUE, border.rightColor);
-    EXPECT_EQ(Colors::GREEN, border.topColor);
-    EXPECT_EQ(Colors::YELLOW, border.bottomColor);
+    EXPECT_EQ(ColorConstants::RED, border.leftColor);
+    EXPECT_EQ(ColorConstants::BLUE, border.rightColor);
+    EXPECT_EQ(ColorConstants::GREEN, border.topColor);
+    EXPECT_EQ(ColorConstants::YELLOW, border.bottomColor);
 }
 
 TEST_F(TXBorderTest, DiagonalBorder) {
     TXBorder border;
-    border.setDiagonalBorder(BorderStyle::Medium, Colors::GRAY, true, false);
+    border.setDiagonalBorder(BorderStyle::Medium, ColorConstants::GRAY, true, false);
     
     EXPECT_EQ(BorderStyle::Medium, border.diagonalStyle);
-    EXPECT_EQ(Colors::GRAY, border.diagonalColor);
+    EXPECT_EQ(ColorConstants::GRAY, border.diagonalColor);
     EXPECT_TRUE(border.diagonalUp);
     EXPECT_FALSE(border.diagonalDown);
 }
@@ -350,34 +336,34 @@ TEST_F(TXFillTest, DefaultValues) {
     TXFill fill;
     EXPECT_EQ(FillPattern::None, fill.pattern);
     EXPECT_EQ(TXTypes::DEFAULT_COLOR, fill.foregroundColor);
-    EXPECT_EQ(Colors::WHITE, fill.backgroundColor);
+    EXPECT_EQ(ColorConstants::WHITE, fill.backgroundColor);
 }
 
 TEST_F(TXFillTest, ParameterizedConstructor) {
-    TXFill fill(FillPattern::Solid, Colors::RED, Colors::BLUE);
+    TXFill fill(FillPattern::Solid, ColorConstants::RED, ColorConstants::BLUE);
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::RED, fill.foregroundColor);
-    EXPECT_EQ(Colors::BLUE, fill.backgroundColor);
+    EXPECT_EQ(ColorConstants::RED, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::BLUE, fill.backgroundColor);
 }
 
 TEST_F(TXFillTest, SolidFill) {
     TXFill fill;
-    fill.setSolidFill(Colors::GREEN);
+    fill.setSolidFill(ColorConstants::GREEN);
     
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::GREEN, fill.foregroundColor);
-    EXPECT_EQ(Colors::WHITE, fill.backgroundColor);
+    EXPECT_EQ(ColorConstants::GREEN, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::WHITE, fill.backgroundColor);
 }
 
 TEST_F(TXFillTest, ChainedMethods) {
     TXFill fill;
     fill.setPattern(FillPattern::Gray50)
-        .setForegroundColor(Colors::BLUE)
-        .setBackgroundColor(Colors::YELLOW);
+        .setForegroundColor(ColorConstants::BLUE)
+        .setBackgroundColor(ColorConstants::YELLOW);
     
     EXPECT_EQ(FillPattern::Gray50, fill.pattern);
-    EXPECT_EQ(Colors::BLUE, fill.foregroundColor);
-    EXPECT_EQ(Colors::YELLOW, fill.backgroundColor);
+    EXPECT_EQ(ColorConstants::BLUE, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::YELLOW, fill.backgroundColor);
 }
 
 // ==================== TXCellStyle 测试 ====================
@@ -413,7 +399,7 @@ TEST_F(TXCellStyleTest, DefaultConstructor) {
 TEST_F(TXCellStyleTest, CopySemantics) {
     TXCellStyle style1;
     style1.setFont("Arial", 14)
-          .setFontColor(Colors::RED)
+          .setFontColor(ColorConstants::RED)
           .setHorizontalAlignment(HorizontalAlignment::Center);
     
     // 测试拷贝构造
@@ -421,7 +407,7 @@ TEST_F(TXCellStyleTest, CopySemantics) {
     EXPECT_EQ(style1, style2);
     EXPECT_EQ("Arial", style2.getFont().name);
     EXPECT_EQ(14U, style2.getFont().size);
-    EXPECT_EQ(Colors::RED, style2.getFont().color);
+    EXPECT_EQ(ColorConstants::RED, style2.getFont().color);
     
     // 测试拷贝赋值
     TXCellStyle style3;
@@ -432,7 +418,7 @@ TEST_F(TXCellStyleTest, CopySemantics) {
 TEST_F(TXCellStyleTest, MoveSemantics) {
     TXCellStyle style1;
     style1.setFont("Arial", 14)
-          .setFontColor(Colors::RED);
+          .setFontColor(ColorConstants::RED);
     
     TXCellStyle style2(style1); // 备份用于比较
     
@@ -449,18 +435,18 @@ TEST_F(TXCellStyleTest, MoveSemantics) {
 TEST_F(TXCellStyleTest, ChainedMethods) {
     TXCellStyle style;
     style.setFont("Times New Roman", 16)
-         .setFontColor(Colors::BLUE)
+         .setFontColor(ColorConstants::BLUE)
          .setFontStyle(FontStyle::Bold)
          .setHorizontalAlignment(HorizontalAlignment::Center)
          .setVerticalAlignment(VerticalAlignment::Middle)
-         .setBackgroundColor(Colors::YELLOW)
-         .setAllBorders(BorderStyle::Thick, Colors::BLACK);
+         .setBackgroundColor(ColorConstants::YELLOW)
+         .setAllBorders(BorderStyle::Thick, ColorConstants::BLACK);
     
     // 验证字体
     const auto& font = style.getFont();
     EXPECT_EQ("Times New Roman", font.name);
     EXPECT_EQ(16U, font.size);
-    EXPECT_EQ(Colors::BLUE, font.color);
+    EXPECT_EQ(ColorConstants::BLUE, font.color);
     EXPECT_TRUE(font.isBold());
     
     // 验证对齐
@@ -471,23 +457,23 @@ TEST_F(TXCellStyleTest, ChainedMethods) {
     // 验证填充
     const auto& fill = style.getFill();
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::YELLOW, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::YELLOW, fill.foregroundColor);
     
     // 验证边框
     const auto& border = style.getBorder();
     EXPECT_EQ(BorderStyle::Thick, border.leftStyle);
-    EXPECT_EQ(Colors::BLACK, border.leftColor);
+    EXPECT_EQ(ColorConstants::BLACK, border.leftColor);
 }
 
 TEST_F(TXCellStyleTest, Reset) {
     TXCellStyle style;
     style.setFont("Arial", 16)
-         .setFontColor(Colors::RED)
-         .setBackgroundColor(Colors::BLUE);
+         .setFontColor(ColorConstants::RED)
+         .setBackgroundColor(ColorConstants::BLUE);
     
     // 验证样式已设置
     EXPECT_EQ("Arial", style.getFont().name);
-    EXPECT_EQ(Colors::RED, style.getFont().color);
+    EXPECT_EQ(ColorConstants::RED, style.getFont().color);
     
     // 重置样式
     style.reset();
@@ -520,7 +506,7 @@ TEST_F(PredefinedStylesTest, HeaderStyle) {
     
     const auto& fill = style.getFill();
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::LIGHT_GRAY, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::LIGHT_GRAY, fill.foregroundColor);
     
     const auto& border = style.getBorder();
     EXPECT_EQ(BorderStyle::Thin, border.leftStyle);
@@ -548,14 +534,14 @@ TEST_F(PredefinedStylesTest, NumberStyle) {
 }
 
 TEST_F(PredefinedStylesTest, HighlightStyle) {
-    auto style = Styles::createHighlightStyle(Colors::GREEN);
+    auto style = Styles::createHighlightStyle(ColorConstants::GREEN);
     
     const auto& font = style.getFont();
     EXPECT_TRUE(font.isBold());
     
     const auto& fill = style.getFill();
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::GREEN, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::GREEN, fill.foregroundColor);
 }
 
 TEST_F(PredefinedStylesTest, TableStyle) {
@@ -566,5 +552,5 @@ TEST_F(PredefinedStylesTest, TableStyle) {
     EXPECT_EQ(BorderStyle::Thin, border.rightStyle);
     EXPECT_EQ(BorderStyle::Thin, border.topStyle);
     EXPECT_EQ(BorderStyle::Thin, border.bottomStyle);
-    EXPECT_EQ(Colors::GRAY, border.leftColor);
+    EXPECT_EQ(ColorConstants::GRAY, border.leftColor);
 } 

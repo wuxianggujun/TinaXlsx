@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TXTypes.hpp"
+#include "TXColor.hpp"
 #include <string>
 #include <memory>
 
@@ -75,27 +76,28 @@ enum class FillPattern : uint8_t {
 struct TXFont {
     std::string name;                    ///< 字体名称
     TXTypes::FontSize size;              ///< 字体大小
-    TXTypes::ColorValue color;           ///< 字体颜色
+    TXColor color;                       ///< 字体颜色
     FontStyle style;                     ///< 字体样式
     
     TXFont() 
         : name("Calibri")
         , size(TXTypes::DEFAULT_FONT_SIZE)
-        , color(TXTypes::DEFAULT_COLOR)
+        , color(ColorConstants::BLACK)
         , style(FontStyle::Normal) 
     {}
     
     TXFont(const std::string& fontName, TXTypes::FontSize fontSize = TXTypes::DEFAULT_FONT_SIZE)
         : name(fontName)
         , size(fontSize)
-        , color(TXTypes::DEFAULT_COLOR)
+        , color(ColorConstants::BLACK)
         , style(FontStyle::Normal)
     {}
     
     // 便捷方法
     TXFont& setName(const std::string& fontName) { name = fontName; return *this; }
     TXFont& setSize(TXTypes::FontSize fontSize) { size = fontSize; return *this; }
-    TXFont& setColor(TXTypes::ColorValue fontColor) { color = fontColor; return *this; }
+    TXFont& setColor(const TXColor& fontColor) { color = fontColor; return *this; }
+    TXFont& setColor(TXTypes::ColorValue colorValue) { color = TXColor(colorValue); return *this; }
     TXFont& setStyle(FontStyle fontStyle) { style = fontStyle; return *this; }
     TXFont& setBold(bool bold = true);
     TXFont& setItalic(bool italic = true);
@@ -154,11 +156,11 @@ struct TXBorder {
     BorderStyle bottomStyle;             ///< 下边框样式
     BorderStyle diagonalStyle;           ///< 对角线样式
     
-    TXTypes::ColorValue leftColor;       ///< 左边框颜色
-    TXTypes::ColorValue rightColor;      ///< 右边框颜色
-    TXTypes::ColorValue topColor;        ///< 上边框颜色
-    TXTypes::ColorValue bottomColor;     ///< 下边框颜色
-    TXTypes::ColorValue diagonalColor;   ///< 对角线颜色
+    TXColor leftColor;                   ///< 左边框颜色
+    TXColor rightColor;                  ///< 右边框颜色
+    TXColor topColor;                    ///< 上边框颜色
+    TXColor bottomColor;                 ///< 下边框颜色
+    TXColor diagonalColor;               ///< 对角线颜色
     
     bool diagonalUp;                     ///< 是否显示左下到右上对角线
     bool diagonalDown;                   ///< 是否显示左上到右下对角线
@@ -169,22 +171,22 @@ struct TXBorder {
         , topStyle(BorderStyle::None)
         , bottomStyle(BorderStyle::None)
         , diagonalStyle(BorderStyle::None)
-        , leftColor(TXTypes::DEFAULT_COLOR)
-        , rightColor(TXTypes::DEFAULT_COLOR)
-        , topColor(TXTypes::DEFAULT_COLOR)
-        , bottomColor(TXTypes::DEFAULT_COLOR)
-        , diagonalColor(TXTypes::DEFAULT_COLOR)
+        , leftColor(ColorConstants::BLACK)
+        , rightColor(ColorConstants::BLACK)
+        , topColor(ColorConstants::BLACK)
+        , bottomColor(ColorConstants::BLACK)
+        , diagonalColor(ColorConstants::BLACK)
         , diagonalUp(false)
         , diagonalDown(false)
     {}
     
     // 便捷方法
-    TXBorder& setAllBorders(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    TXBorder& setLeftBorder(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    TXBorder& setRightBorder(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    TXBorder& setTopBorder(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    TXBorder& setBottomBorder(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    TXBorder& setDiagonalBorder(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR, bool up = true, bool down = true);
+    TXBorder& setAllBorders(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXBorder& setLeftBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXBorder& setRightBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXBorder& setTopBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXBorder& setBottomBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXBorder& setDiagonalBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK, bool up = true, bool down = true);
     
     bool operator==(const TXBorder& other) const;
     bool operator!=(const TXBorder& other) const { return !(*this == other); }
@@ -195,16 +197,16 @@ struct TXBorder {
  */
 struct TXFill {
     FillPattern pattern;                 ///< 填充模式
-    TXTypes::ColorValue foregroundColor; ///< 前景色
-    TXTypes::ColorValue backgroundColor; ///< 背景色
+    TXColor foregroundColor;             ///< 前景色
+    TXColor backgroundColor;             ///< 背景色
     
     TXFill()
         : pattern(FillPattern::None)
-        , foregroundColor(TXTypes::DEFAULT_COLOR)
-        , backgroundColor(Colors::WHITE)
+        , foregroundColor(ColorConstants::BLACK)
+        , backgroundColor(ColorConstants::WHITE)
     {}
     
-    TXFill(FillPattern fillPattern, TXTypes::ColorValue fgColor = TXTypes::DEFAULT_COLOR, TXTypes::ColorValue bgColor = Colors::WHITE)
+    TXFill(FillPattern fillPattern, const TXColor& fgColor = ColorConstants::BLACK, const TXColor& bgColor = ColorConstants::WHITE)
         : pattern(fillPattern)
         , foregroundColor(fgColor)
         , backgroundColor(bgColor)
@@ -212,9 +214,9 @@ struct TXFill {
     
     // 便捷方法
     TXFill& setPattern(FillPattern fillPattern) { pattern = fillPattern; return *this; }
-    TXFill& setForegroundColor(TXTypes::ColorValue color) { foregroundColor = color; return *this; }
-    TXFill& setBackgroundColor(TXTypes::ColorValue color) { backgroundColor = color; return *this; }
-    TXFill& setSolidFill(TXTypes::ColorValue color);
+    TXFill& setForegroundColor(const TXColor& color) { foregroundColor = color; return *this; }
+    TXFill& setBackgroundColor(const TXColor& color) { backgroundColor = color; return *this; }
+    TXFill& setSolidFill(const TXColor& color);
     
     bool operator==(const TXFill& other) const;
     bool operator!=(const TXFill& other) const { return !(*this == other); }
@@ -308,6 +310,13 @@ public:
     
     /**
      * @brief 设置字体颜色
+     * @param color 颜色对象
+     * @return 自身引用，支持链式调用
+     */
+    TXCellStyle& setFontColor(const TXColor& color);
+    
+    /**
+     * @brief 设置字体颜色（从颜色值）
      * @param color 颜色值
      * @return 自身引用，支持链式调用
      */
@@ -339,6 +348,13 @@ public:
      * @param color 背景颜色
      * @return 自身引用，支持链式调用
      */
+    TXCellStyle& setBackgroundColor(const TXColor& color);
+    
+    /**
+     * @brief 设置背景颜色（从颜色值）
+     * @param color 颜色值
+     * @return 自身引用，支持链式调用
+     */
     TXCellStyle& setBackgroundColor(TXTypes::ColorValue color);
     
     /**
@@ -347,13 +363,7 @@ public:
      * @param color 边框颜色
      * @return 自身引用，支持链式调用
      */
-    TXCellStyle& setAllBorders(BorderStyle style, TXTypes::ColorValue color = TXTypes::DEFAULT_COLOR);
-    
-    /**
-     * @brief 获取样式ID
-     * @return 样式ID
-     */
-    TXTypes::StyleId getStyleId() const;
+    TXCellStyle& setAllBorders(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
     
     /**
      * @brief 重置为默认样式
@@ -398,7 +408,7 @@ namespace Styles {
      * @param backgroundColor 背景颜色
      * @return 强调样式
      */
-    TXCellStyle createHighlightStyle(TXTypes::ColorValue backgroundColor = Colors::YELLOW);
+    TXCellStyle createHighlightStyle(const TXColor& backgroundColor = ColorConstants::YELLOW);
     
     /**
      * @brief 获取边框表格样式

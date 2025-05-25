@@ -37,12 +37,12 @@ TEST_F(StyledReportExampleTest, CreateStyledFinancialReport) {
     // 1. 创建标题样式 - 大字体、粗体、居中、蓝色背景
     TXCellStyle titleStyle;
     titleStyle.setFont("Arial", 18)
-              .setFontColor(Colors::WHITE)
+              .setFontColor(ColorConstants::WHITE)
               .setFontStyle(FontStyle::Bold)
               .setHorizontalAlignment(HorizontalAlignment::Center)
               .setVerticalAlignment(VerticalAlignment::Middle)
-              .setBackgroundColor(TXTypes::createColor(70, 130, 180)) // 钢蓝色
-              .setAllBorders(BorderStyle::Medium, Colors::BLACK);
+              .setBackgroundColor(TXColor(70, 130, 180).getValue()) // 钢蓝色
+              .setAllBorders(BorderStyle::Medium, ColorConstants::BLACK);
     
     // 2. 创建表头样式 - 中等字体、粗体、居中、灰色背景
     auto headerStyle = Styles::createHeaderStyle();
@@ -54,7 +54,7 @@ TEST_F(StyledReportExampleTest, CreateStyledFinancialReport) {
     auto numberStyle = Styles::createNumberStyle();
     
     // 5. 创建强调样式 - 粗体、黄色背景
-    auto highlightStyle = Styles::createHighlightStyle(Colors::YELLOW);
+    auto highlightStyle = Styles::createHighlightStyle(ColorConstants::YELLOW);
     
     // 6. 创建边框表格样式
     auto tableStyle = Styles::createTableStyle();
@@ -83,13 +83,13 @@ TEST_F(StyledReportExampleTest, CreateStyledFinancialReport) {
         TXTypes::RowIndex row = static_cast<TXTypes::RowIndex>(4 + i);
         
         // Project name (Column A)
-        EXPECT_TRUE(sheet->setCellValue(TXTypes::coordinateToAddress(row, 1), reportData[i][0]));
+        EXPECT_TRUE(sheet->setCellValue(TXCoordinate::coordinateToAddress(row, 1), reportData[i][0]));
         
         // Numeric data (Column B-E)
         for (size_t j = 1; j < reportData[i].size(); ++j) {
             TXTypes::ColIndex col = static_cast<TXTypes::ColIndex>(1 + j);
             double value = std::stod(reportData[i][j]);
-            EXPECT_TRUE(sheet->setCellValue(TXTypes::coordinateToAddress(row, col), value));
+            EXPECT_TRUE(sheet->setCellValue(TXCoordinate::coordinateToAddress(row, col), value));
         }
     }
     
@@ -131,14 +131,14 @@ TEST_F(StyledReportExampleTest, StyleSystemAPI_Demo) {
     
     font.setName("Arial")
         .setSize(14)
-        .setColor(Colors::BLUE)
+        .setColor(ColorConstants::BLUE)
         .setBold(true)
         .setItalic(true)
         .setUnderline(true);
     
     EXPECT_EQ("Arial", font.name);
     EXPECT_EQ(14U, font.size);
-    EXPECT_EQ(Colors::BLUE, font.color);
+    EXPECT_EQ(ColorConstants::BLUE, font.color);
     EXPECT_TRUE(font.isBold());
     EXPECT_TRUE(font.isItalic());
     EXPECT_TRUE(font.hasUnderline());
@@ -157,21 +157,21 @@ TEST_F(StyledReportExampleTest, StyleSystemAPI_Demo) {
     
     // 演示边框系统
     TXBorder border;
-    border.setAllBorders(BorderStyle::Thick, Colors::RED)
-          .setDiagonalBorder(BorderStyle::Dotted, Colors::GREEN);
+    border.setAllBorders(BorderStyle::Thick, ColorConstants::RED)
+          .setDiagonalBorder(BorderStyle::Dotted, ColorConstants::GREEN);
     
     EXPECT_EQ(BorderStyle::Thick, border.leftStyle);
     EXPECT_EQ(BorderStyle::Thick, border.rightStyle);
     EXPECT_EQ(BorderStyle::Dotted, border.diagonalStyle);
-    EXPECT_EQ(Colors::RED, border.leftColor);
-    EXPECT_EQ(Colors::GREEN, border.diagonalColor);
+    EXPECT_EQ(ColorConstants::RED, border.leftColor);
+    EXPECT_EQ(ColorConstants::GREEN, border.diagonalColor);
     
     // 演示填充系统
     TXFill fill;
-    fill.setSolidFill(Colors::YELLOW);
+    fill.setSolidFill(ColorConstants::YELLOW);
     
     EXPECT_EQ(FillPattern::Solid, fill.pattern);
-    EXPECT_EQ(Colors::YELLOW, fill.foregroundColor);
+    EXPECT_EQ(ColorConstants::YELLOW, fill.foregroundColor);
     
     // 演示完整样式系统
     TXCellStyle style;
@@ -189,53 +189,53 @@ TEST_F(StyledReportExampleTest, StyleSystemAPI_Demo) {
     std::cout << "Style system API demo completed!" << std::endl;
 }
 
-TEST_F(StyledReportExampleTest, ColorSystemDemo) {
+TEST_F(StyledReportExampleTest, ColorConstantsystemDemo) {
     std::cout << "=== Color System Demo ===" << std::endl;
     
     // 测试颜色创建和转换
-    auto red = TXTypes::createColor(255, 0, 0);
-    auto green = TXTypes::createColor(0, 255, 0);
-    auto blue = TXTypes::createColor(0, 0, 255);
-    auto transparent = TXTypes::createColor(128, 128, 128, 128);
+    TXColor red(255, 0, 0);
+    TXColor green(0, 255, 0);
+    TXColor blue(0, 0, 255);
+    TXColor transparent(128, 128, 128, 128);
     
-    EXPECT_EQ(Colors::RED, red);
-    EXPECT_EQ(Colors::GREEN, green);
-    EXPECT_EQ(Colors::BLUE, blue);
-    EXPECT_EQ(0x80808080U, transparent);
+    EXPECT_EQ(ColorConstants::RED, red.getValue());
+    EXPECT_EQ(ColorConstants::GREEN, green.getValue());
+    EXPECT_EQ(ColorConstants::BLUE, blue.getValue());
+    EXPECT_EQ(0x80808080U, transparent.getValue());
     
     // 测试16进制颜色解析
-    auto hexRed = TXTypes::createColorFromHex("#FF0000");
-    auto hexGreen = TXTypes::createColorFromHex("00FF00");
-    auto hexBlue = TXTypes::createColorFromHex("#FF0000FF");
+    auto hexRed = TXColor::fromHex("#FF0000");
+    auto hexGreen = TXColor::fromHex("00FF00");
+    auto hexBlue = TXColor::fromHex("#FF0000FF");
     
-    EXPECT_EQ(Colors::RED, hexRed);
-    EXPECT_EQ(Colors::GREEN, hexGreen);
-    EXPECT_EQ(Colors::BLUE, hexBlue);
+    EXPECT_EQ(ColorConstants::RED, hexRed.getValue());
+    EXPECT_EQ(ColorConstants::GREEN, hexGreen.getValue());
+    EXPECT_EQ(ColorConstants::BLUE, hexBlue.getValue());
     
     // 测试颜色分量提取
-    auto [r, g, b, a] = TXTypes::extractColorComponents(Colors::RED);
+    auto [r, g, b, a] = red.getComponents();
     EXPECT_EQ(255, r);
     EXPECT_EQ(0, g);
     EXPECT_EQ(0, b);
     EXPECT_EQ(255, a);
     
     // 测试坐标系统
-    EXPECT_EQ("A1", TXTypes::coordinateToAddress(1, 1));
-    EXPECT_EQ("Z26", TXTypes::coordinateToAddress(26, 26));
-    EXPECT_EQ("AA27", TXTypes::coordinateToAddress(27, 27));
+    EXPECT_EQ("A1", TXCoordinate::coordinateToAddress(1, 1));
+    EXPECT_EQ("Z26", TXCoordinate::coordinateToAddress(26, 26));
+    EXPECT_EQ("AA27", TXCoordinate::coordinateToAddress(27, 27));
     
-    auto [row, col] = TXTypes::addressToCoordinate("B5");
+    auto [row, col] = TXCoordinate::addressToCoordinate("B5");
     EXPECT_EQ(5U, row);
     EXPECT_EQ(2U, col);
     
     // 测试列名转换
-    EXPECT_EQ("A", TXTypes::colIndexToName(1));
-    EXPECT_EQ("Z", TXTypes::colIndexToName(26));
-    EXPECT_EQ("AA", TXTypes::colIndexToName(27));
+    EXPECT_EQ("A", TXCoordinate::colIndexToName(1));
+    EXPECT_EQ("Z", TXCoordinate::colIndexToName(26));
+    EXPECT_EQ("AA", TXCoordinate::colIndexToName(27));
     
-    EXPECT_EQ(1U, TXTypes::colNameToIndex("A"));
-    EXPECT_EQ(26U, TXTypes::colNameToIndex("Z"));
-    EXPECT_EQ(27U, TXTypes::colNameToIndex("AA"));
+    EXPECT_EQ(1U, TXCoordinate::colNameToIndex("A"));
+    EXPECT_EQ(26U, TXCoordinate::colNameToIndex("Z"));
+    EXPECT_EQ(27U, TXCoordinate::colNameToIndex("AA"));
     
     std::cout << "Color system demo completed!" << std::endl;
 }
@@ -300,12 +300,12 @@ TEST_F(StyledReportExampleTest, StyleComparison) {
     EXPECT_EQ(style1, style2); // 默认样式应该相等
     
     style1.setFont("Arial", 12)
-          .setFontColor(Colors::RED);
+          .setFontColor(ColorConstants::RED);
     
     EXPECT_NE(style1, style2); // 修改后应该不等
     
     style2.setFont("Arial", 12)
-          .setFontColor(Colors::RED);
+          .setFontColor(ColorConstants::RED);
     
     EXPECT_EQ(style1, style2); // 相同设置后应该相等
     

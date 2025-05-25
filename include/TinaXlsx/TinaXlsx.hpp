@@ -2,44 +2,78 @@
 
 /**
  * @file TinaXlsx.hpp
- * @brief TinaXlsx库的主头文件
+ * @brief TinaXlsx 主头文件
+ * @author TinaXlsx Team
+ * @version 2.0.0
+ * @date 2024-12
  * 
- * 这个文件包含了TinaXlsx库的所有公开接口，
- * 用户只需要包含这一个头文件即可使用库的全部功能。
+ * 包含TinaXlsx库的所有核心功能
  */
 
-#include "TXWorkbook.hpp"
-#include "TXSheet.hpp"
-#include "TXCell.hpp"
-#include "TXZipHandler.hpp"
-#include "TXXmlHandler.hpp"
+// ==================== 核心类型系统 ====================
+#include "TXTypes.hpp"         ///< 统一类型定义
+#include "TXColor.hpp"         ///< 颜色处理类
+#include "TXCoordinate.hpp"    ///< 坐标和范围类
+
+// ==================== 样式系统 ====================
+#include "TXStyle.hpp"         ///< 完整样式系统
+
+// ==================== 核心业务类 ====================
+#include "TXCell.hpp"          ///< 单元格类
+#include "TXSheet.hpp"         ///< 工作表类
+#include "TXWorkbook.hpp"      ///< 工作簿类
+
+// ==================== 辅助工具类 ====================
+#include "TXUtils.hpp"         ///< 工具函数
+#include "TXZipHandler.hpp"    ///< ZIP处理
+#include "TXXmlHandler.hpp"    ///< XML处理
 
 /**
  * @namespace TinaXlsx
- * @brief TinaXlsx库的命名空间
+ * @brief TinaXlsx 库命名空间
  * 
- * 所有TinaXlsx库的类和函数都位于这个命名空间中。
+ * 包含所有TinaXlsx相关的类和函数
  */
 namespace TinaXlsx {
 
 /**
  * @brief 库版本信息
  */
-struct Version {
-    static constexpr int MAJOR = 1;     ///< 主版本号
-    static constexpr int MINOR = 0;     ///< 次版本号
-    static constexpr int PATCH = 0;     ///< 补丁版本号
-    
-    /**
-     * @brief 获取版本字符串
-     * @return 版本字符串，格式为"major.minor.patch"
-     */
-    static std::string getString() {
-        return std::to_string(MAJOR) + "." + 
-               std::to_string(MINOR) + "." + 
-               std::to_string(PATCH);
-    }
-};
+namespace Version {
+    constexpr int MAJOR = 2;
+    constexpr int MINOR = 0;
+    constexpr int PATCH = 0;
+    constexpr const char* STRING = "2.0.0";
+    constexpr const char* BUILD_DATE = __DATE__;
+}
+
+/**
+ * @brief 库特性标志
+ */
+namespace Features {
+    constexpr bool HAS_STYLES = true;        ///< 是否支持样式
+    constexpr bool HAS_COLORS = true;        ///< 是否支持颜色
+    constexpr bool HAS_COORDINATES = true;   ///< 是否支持坐标系统
+    constexpr bool HAS_ZIP_SUPPORT = true;   ///< 是否支持ZIP
+    constexpr bool HAS_XML_SUPPORT = true;   ///< 是否支持XML
+}
+
+/**
+ * @brief 快速使用别名
+ */
+using Workbook = TXWorkbook;
+using Sheet = TXSheet;
+using Cell = TXCell;
+using Style = TXCellStyle;
+using Color = TXColor;
+using Coordinate = TXCoordinate;
+using Range = TXRange;
+
+// 常用类型别名
+using RowIndex = TXTypes::RowIndex;
+using ColIndex = TXTypes::ColIndex;
+using ColorValue = TXTypes::ColorValue;
+using FontSize = TXTypes::FontSize;
 
 /**
  * @brief 初始化库
