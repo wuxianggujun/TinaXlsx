@@ -26,15 +26,28 @@ TinaXlsx 核心架构
 ├── TXCell（单元格数据容器）
 │   ├── std::variant 多类型支持
 │   ├── 自动类型转换
-│   └── 公式与格式化
+│   ├── 公式与格式化
+│   └── 样式关联（新增）
 ├── TXZipHandler（ZIP 压缩处理器）
 │   ├── minizip-ng 封装
 │   ├── 批量文件操作
 │   └── 压缩级别控制
-└── TXXmlHandler（XML 解析处理器）
-    ├── pugixml 封装
-    ├── XPath 查询优化
-    └── 批量节点操作
+├── TXXmlHandler（XML 解析处理器）
+│   ├── pugixml 封装
+│   ├── XPath 查询优化
+│   └── 批量节点操作
+├── TXTypes（统一类型管理器）- 新增
+│   ├── 基础类型定义（RowIndex、ColIndex等）
+│   ├── 样式相关类型（FontSize、ColorValue等）
+│   ├── 坐标转换工具
+│   └── 颜色处理工具
+└── TXStyle（样式系统）- 新增
+    ├── TXFont（字体样式）
+    ├── TXAlignment（对齐样式）
+    ├── TXBorder（边框样式）
+    ├── TXFill（填充样式）
+    ├── TXCellStyle（完整样式容器）
+    └── 预定义样式库
 ```
 
 ## 二、XLSX 文件解析流程
