@@ -345,7 +345,21 @@ private:
             }
         }
 
-        worksheet_xml += "</sheetData></worksheet>";
+        worksheet_xml += "</sheetData>";
+
+        // 写入合并单元格信息
+        auto merge_regions = sheet->getAllMergeRegions();
+        if (!merge_regions.empty()) {
+            worksheet_xml += R"(<mergeCells count=")" + std::to_string(merge_regions.size()) + R"(">)";
+            
+            for (const auto& region : merge_regions) {
+                worksheet_xml += R"(<mergeCell ref=")" + region.toAddress() + R"("/>)";
+            }
+            
+            worksheet_xml += "</mergeCells>";
+        }
+
+        worksheet_xml += "</worksheet>";
 
         std::string filename = "xl/worksheets/sheet" + std::to_string(sheet_index + 1) + ".xml";
         if (!zip.writeFile(filename, worksheet_xml)) {

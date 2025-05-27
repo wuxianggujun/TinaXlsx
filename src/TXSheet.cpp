@@ -197,18 +197,29 @@ public:
 
         row_t min_row = row_t::last(), max_row = row_t(1);
         column_t min_col = column_t::last(), max_col = column_t(1);
-
+        
+        bool found_data = false;
         for (const auto& pair : cells_) {
             if (!pair.second.isEmpty()) {
                 const auto& coord = pair.first;
-                min_row = std::min(min_row, coord.getRow());
-                max_row = std::max(max_row, coord.getRow());
-                min_col = std::min(min_col, coord.getCol());
-                max_col = std::max(max_col, coord.getCol());
+                if (!found_data) {
+                    // 第一个有效单元格，初始化范围
+                    min_row = coord.getRow();
+                    max_row = coord.getRow();
+                    min_col = coord.getCol();
+                    max_col = coord.getCol();
+                    found_data = true;
+                } else {
+                    // 扩展范围
+                    min_row = std::min(min_row, coord.getRow());
+                    max_row = std::max(max_row, coord.getRow());
+                    min_col = std::min(min_col, coord.getCol());
+                    max_col = std::max(max_col, coord.getCol());
+                }
             }
         }
 
-        if (max_row == 0) {
+        if (!found_data) {
             return Range();  // 没有有效数据
         }
 

@@ -193,10 +193,14 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     // 创建多个工作表并填充数据
     for (int sheet_num = 1; sheet_num <= SHEET_COUNT; ++sheet_num) {
         std::string sheet_name = "Sheet_" + std::to_string(sheet_num);
-        workbook.addSheet(sheet_name);
+        std::cout << "创建工作表: " << sheet_name << std::endl;
+        
+        bool add_result = workbook.addSheet(sheet_name);
+        std::cout << "添加结果: " << (add_result ? "成功" : "失败") << std::endl;
+        std::cout << "当前工作表数量: " << workbook.getSheetCount() << std::endl;
         
         auto sheet = workbook.getSheet(sheet_name);
-        ASSERT_NE(sheet, nullptr);
+        ASSERT_NE(sheet, nullptr) << "无法获取工作表: " << sheet_name;
         
         // 为每个工作表添加数据
         for (int row = 1; row <= ROWS_PER_SHEET; ++row) {
@@ -210,8 +214,9 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     auto data_duration = std::chrono::duration_cast<std::chrono::milliseconds>(data_time - start_time);
     
     // 保存多工作表文件
+    std::cout << "保存前最终工作表数量: " << workbook.getSheetCount() << std::endl;
     bool saved = workbook.saveToFile("PerformanceTest.xlsx");
-    ASSERT_TRUE(saved);
+    ASSERT_TRUE(saved) << "保存失败: " << workbook.getLastError();
     
     auto save_time = std::chrono::high_resolution_clock::now();
     auto save_duration = std::chrono::duration_cast<std::chrono::milliseconds>(save_time - data_time);
@@ -224,9 +229,15 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     std::cout << "Save time: " << save_duration.count() << "ms" << std::endl;
     
     // 验证工作表数量
-    EXPECT_EQ(workbook.getSheetCount(), SHEET_COUNT);
+    EXPECT_EQ(workbook.getSheetCount(), SHEET_COUNT) << "期望: " << SHEET_COUNT << ", 实际: " << workbook.getSheetCount();
+    
+    // 重新加载文件验证
+    TinaXlsx::TXWorkbook verify_workbook;
+    bool loaded = verify_workbook.loadFromFile("PerformanceTest.xlsx");
+    ASSERT_TRUE(loaded) << "加载失败: " << verify_workbook.getLastError();
+    std::cout << "重新加载后工作表数量: " << verify_workbook.getSheetCount() << std::endl;
     
     // 验证文件大小
     auto file_size = std::filesystem::file_size("PerformanceTest.xlsx");
     std::cout << "Multi-sheet file size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
-} 
+}
