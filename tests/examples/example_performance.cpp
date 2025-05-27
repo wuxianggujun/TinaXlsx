@@ -14,11 +14,13 @@
 class PerformanceExampleTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        std::filesystem::remove("PerformanceTest.xlsx");
+        // 临时禁用删除，保留文件供检查
+        // std::filesystem::remove("PerformanceTest.xlsx");
     }
 
     void TearDown() override {
-        std::filesystem::remove("PerformanceTest.xlsx");
+        // 临时禁用清理，供检查多Sheet问题
+        // std::filesystem::remove("PerformanceTest.xlsx");
     }
     
     // 辅助函数：生成随机数据
@@ -215,7 +217,7 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     
     // 保存多工作表文件
     std::cout << "保存前最终工作表数量: " << workbook.getSheetCount() << std::endl;
-    bool saved = workbook.saveToFile("PerformanceTest.xlsx");
+    bool saved = workbook.saveToFile("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
     ASSERT_TRUE(saved) << "保存失败: " << workbook.getLastError();
     
     auto save_time = std::chrono::high_resolution_clock::now();
@@ -233,11 +235,11 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     
     // 重新加载文件验证
     TinaXlsx::TXWorkbook verify_workbook;
-    bool loaded = verify_workbook.loadFromFile("PerformanceTest.xlsx");
+    bool loaded = verify_workbook.loadFromFile("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
     ASSERT_TRUE(loaded) << "加载失败: " << verify_workbook.getLastError();
     std::cout << "重新加载后工作表数量: " << verify_workbook.getSheetCount() << std::endl;
     
     // 验证文件大小
-    auto file_size = std::filesystem::file_size("PerformanceTest.xlsx");
+    auto file_size = std::filesystem::file_size("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
     std::cout << "Multi-sheet file size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
 }

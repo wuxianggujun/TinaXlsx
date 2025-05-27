@@ -1,9 +1,12 @@
 #pragma once
 
+#include "TXTypes.hpp"
+#include "TXComponentManager.hpp"
 #include <string>
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace TinaXlsx {
 
@@ -13,8 +16,8 @@ class TXZipHandler;
 
 /**
  * @brief Excel工作簿类
- * 
- * 管理整个Excel工作簿的生命周期，包括打开、保存、Sheet管理
+ * 支持创建、读取和写入Excel文件(.xlsx格式)
+ * 采用组件化设计，按需生成所需功能
  */
 class TXWorkbook {
 public:
@@ -124,9 +127,34 @@ public:
 
     /**
      * @brief 检查工作簿是否为空
-     * @return 为空返回true，否则返回false
+     * @return 为空返回true
      */
     bool isEmpty() const;
+
+    /**
+     * @brief 获取组件管理器
+     * @return 组件管理器引用
+     */
+    ComponentManager& getComponentManager();
+    
+    /**
+     * @brief 获取组件管理器（常量版本）
+     * @return 组件管理器常量引用
+     */
+    const ComponentManager& getComponentManager() const;
+    
+    /**
+     * @brief 启用智能组件检测（默认启用）
+     * 开启后会自动检测使用的功能并注册相应组件
+     * @param enable 是否启用
+     */
+    void setAutoComponentDetection(bool enable);
+    
+    /**
+     * @brief 手动注册组件
+     * @param component 要注册的组件
+     */
+    void registerComponent(ExcelComponent component);
 
 private:
     class Impl;

@@ -11,7 +11,9 @@ namespace TinaXlsx {
 
 class TXWorkbook::Impl {
 public:
-    Impl() : active_sheet_index_(0), last_error_("") {}
+    Impl() : active_sheet_index_(0), last_error_(""), auto_component_detection_(true) {
+        component_manager_.registerComponent(ExcelComponent::BasicWorkbook);
+    }
 
     ~Impl() = default;
 
@@ -60,14 +62,19 @@ public:
             return false;
         }
 
+        // 智能检测组件
+        if (auto_component_detection_) {
+            performAutoComponentDetection();
+        }
+
         TXZipHandler zip;
         if (!zip.open(filename, TXZipHandler::OpenMode::Write)) {
             last_error_ = "Failed to create XLSX file: " + zip.getLastError();
             return false;
         }
 
-        // 写入必要的XLSX结构文件
-        if (!writeXlsxStructure(zip)) {
+        // 使用组件化方式写入XLSX结构
+        if (!writeXlsxStructureWithComponents(zip)) {
             return false;
         }
 
@@ -192,6 +199,22 @@ public:
         return last_error_;
     }
 
+    ComponentManager& getComponentManager() {
+        return component_manager_;
+    }
+
+    const ComponentManager& getComponentManager() const {
+        return component_manager_;
+    }
+
+    void setAutoComponentDetection(bool enable) {
+        auto_component_detection_ = enable;
+    }
+
+    void registerComponent(ExcelComponent component) {
+        component_manager_.registerComponent(component);
+    }
+
 private:
     TXSheet* getSheet(const std::string& name) const {
         for (const auto& sheet : sheets_) {
@@ -221,32 +244,18 @@ private:
         return true;
     }
 
-    bool writeXlsxStructure(TXZipHandler& zip) {
-        // 写入Content Types
-        std::string content_types = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>)";
-
-        for (std::size_t i = 0; i < sheets_.size(); ++i) {
-            content_types += R"(<Override PartName="/xl/worksheets/sheet)" + std::to_string(i + 1) + 
-                           R"(.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>)";
-        }
-
-        content_types += "</Types>";
-
+    bool writeXlsxStructureWithComponents(TXZipHandler& zip) {
+        auto& components = component_manager_.getComponents();
+        
+        // 生成Content-Types.xml
+        std::string content_types = ComponentGenerator::generateContentTypes(components, sheets_.size());
         if (!zip.writeFile("[Content_Types].xml", content_types)) {
             last_error_ = "Failed to write Content Types: " + zip.getLastError();
             return false;
         }
 
-        // 写入主关系文件
-        std::string main_rels = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>)";
-
+        // 生成主关系文件
+        std::string main_rels = ComponentGenerator::generateMainRelationships(components);
         if (!zip.writeFile("_rels/.rels", main_rels)) {
             last_error_ = "Failed to write main relationships: " + zip.getLastError();
             return false;
@@ -255,6 +264,44 @@ private:
         // 写入工作簿文件
         if (!writeWorkbook(zip)) {
             return false;
+        }
+
+        // 生成工作簿关系文件
+        std::string workbook_rels = ComponentGenerator::generateWorkbookRelationships(components, sheets_.size());
+        if (!zip.writeFile("xl/_rels/workbook.xml.rels", workbook_rels)) {
+            last_error_ = "Failed to write workbook relationships: " + zip.getLastError();
+            return false;
+        }
+
+        // 按需写入组件文件
+        if (component_manager_.hasComponent(ExcelComponent::Styles)) {
+            std::string styles_xml = ComponentGenerator::generateStyles();
+            if (!zip.writeFile("xl/styles.xml", styles_xml)) {
+                last_error_ = "Failed to write styles: " + zip.getLastError();
+                return false;
+            }
+        }
+
+        if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
+            // TODO: 收集实际的字符串数据
+            std::vector<std::string> strings;
+            std::string shared_strings_xml = ComponentGenerator::generateSharedStrings(strings);
+            if (!zip.writeFile("xl/sharedStrings.xml", shared_strings_xml)) {
+                last_error_ = "Failed to write shared strings: " + zip.getLastError();
+                return false;
+            }
+        }
+
+        if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+            auto doc_props = ComponentGenerator::generateDocumentProperties();
+            if (!zip.writeFile("docProps/core.xml", doc_props.first)) {
+                last_error_ = "Failed to write core properties: " + zip.getLastError();
+                return false;
+            }
+            if (!zip.writeFile("docProps/app.xml", doc_props.second)) {
+                last_error_ = "Failed to write app properties: " + zip.getLastError();
+                return false;
+            }
         }
 
         // 写入工作表文件
@@ -285,23 +332,6 @@ private:
             return false;
         }
 
-        // 写入工作簿关系文件
-        std::string workbook_rels = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">)";
-
-        for (std::size_t i = 0; i < sheets_.size(); ++i) {
-            workbook_rels += R"(<Relationship Id="rId)" + std::to_string(i + 1) + 
-                           R"(" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet)" + 
-                           std::to_string(i + 1) + R"(.xml"/>)";
-        }
-
-        workbook_rels += "</Relationships>";
-
-        if (!zip.writeFile("xl/_rels/workbook.xml.rels", workbook_rels)) {
-            last_error_ = "Failed to write workbook relationships: " + zip.getLastError();
-            return false;
-        }
-
         return true;
     }
 
@@ -320,7 +350,8 @@ private:
         auto used_range = sheet->getUsedRange();
         
         // 写入单元格数据（简化版）
-        for (row_t row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
+        if (used_range.isValid()) {
+            for (row_t row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
             bool has_data = false;
             std::string row_xml = R"(<row r=")" + std::to_string(row.index()) + R"(">)";
             
@@ -332,8 +363,17 @@ private:
                     std::string cell_ref = coord.toAddress();
                     std::string cell_value = cell->getStringValue();
                     
-                    row_xml += R"(<c r=")" + cell_ref + R"(">)";
-                    row_xml += "<v>" + cell_value + "</v>";
+                    // 根据数据类型生成正确的XML
+                    auto cell_variant = cell->getValue();
+                    if (std::holds_alternative<std::string>(cell_variant)) {
+                        // 字符串类型 - 使用内联字符串
+                        row_xml += R"(<c r=")" + cell_ref + R"(" t="inlineStr">)";
+                        row_xml += "<is><t>" + cell_value + "</t></is>";
+                    } else {
+                        // 数值类型
+                        row_xml += R"(<c r=")" + cell_ref + R"(">)";
+                        row_xml += "<v>" + cell_value + "</v>";
+                    }
                     row_xml += "</c>";
                 }
             }
@@ -343,6 +383,7 @@ private:
             if (has_data) {
                 worksheet_xml += row_xml;
             }
+        }
         }
 
         worksheet_xml += "</sheetData>";
@@ -370,10 +411,36 @@ private:
         return true;
     }
 
+    void performAutoComponentDetection() {
+        // 重置组件，保留基础组件
+        component_manager_.reset();
+        
+        // 检测每个工作表的功能
+        for (const auto& sheet : sheets_) {
+            component_manager_.autoDetectComponents(sheet.get());
+        }
+        
+        // 如果有任何数据，注册基础样式和文档属性
+        bool has_data = false;
+        for (const auto& sheet : sheets_) {
+            if (sheet->getUsedRange().isValid()) {
+                has_data = true;
+                break;
+            }
+        }
+        
+        if (has_data) {
+            component_manager_.registerComponent(ExcelComponent::Styles);
+            component_manager_.registerComponent(ExcelComponent::DocumentProperties);
+        }
+    }
+
 private:
     std::vector<std::unique_ptr<TXSheet>> sheets_;
     std::size_t active_sheet_index_;
     mutable std::string last_error_;
+    bool auto_component_detection_;
+    ComponentManager component_manager_;
 };
 
 // TXWorkbook 实现
@@ -448,6 +515,22 @@ void TXWorkbook::clear() {
 
 bool TXWorkbook::isEmpty() const {
     return pImpl->isEmpty();
+}
+
+ComponentManager& TXWorkbook::getComponentManager() {
+    return pImpl->getComponentManager();
+}
+
+const ComponentManager& TXWorkbook::getComponentManager() const {
+    return pImpl->getComponentManager();
+}
+
+void TXWorkbook::setAutoComponentDetection(bool enable) {
+    pImpl->setAutoComponentDetection(enable);
+}
+
+void TXWorkbook::registerComponent(ExcelComponent component) {
+    pImpl->registerComponent(component);
 }
 
 } // namespace TinaXlsx 
