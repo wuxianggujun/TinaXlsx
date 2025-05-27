@@ -28,7 +28,8 @@ enum class HorizontalAlignment : uint8_t {
     Right = 2,            ///< 右对齐
     Justify = 3,          ///< 两端对齐
     Fill = 4,             ///< 填充
-    CenterAcrossSelection = 5  ///< 跨列居中
+    CenterAcrossSelection = 5,  ///< 跨列居中
+    General = 6           ///< 常规
 };
 
 /**
@@ -75,40 +76,57 @@ enum class FillPattern : uint8_t {
  */
 struct TXFont {
     std::string name;                    ///< 字体名称
-    TXTypes::FontSize size;              ///< 字体大小
+    font_size_t size;              ///< 字体大小
     TXColor color;                       ///< 字体颜色
     FontStyle style;                     ///< 字体样式
+    bool bold;                     ///< 是否粗体
+    bool italic;                   ///< 是否斜体
+    bool underline;                ///< 是否下划线
+    bool strikethrough;            ///< 是否删除线
     
-    TXFont() 
-        : name("Calibri")
-        , size(TXTypes::DEFAULT_FONT_SIZE)
-        , color(ColorConstants::BLACK)
-        , style(FontStyle::Normal) 
-    {}
-    
-    TXFont(const std::string& fontName, TXTypes::FontSize fontSize = TXTypes::DEFAULT_FONT_SIZE)
-        : name(fontName)
-        , size(fontSize)
+    /**
+     * @brief 默认构造函数
+     */
+    TXFont() : name("Calibri")
+        , size(DEFAULT_FONT_SIZE)
         , color(ColorConstants::BLACK)
         , style(FontStyle::Normal)
-    {}
+        , bold(false), italic(false), underline(false), strikethrough(false) {}
+    
+    /**
+     * @brief 构造函数
+     * @param fontName 字体名称
+     * @param fontSize 字体大小
+     */
+    TXFont(const std::string& fontName, font_size_t fontSize = DEFAULT_FONT_SIZE)
+        : name(fontName), size(fontSize)
+        , color(ColorConstants::BLACK)
+        , style(FontStyle::Normal)
+        , bold(false), italic(false), underline(false), strikethrough(false) {}
     
     // 便捷方法
     TXFont& setName(const std::string& fontName) { name = fontName; return *this; }
-    TXFont& setSize(TXTypes::FontSize fontSize) { size = fontSize; return *this; }
-    TXFont& setColor(const TXColor& fontColor) { color = fontColor; return *this; }
-    TXFont& setColor(TXTypes::ColorValue colorValue) { color = TXColor(colorValue); return *this; }
-    TXFont& setStyle(FontStyle fontStyle) { style = fontStyle; return *this; }
-    TXFont& setBold(bool bold = true);
-    TXFont& setItalic(bool italic = true);
-    TXFont& setUnderline(bool underline = true);
-    TXFont& setStrikethrough(bool strikethrough = true);
+    TXFont& setSize(font_size_t fontSize) { size = fontSize; return *this; }
+    TXFont& setColor(color_value_t colorValue) { color = TXColor(colorValue); return *this; }
+    TXFont& setStyle(FontStyle fontStyle) { 
+        style = fontStyle; 
+        // 同步布尔字段
+        bold = (fontStyle == FontStyle::Bold || fontStyle == FontStyle::BoldItalic);
+        italic = (fontStyle == FontStyle::Italic || fontStyle == FontStyle::BoldItalic);
+        underline = (fontStyle == FontStyle::Underline);
+        strikethrough = (fontStyle == FontStyle::Strikethrough);
+        return *this; 
+    }
+    TXFont& setBold(bool bold = true) { this->bold = bold; return *this; }
+    TXFont& setItalic(bool italic = true) { this->italic = italic; return *this; }
+    TXFont& setUnderline(bool underline = true) { this->underline = underline; return *this; }
+    TXFont& setStrikethrough(bool strikethrough = true) { this->strikethrough = strikethrough; return *this; }
     
     // 查询方法
-    bool isBold() const;
-    bool isItalic() const;
-    bool hasUnderline() const;
-    bool hasStrikethrough() const;
+    bool isBold() const { return bold; }
+    bool isItalic() const { return italic; }
+    bool hasUnderline() const { return underline; }
+    bool hasStrikethrough() const { return strikethrough; }
     
     bool operator==(const TXFont& other) const;
     bool operator!=(const TXFont& other) const { return !(*this == other); }
@@ -120,27 +138,29 @@ struct TXFont {
 struct TXAlignment {
     HorizontalAlignment horizontal;      ///< 水平对齐
     VerticalAlignment vertical;          ///< 垂直对齐
-    bool wrapText;                       ///< 自动换行
-    bool shrinkToFit;                    ///< 缩小字体填充
-    TXTypes::RowIndex textRotation;      ///< 文字旋转角度 (0-180)
-    TXTypes::ColIndex indent;            ///< 缩进级别
+    u32 textRotation;      ///< 文字旋转角度 (0-180)
+    u32 indent;            ///< 缩进级别
+    bool wrapText;                  ///< 是否自动换行
+    bool shrinkToFit;               ///< 是否缩小字体以适应
     
-    TXAlignment()
+    /**
+     * @brief 默认构造函数
+     */
+    TXAlignment() 
         : horizontal(HorizontalAlignment::Left)
         , vertical(VerticalAlignment::Bottom)
-        , wrapText(false)
-        , shrinkToFit(false)
         , textRotation(0)
         , indent(0)
-    {}
+        , wrapText(false)
+        , shrinkToFit(false) {}
     
     // 便捷方法
     TXAlignment& setHorizontal(HorizontalAlignment align) { horizontal = align; return *this; }
     TXAlignment& setVertical(VerticalAlignment align) { vertical = align; return *this; }
     TXAlignment& setWrapText(bool wrap) { wrapText = wrap; return *this; }
     TXAlignment& setShrinkToFit(bool shrink) { shrinkToFit = shrink; return *this; }
-    TXAlignment& setTextRotation(TXTypes::RowIndex rotation) { textRotation = rotation; return *this; }
-    TXAlignment& setIndent(TXTypes::ColIndex indentLevel) { indent = indentLevel; return *this; }
+    TXAlignment& setTextRotation(u32 rotation) { textRotation = rotation; return *this; }
+    TXAlignment& setIndent(u32 indentLevel) { indent = indentLevel; return *this; }
     
     bool operator==(const TXAlignment& other) const;
     bool operator!=(const TXAlignment& other) const { return !(*this == other); }
@@ -306,7 +326,7 @@ public:
      * @param size 字体大小
      * @return 自身引用，支持链式调用
      */
-    TXCellStyle& setFont(const std::string& name, TXTypes::FontSize size = TXTypes::DEFAULT_FONT_SIZE);
+    TXCellStyle& setFont(const std::string& name, font_size_t size = DEFAULT_FONT_SIZE);
     
     /**
      * @brief 设置字体颜色
@@ -320,7 +340,7 @@ public:
      * @param color 颜色值
      * @return 自身引用，支持链式调用
      */
-    TXCellStyle& setFontColor(TXTypes::ColorValue color);
+    TXCellStyle& setFontColor(color_value_t color);
     
     /**
      * @brief 设置字体样式
@@ -355,7 +375,7 @@ public:
      * @param color 颜色值
      * @return 自身引用，支持链式调用
      */
-    TXCellStyle& setBackgroundColor(TXTypes::ColorValue color);
+    TXCellStyle& setBackgroundColor(color_value_t color);
     
     /**
      * @brief 设置所有边框

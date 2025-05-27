@@ -81,10 +81,10 @@ using MergedCells = TXMergedCells;
 using NumberFormat = TXNumberFormat;
 
 // 常用类型别名
-using RowIndex = TXTypes::RowIndex;
-using ColIndex = TXTypes::ColIndex;
-using ColorValue = TXTypes::ColorValue;
-using FontSize = TXTypes::FontSize;
+using RowIndex = row_t;
+using ColIndex = column_t;
+using ColorValue = color_value_t;
+using FontSize = font_size_t;
 
 /**
  * @brief 初始化库

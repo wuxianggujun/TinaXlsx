@@ -12,21 +12,23 @@ TXMergedCells::MergeRegion::MergeRegion(const TXRange& range)
     : startRow(range.getStart().getRow()), startCol(range.getStart().getCol()),
       endRow(range.getEnd().getRow()), endCol(range.getEnd().getCol()) {}
 
-bool TXMergedCells::MergeRegion::contains(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+bool TXMergedCells::MergeRegion::contains(row_t row, column_t col) const {
     return row >= startRow && row <= endRow && col >= startCol && col <= endCol;
 }
 
-std::pair<TXTypes::RowIndex, TXTypes::ColIndex> TXMergedCells::MergeRegion::getSize() const {
-    return {endRow - startRow + 1, endCol - startCol + 1};
+std::pair<row_t, column_t> TXMergedCells::MergeRegion::getSize() const {
+    return {row_t(endRow.index() - startRow.index() + 1), column_t(endCol.index() - startCol.index() + 1)};
 }
 
 std::size_t TXMergedCells::MergeRegion::getCellCount() const {
     auto size = getSize();
-    return static_cast<std::size_t>(size.first) * size.second;
+    return static_cast<std::size_t>(size.first.index()) * static_cast<std::size_t>(size.second.index());
 }
 
 std::string TXMergedCells::MergeRegion::toString() const {
-    TXRange range(startRow, startCol, endRow, endCol);
+    TXCoordinate start(startRow, startCol);
+    TXCoordinate end(endRow, endCol);
+    TXRange range(start, end);
     return range.toAddress();
 }
 
@@ -36,12 +38,14 @@ TXMergedCells::MergeRegion TXMergedCells::MergeRegion::fromString(const std::str
 }
 
 TXRange TXMergedCells::MergeRegion::toRange() const {
-    return TXRange(startRow, startCol, endRow, endCol);
+    TXCoordinate start(startRow, startCol);
+    TXCoordinate end(endRow, endCol);
+    return TXRange(start, end);
 }
 
 bool TXMergedCells::MergeRegion::isValid() const {
-    return TXTypes::isValidCoordinate(startRow, startCol) && 
-           TXTypes::isValidCoordinate(endRow, endCol) &&
+    return is_valid_coordinate(startRow, startCol) && 
+           is_valid_coordinate(endRow, endCol) &&
            startRow <= endRow && startCol <= endCol;
 }
 
@@ -76,14 +80,14 @@ public:
     Impl() = default;
     
     // 生成单元格的唯一键
-    uint64_t getCellKey(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
-        return (static_cast<uint64_t>(row) << 32) | col;
+    uint64_t getCellKey(row_t row, column_t col) const {
+        return (static_cast<uint64_t>(row.index()) << 32) | static_cast<uint64_t>(col.index());
     }
     
     // 更新单元格到区域的映射
     void updateCellMapping(const MergeRegion& region, const MergeRegion* regionPtr) {
-        for (TXTypes::RowIndex r = region.startRow; r <= region.endRow; ++r) {
-            for (TXTypes::ColIndex c = region.startCol; c <= region.endCol; ++c) {
+        for (row_t r = region.startRow; r <= region.endRow; ++r) {
+            for (column_t c = region.startCol; c <= region.endCol; ++c) {
                 uint64_t key = getCellKey(r, c);
                 if (regionPtr) {
                     cellToRegionMap_[key] = regionPtr;
@@ -146,7 +150,7 @@ public:
         return false;
     }
     
-    bool unmergeCellsByPosition(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+    bool unmergeCellsByPosition(row_t row, column_t col) {
         lastError_.clear();
         
         uint64_t key = getCellKey(row, col);
@@ -311,8 +315,8 @@ TXMergedCells& TXMergedCells::operator=(TXMergedCells&& other) noexcept {
 
 // ==================== 合并操作 ====================
 
-bool TXMergedCells::mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                              TXTypes::RowIndex endRow, TXTypes::ColIndex endCol) {
+bool TXMergedCells::mergeCells(row_t startRow, column_t startCol,
+                              row_t endRow, column_t endCol) {
     MergeRegion region(startRow, startCol, endRow, endCol);
     return pImpl->mergeCells(region);
 }
@@ -329,7 +333,7 @@ bool TXMergedCells::mergeCells(const std::string& rangeStr) {
 
 // ==================== 拆分操作 ====================
 
-bool TXMergedCells::unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+bool TXMergedCells::unmergeCells(row_t row, column_t col) {
     return pImpl->unmergeCellsByPosition(row, col);
 }
 
@@ -348,12 +352,12 @@ void TXMergedCells::unmergeAllCells() {
 
 // ==================== 查询操作 ====================
 
-bool TXMergedCells::isMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+bool TXMergedCells::isMerged(row_t row, column_t col) const {
     uint64_t key = pImpl->getCellKey(row, col);
     return pImpl->cellToRegionMap_.find(key) != pImpl->cellToRegionMap_.end();
 }
 
-const TXMergedCells::MergeRegion* TXMergedCells::getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+const TXMergedCells::MergeRegion* TXMergedCells::getMergeRegion(row_t row, column_t col) const {
     uint64_t key = pImpl->getCellKey(row, col);
     auto it = pImpl->cellToRegionMap_.find(key);
     return (it != pImpl->cellToRegionMap_.end()) ? it->second : nullptr;
@@ -367,8 +371,8 @@ std::size_t TXMergedCells::getMergeCount() const {
     return pImpl->mergeRegions_.size();
 }
 
-bool TXMergedCells::canMerge(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                            TXTypes::RowIndex endRow, TXTypes::ColIndex endCol) const {
+bool TXMergedCells::canMerge(row_t startRow, column_t startCol,
+                            row_t endRow, column_t endCol) const {
     MergeRegion region(startRow, startCol, endRow, endCol);
     MergeRegion normalized = normalizeRegion(region);
     return isValidRegion(normalized) && pImpl->canMergeInternal(normalized);

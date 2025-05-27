@@ -80,16 +80,16 @@ TEST_F(StyledReportExampleTest, CreateStyledFinancialReport) {
     };
     
     for (size_t i = 0; i < reportData.size(); ++i) {
-        TXTypes::RowIndex row = static_cast<TXTypes::RowIndex>(4 + i);
+        u32 row = static_cast<u32>(4 + i);
         
         // Project name (Column A)
-        EXPECT_TRUE(sheet->setCellValue(TXCoordinate::coordinateToAddress(row, 1), reportData[i][0]));
+        EXPECT_TRUE(sheet->setCellValue(TXCoordinate(row_t(row), column_t(1)).toAddress(), reportData[i][0]));
         
         // Numeric data (Column B-E)
         for (size_t j = 1; j < reportData[i].size(); ++j) {
-            TXTypes::ColIndex col = static_cast<TXTypes::ColIndex>(1 + j);
+            u32 col = static_cast<u32>(1 + j);
             double value = std::stod(reportData[i][j]);
-            EXPECT_TRUE(sheet->setCellValue(TXCoordinate::coordinateToAddress(row, col), value));
+            EXPECT_TRUE(sheet->setCellValue(TXCoordinate(row_t(row), column_t(col)).toAddress(), value));
         }
     }
     
@@ -127,7 +127,7 @@ TEST_F(StyledReportExampleTest, StyleSystemAPI_Demo) {
     // 演示字体系统
     TXFont font;
     EXPECT_EQ("Calibri", font.name);
-    EXPECT_EQ(TXTypes::DEFAULT_FONT_SIZE, font.size);
+    EXPECT_EQ(11.0, font.size);
     
     font.setName("Arial")
         .setSize(14)
@@ -220,22 +220,22 @@ TEST_F(StyledReportExampleTest, ColorConstantsystemDemo) {
     EXPECT_EQ(255, a);
     
     // 测试坐标系统
-    EXPECT_EQ("A1", TXCoordinate::coordinateToAddress(1, 1));
-    EXPECT_EQ("Z26", TXCoordinate::coordinateToAddress(26, 26));
-    EXPECT_EQ("AA27", TXCoordinate::coordinateToAddress(27, 27));
+    EXPECT_EQ("A1", TXCoordinate(row_t(1), column_t(1)).toAddress());
+    EXPECT_EQ("Z26", TXCoordinate(row_t(26), column_t(26)).toAddress());
+    EXPECT_EQ("AA27", TXCoordinate(row_t(27), column_t(27)).toAddress());
     
-    auto [row, col] = TXCoordinate::addressToCoordinate("B5");
-    EXPECT_EQ(5U, row);
-    EXPECT_EQ(2U, col);
+    TXCoordinate coord("B5");
+    EXPECT_EQ(5U, coord.getRow().index());
+    EXPECT_EQ(2U, coord.getCol().index());
     
     // 测试列名转换
-    EXPECT_EQ("A", TXCoordinate::colIndexToName(1));
-    EXPECT_EQ("Z", TXCoordinate::colIndexToName(26));
-    EXPECT_EQ("AA", TXCoordinate::colIndexToName(27));
+    EXPECT_EQ("A", column_t(1).column_string());
+    EXPECT_EQ("Z", column_t(26).column_string());
+    EXPECT_EQ("AA", column_t(27).column_string());
     
-    EXPECT_EQ(1U, TXCoordinate::colNameToIndex("A"));
-    EXPECT_EQ(26U, TXCoordinate::colNameToIndex("Z"));
-    EXPECT_EQ(27U, TXCoordinate::colNameToIndex("AA"));
+    EXPECT_EQ(1U, column_t("A").index());
+    EXPECT_EQ(26U, column_t("Z").index());
+    EXPECT_EQ(27U, column_t("AA").index());
     
     std::cout << "Color system demo completed!" << std::endl;
 }

@@ -320,15 +320,16 @@ private:
         auto used_range = sheet->getUsedRange();
         
         // 写入单元格数据（简化版）
-        for (TXTypes::RowIndex row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
+        for (row_t row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
             bool has_data = false;
-            std::string row_xml = R"(<row r=")" + std::to_string(row) + R"(">)";
+            std::string row_xml = R"(<row r=")" + std::to_string(row.index()) + R"(">)";
             
-            for (TXTypes::ColIndex col = used_range.getStart().getCol(); col <= used_range.getEnd().getCol(); ++col) {
+            for (column_t col = used_range.getStart().getCol(); col <= used_range.getEnd().getCol(); ++col) {
                 const TXCell* cell = sheet->getCell(row, col);
                 if (cell && !cell->isEmpty()) {
                     has_data = true;
-                    std::string cell_ref = TXCoordinate::coordinateToAddress(row, col);
+                    TXCoordinate coord(row, col);
+                    std::string cell_ref = coord.toAddress();
                     std::string cell_value = cell->getStringValue();
                     
                     row_xml += R"(<c r=")" + cell_ref + R"(">)";

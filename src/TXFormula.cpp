@@ -24,7 +24,7 @@ std::string TXFormula::CellReference::toString() const {
     if (absoluteCol) result += "$";
     
     // 转换列号为字母
-    TXTypes::ColIndex tempCol = col;
+    u32 tempCol = col.index();
     std::string colStr;
     while (tempCol > 0) {
         tempCol--;
@@ -34,7 +34,7 @@ std::string TXFormula::CellReference::toString() const {
     result += colStr;
     
     if (absoluteRow) result += "$";
-    result += std::to_string(row);
+    result += std::to_string(row.index());
     
     return result;
 }
@@ -60,14 +60,14 @@ TXFormula::CellReference TXFormula::CellReference::fromString(const std::string&
         
         // 转换字母为列号
         std::string colStr = match[2].str();
-        TXTypes::ColIndex colNum = 0;
+        u32 colNum = 0;
         for (char c : colStr) {
             colNum = colNum * 26 + (c - 'A' + 1);
         }
-        result.col = colNum;
+        result.col = column_t(colNum);
         
         result.absoluteRow = !match[3].str().empty();
-        result.row = std::stoul(match[4].str());
+        result.row = row_t(std::stoul(match[4].str()));
     }
     
     return result;
@@ -98,10 +98,10 @@ bool TXFormula::RangeReference::contains(const CellReference& cell) const {
 
 std::vector<TXFormula::CellReference> TXFormula::RangeReference::getAllCells() const {
     std::vector<CellReference> result;
-    result.reserve((end.row - start.row + 1) * (end.col - start.col + 1));
+    result.reserve((end.row.index() - start.row.index() + 1) * (end.col.index() - start.col.index() + 1));
     
-    for (TXTypes::RowIndex r = start.row; r <= end.row; ++r) {
-        for (TXTypes::ColIndex c = start.col; c <= end.col; ++c) {
+    for (row_t r = start.row; r <= end.row; ++r) {
+        for (column_t c = start.col; c <= end.col; ++c) {
             result.emplace_back(r, c);
         }
     }
@@ -227,7 +227,7 @@ public:
         return std::regex_match(str, cellPattern);
     }
     
-    FormulaValue evaluate(const TXSheet* sheet, TXTypes::RowIndex currentRow, TXTypes::ColIndex currentCol) {
+    FormulaValue evaluate(const TXSheet* sheet, row_t currentRow, column_t currentCol) {
         if (tokens_.empty()) {
             lastError_ = FormulaError::Syntax;
             return std::monostate{};
@@ -242,7 +242,7 @@ public:
     }
     
     FormulaValue evaluateTokens(const std::vector<Token>& tokens, const TXSheet* sheet, 
-                               TXTypes::RowIndex currentRow, TXTypes::ColIndex currentCol) {
+                               row_t currentRow, column_t currentCol) {
         (void)currentRow;  // 标记参数为有意未使用
         (void)currentCol;  // 标记参数为有意未使用
         
@@ -266,13 +266,13 @@ public:
                     double sum = 0.0;
                     if (sheet) {
                         // 确保正确的范围遍历
-                        TXTypes::RowIndex startRow = std::min(startRef.row, endRef.row);
-                        TXTypes::RowIndex endRow = std::max(startRef.row, endRef.row);
-                        TXTypes::ColIndex startCol = std::min(startRef.col, endRef.col);
-                        TXTypes::ColIndex endCol = std::max(startRef.col, endRef.col);
+                        row_t startRow = std::min(startRef.row, endRef.row);
+                        row_t endRow = std::max(startRef.row, endRef.row);
+                        column_t startCol = std::min(startRef.col, endRef.col);
+                        column_t endCol = std::max(startRef.col, endRef.col);
                         
-                        for (TXTypes::RowIndex row = startRow; row <= endRow; ++row) {
-                            for (TXTypes::ColIndex col = startCol; col <= endCol; ++col) {
+                        for (row_t row = startRow; row <= endRow; ++row) {
+                            for (column_t col = startCol; col <= endCol; ++col) {
                                 auto cellValue = sheet->getCellValue(row, col);
                                 double numValue = valueToNumber(convertCellValue(cellValue));
                                 sum += numValue;
@@ -394,7 +394,7 @@ bool TXFormula::parseFormula(const std::string& formula) {
     return pImpl->parseFormula(formula);
 }
 
-TXFormula::FormulaValue TXFormula::evaluate(const TXSheet* sheet, TXTypes::RowIndex currentRow, TXTypes::ColIndex currentCol) {
+TXFormula::FormulaValue TXFormula::evaluate(const TXSheet* sheet, row_t currentRow, column_t currentCol) {
     return pImpl->evaluate(sheet, currentRow, currentCol);
 }
 

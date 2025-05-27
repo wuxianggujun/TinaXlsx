@@ -32,14 +32,14 @@ TEST_F(NewFeaturesTest, FormulaBasicOperations) {
 
 TEST_F(NewFeaturesTest, FormulaEvaluation) {
     // 设置测试数据
-    sheet->setCellValue(1, 1, 10.0);  // A1 = 10
-    sheet->setCellValue(2, 1, 20.0);  // A2 = 20
-    sheet->setCellValue(3, 1, 30.0);  // A3 = 30
+    sheet->setCellValue(row_t(1), column_t(1), 10.0);  // A1 = 10
+    sheet->setCellValue(row_t(2), column_t(1), 20.0);  // A2 = 20
+    sheet->setCellValue(row_t(3), column_t(1), 30.0);  // A3 = 30
     
     // 创建SUM公式
     auto formula = std::make_unique<TXFormula>();
     EXPECT_TRUE(formula->parseFormula("SUM(A1:A3)"));
-    auto result = formula->evaluate(sheet, 4, 1);  // 在A4位置计算
+    auto result = formula->evaluate(sheet, row_t(4), column_t(1));  // 在A4位置计算
     
     EXPECT_TRUE(std::holds_alternative<double>(result));
     EXPECT_DOUBLE_EQ(std::get<double>(result), 60.0);
@@ -47,11 +47,11 @@ TEST_F(NewFeaturesTest, FormulaEvaluation) {
 
 TEST_F(NewFeaturesTest, CellFormulaIntegration) {
     // 设置测试数据
-    sheet->setCellValue(1, 1, 5.0);
-    sheet->setCellValue(2, 1, 15.0);
+    sheet->setCellValue(row_t(1), column_t(1), 5.0);
+    sheet->setCellValue(row_t(2), column_t(1), 15.0);
     
     // 在单元格中设置公式
-    TXCell* cell = sheet->getCell(3, 1);
+    TXCell* cell = sheet->getCell(row_t(3), column_t(1));
     ASSERT_NE(cell, nullptr);
     
     cell->setFormula("SUM(A1:A2)");
@@ -71,28 +71,28 @@ TEST_F(NewFeaturesTest, MergedCellsBasicOperations) {
     TXMergedCells mergedCells;
     
     // 测试添加合并区域
-    TXRange range(TXCoordinate(1, 1), TXCoordinate(2, 2));  // A1:B2
+    TXRange range(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(2), column_t(2)));  // A1:B2
     EXPECT_TRUE(mergedCells.mergeCells(range));
     EXPECT_EQ(mergedCells.getMergeCount(), 1);
     
     // 测试查找合并区域
-    const auto* foundRegion = mergedCells.getMergeRegion(1, 1);
+    const auto* foundRegion = mergedCells.getMergeRegion(row_t(1), column_t(1));
     EXPECT_NE(foundRegion, nullptr);
-    EXPECT_EQ(foundRegion->startRow, 1);
-    EXPECT_EQ(foundRegion->startCol, 1);
-    EXPECT_EQ(foundRegion->endRow, 2);
-    EXPECT_EQ(foundRegion->endCol, 2);
+    EXPECT_EQ(foundRegion->startRow, row_t(1));
+    EXPECT_EQ(foundRegion->startCol, column_t(1));
+    EXPECT_EQ(foundRegion->endRow, row_t(2));
+    EXPECT_EQ(foundRegion->endCol, column_t(2));
 }
 
 TEST_F(NewFeaturesTest, MergedCellsOverlapDetection) {
     TXMergedCells mergedCells;
     
     // 添加第一个合并区域
-    TXRange range1(TXCoordinate(1, 1), TXCoordinate(2, 2));  // A1:B2
+    TXRange range1(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(2), column_t(2)));  // A1:B2
     EXPECT_TRUE(mergedCells.mergeCells(range1));
     
     // 尝试添加重叠的区域
-    TXRange range2(TXCoordinate(2, 2), TXCoordinate(3, 3));  // B2:C3
+    TXRange range2(TXCoordinate(row_t(2), column_t(2)), TXCoordinate(row_t(3), column_t(3)));  // B2:C3
     auto overlapping = mergedCells.getOverlappingRegions(range2);
     EXPECT_FALSE(overlapping.empty());
     EXPECT_FALSE(mergedCells.mergeCells(range2));
@@ -100,24 +100,24 @@ TEST_F(NewFeaturesTest, MergedCellsOverlapDetection) {
 
 TEST_F(NewFeaturesTest, SheetMergedCellsIntegration) {
     // 测试工作表级别的合并单元格功能
-    EXPECT_TRUE(sheet->mergeCells(1, 1, 2, 2));  // 合并A1:B2
+    EXPECT_TRUE(sheet->mergeCells(row_t(1), column_t(1), row_t(2), column_t(2)));  // 合并A1:B2
     EXPECT_EQ(sheet->getMergeCount(), 1);
     
     // 检查单元格是否被标记为合并
-    EXPECT_TRUE(sheet->isCellMerged(1, 1));
-    EXPECT_TRUE(sheet->isCellMerged(2, 2));
-    EXPECT_FALSE(sheet->isCellMerged(3, 3));
+    EXPECT_TRUE(sheet->isCellMerged(row_t(1), column_t(1)));
+    EXPECT_TRUE(sheet->isCellMerged(row_t(2), column_t(2)));
+    EXPECT_FALSE(sheet->isCellMerged(row_t(3), column_t(3)));
     
     // 获取合并区域
-    auto region = sheet->getMergeRegion(1, 1);
+    auto region = sheet->getMergeRegion(row_t(1), column_t(1));
     EXPECT_TRUE(region.isValid());
-    EXPECT_EQ(region.getRowCount(), 2);
-    EXPECT_EQ(region.getColCount(), 2);
+    EXPECT_EQ(region.getRowCount(), row_t(2));
+    EXPECT_EQ(region.getColCount(), column_t(2));
     
     // 取消合并
-    EXPECT_TRUE(sheet->unmergeCells(1, 1));
+    EXPECT_TRUE(sheet->unmergeCells(row_t(1), column_t(1)));
     EXPECT_EQ(sheet->getMergeCount(), 0);
-    EXPECT_FALSE(sheet->isCellMerged(1, 1));
+    EXPECT_FALSE(sheet->isCellMerged(row_t(1), column_t(1)));
 }
 
 // ==================== 数字格式化功能测试 ====================
@@ -169,7 +169,7 @@ TEST_F(NewFeaturesTest, NumberFormatCurrency) {
 
 TEST_F(NewFeaturesTest, CellNumberFormatIntegration) {
     // 测试单元格级别的数字格式化
-    TXCell* cell = sheet->getCell(1, 1);
+    TXCell* cell = sheet->getCell(row_t(1), column_t(1));
     ASSERT_NE(cell, nullptr);
     
     cell->setNumberValue(1234.567);
@@ -192,26 +192,26 @@ TEST_F(NewFeaturesTest, IntegratedFeatureTest) {
     // 创建一个包含所有新功能的综合测试
     
     // 1. 设置数据和格式
-    sheet->setCellValue(1, 1, 100.0);
-    sheet->setCellValue(1, 2, 200.0);
-    sheet->setCellValue(1, 3, 300.0);
+    sheet->setCellValue(row_t(1), column_t(1), 100.0);
+    sheet->setCellValue(row_t(1), column_t(2), 200.0);
+    sheet->setCellValue(row_t(1), column_t(3), 300.0);
     
     // 2. 设置数字格式
-    sheet->setCellNumberFormat(1, 1, TXCell::NumberFormat::Currency, 2);
-    sheet->setCellNumberFormat(1, 2, TXCell::NumberFormat::Currency, 2);
-    sheet->setCellNumberFormat(1, 3, TXCell::NumberFormat::Currency, 2);
+    sheet->setCellNumberFormat(row_t(1), column_t(1), TXCell::NumberFormat::Currency, 2);
+    sheet->setCellNumberFormat(row_t(1), column_t(2), TXCell::NumberFormat::Currency, 2);
+    sheet->setCellNumberFormat(row_t(1), column_t(3), TXCell::NumberFormat::Currency, 2);
     
     // 3. 创建求和公式
-    sheet->setCellFormula(2, 1, "SUM(A1:C1)");
+    sheet->setCellFormula(row_t(2), column_t(1), "SUM(A1:C1)");
     
     // 4. 合并结果单元格
-    sheet->mergeCells(3, 1, 3, 3);  // 合并A3:C3
+    sheet->mergeCells(row_t(3), column_t(1), row_t(3), column_t(3));  // 合并A3:C3
     
     // 5. 验证结果
     EXPECT_EQ(sheet->getMergeCount(), 1);
-    EXPECT_TRUE(sheet->isCellMerged(3, 2));
+    EXPECT_TRUE(sheet->isCellMerged(row_t(3), column_t(2)));
     
-    std::string formula = sheet->getCellFormula(2, 1);
+    std::string formula = sheet->getCellFormula(row_t(2), column_t(1));
     EXPECT_EQ(formula, "SUM(A1:C1)");
     
     // 6. 计算公式

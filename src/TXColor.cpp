@@ -10,10 +10,10 @@ namespace TinaXlsx {
 // ==================== TXColor 构造函数实现 ====================
 
 TXColor::TXColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    value_ = (static_cast<TXTypes::ColorValue>(a) << 24) |
-             (static_cast<TXTypes::ColorValue>(r) << 16) |
-             (static_cast<TXTypes::ColorValue>(g) << 8)  |
-             static_cast<TXTypes::ColorValue>(b);
+    value_ = (static_cast<color_value_t>(a) << 24) |
+             (static_cast<color_value_t>(r) << 16) |
+             (static_cast<color_value_t>(g) << 8)  |
+             static_cast<color_value_t>(b);
 }
 
 TXColor::TXColor(const std::string& hex) {
@@ -44,44 +44,44 @@ std::tuple<uint8_t, uint8_t, uint8_t, uint8_t> TXColor::getComponents() const {
 
 // ==================== TXColor 设置器实现 ====================
 
-TXColor& TXColor::setValue(TXTypes::ColorValue color) {
+TXColor& TXColor::setValue(color_value_t color) {
     value_ = color;
     return *this;
 }
 
 TXColor& TXColor::setRGB(uint8_t r, uint8_t g, uint8_t b) {
     value_ = (value_ & 0xFF000000) | // 保持alpha不变
-             (static_cast<TXTypes::ColorValue>(r) << 16) |
-             (static_cast<TXTypes::ColorValue>(g) << 8)  |
-             static_cast<TXTypes::ColorValue>(b);
+             (static_cast<color_value_t>(r) << 16) |
+             (static_cast<color_value_t>(g) << 8)  |
+             static_cast<color_value_t>(b);
     return *this;
 }
 
 TXColor& TXColor::setARGB(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    value_ = (static_cast<TXTypes::ColorValue>(a) << 24) |
-             (static_cast<TXTypes::ColorValue>(r) << 16) |
-             (static_cast<TXTypes::ColorValue>(g) << 8)  |
-             static_cast<TXTypes::ColorValue>(b);
+    value_ = (static_cast<color_value_t>(a) << 24) |
+             (static_cast<color_value_t>(r) << 16) |
+             (static_cast<color_value_t>(g) << 8)  |
+             static_cast<color_value_t>(b);
     return *this;
 }
 
 TXColor& TXColor::setRed(uint8_t r) {
-    value_ = (value_ & 0xFF00FFFF) | (static_cast<TXTypes::ColorValue>(r) << 16);
+    value_ = (value_ & 0xFF00FFFF) | (static_cast<color_value_t>(r) << 16);
     return *this;
 }
 
 TXColor& TXColor::setGreen(uint8_t g) {
-    value_ = (value_ & 0xFFFF00FF) | (static_cast<TXTypes::ColorValue>(g) << 8);
+    value_ = (value_ & 0xFFFF00FF) | (static_cast<color_value_t>(g) << 8);
     return *this;
 }
 
 TXColor& TXColor::setBlue(uint8_t b) {
-    value_ = (value_ & 0xFFFFFF00) | static_cast<TXTypes::ColorValue>(b);
+    value_ = (value_ & 0xFFFFFF00) | static_cast<color_value_t>(b);
     return *this;
 }
 
 TXColor& TXColor::setAlpha(uint8_t a) {
-    value_ = (value_ & 0x00FFFFFF) | (static_cast<TXTypes::ColorValue>(a) << 24);
+    value_ = (value_ & 0x00FFFFFF) | (static_cast<color_value_t>(a) << 24);
     return *this;
 }
 
@@ -247,7 +247,7 @@ TXColor TXColor::fromHex(const std::string& hex) {
     
     try {
         unsigned long colorLong = std::stoul(cleanHex, nullptr, 16);
-        return TXColor(static_cast<TXTypes::ColorValue>(colorLong));
+        return TXColor(static_cast<color_value_t>(colorLong));
     } catch (...) {
         return TXColor(); // 返回默认黑色
     }

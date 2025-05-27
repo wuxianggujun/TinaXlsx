@@ -528,7 +528,7 @@ TXCell::CellValue TXCell::evaluateFormula(const TXSheet* sheet, uint32_t current
     }
     
     try {
-        auto result = formulaObj->evaluate(sheet, currentRow, currentCol);
+        auto result = formulaObj->evaluate(sheet, row_t(currentRow), column_t(currentCol));
         
         // 将FormulaValue转换为CellValue
         if (std::holds_alternative<double>(result)) {

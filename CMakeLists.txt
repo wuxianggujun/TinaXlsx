@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ------------ 项目配置选项 ------------
-option(BUILD_TESTS "Build the unit tests" ON)
+option(BUILD_TESTS "Build the unit tests" OFF)
 
 
 # -------------- 配置 pugixml --------------

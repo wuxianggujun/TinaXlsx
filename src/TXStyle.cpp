@@ -5,63 +5,15 @@ namespace TinaXlsx {
 
 // ==================== TXFont 实现 ====================
 
-TXFont& TXFont::setBold(bool bold) {
-    if (bold) {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) | static_cast<uint8_t>(FontStyle::Bold));
-    } else {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) & ~static_cast<uint8_t>(FontStyle::Bold));
-    }
-    return *this;
-}
-
-TXFont& TXFont::setItalic(bool italic) {
-    if (italic) {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) | static_cast<uint8_t>(FontStyle::Italic));
-    } else {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) & ~static_cast<uint8_t>(FontStyle::Italic));
-    }
-    return *this;
-}
-
-TXFont& TXFont::setUnderline(bool underline) {
-    if (underline) {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) | static_cast<uint8_t>(FontStyle::Underline));
-    } else {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) & ~static_cast<uint8_t>(FontStyle::Underline));
-    }
-    return *this;
-}
-
-TXFont& TXFont::setStrikethrough(bool strikethrough) {
-    if (strikethrough) {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) | static_cast<uint8_t>(FontStyle::Strikethrough));
-    } else {
-        style = static_cast<FontStyle>(static_cast<uint8_t>(style) & ~static_cast<uint8_t>(FontStyle::Strikethrough));
-    }
-    return *this;
-}
-
-bool TXFont::isBold() const {
-    return (static_cast<uint8_t>(style) & static_cast<uint8_t>(FontStyle::Bold)) != 0;
-}
-
-bool TXFont::isItalic() const {
-    return (static_cast<uint8_t>(style) & static_cast<uint8_t>(FontStyle::Italic)) != 0;
-}
-
-bool TXFont::hasUnderline() const {
-    return (static_cast<uint8_t>(style) & static_cast<uint8_t>(FontStyle::Underline)) != 0;
-}
-
-bool TXFont::hasStrikethrough() const {
-    return (static_cast<uint8_t>(style) & static_cast<uint8_t>(FontStyle::Strikethrough)) != 0;
-}
-
 bool TXFont::operator==(const TXFont& other) const {
     return name == other.name &&
            size == other.size &&
            color == other.color &&
-           style == other.style;
+           style == other.style &&
+           bold == other.bold &&
+           italic == other.italic &&
+           underline == other.underline &&
+           strikethrough == other.strikethrough;
 }
 
 // ==================== TXAlignment 实现 ====================
@@ -246,7 +198,7 @@ TXCellStyle& TXCellStyle::setFill(const TXFill& fill) {
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setFont(const std::string& name, TXTypes::FontSize size) {
+TXCellStyle& TXCellStyle::setFont(const std::string& name, font_size_t size) {
     pImpl->font_.setName(name).setSize(size);
     return *this;
 }
@@ -256,7 +208,7 @@ TXCellStyle& TXCellStyle::setFontColor(const TXColor& color) {
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setFontColor(TXTypes::ColorValue color) {
+TXCellStyle& TXCellStyle::setFontColor(color_value_t color) {
     pImpl->font_.setColor(TXColor(color));
     return *this;
 }
@@ -281,7 +233,7 @@ TXCellStyle& TXCellStyle::setBackgroundColor(const TXColor& color) {
     return *this;
 }
 
-TXCellStyle& TXCellStyle::setBackgroundColor(TXTypes::ColorValue color) {
+TXCellStyle& TXCellStyle::setBackgroundColor(color_value_t color) {
     pImpl->fill_.setSolidFill(TXColor(color));
     return *this;
 }

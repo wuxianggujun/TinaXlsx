@@ -2,6 +2,7 @@
 
 #include "TXTypes.hpp"
 #include "TXCoordinate.hpp"
+#include "TXRange.hpp"
 #include <string>
 #include <vector>
 #include <set>
@@ -21,28 +22,32 @@ public:
      * @brief 合并区域结构
      */
     struct MergeRegion {
-        TXTypes::RowIndex startRow;
-        TXTypes::ColIndex startCol;
-        TXTypes::RowIndex endRow;
-        TXTypes::ColIndex endCol;
+        row_t startRow;
+        column_t startCol;
+        row_t endRow;
+        column_t endCol;
         
-        MergeRegion() : startRow(0), startCol(0), endRow(0), endCol(0) {}
+        MergeRegion() : startRow(1), startCol(1), endRow(1), endCol(1) {}
         
-        MergeRegion(TXTypes::RowIndex sr, TXTypes::ColIndex sc, 
-                   TXTypes::RowIndex er, TXTypes::ColIndex ec)
+        MergeRegion(row_t sr, column_t sc, 
+                   row_t er, column_t ec)
             : startRow(sr), startCol(sc), endRow(er), endCol(ec) {}
         
         MergeRegion(const TXRange& range);
         
         /**
-         * @brief 检查是否包含指定单元格
+         * @brief 检查指定单元格是否在合并区域内
+         * @param row 行号
+         * @param col 列号
+         * @return 在区域内返回true，否则返回false
          */
-        bool contains(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+        bool contains(row_t row, column_t col) const;
         
         /**
          * @brief 获取合并区域的大小
+         * @return {行数, 列数}
          */
-        std::pair<TXTypes::RowIndex, TXTypes::ColIndex> getSize() const;
+        std::pair<row_t, column_t> getSize() const;
         
         /**
          * @brief 获取合并的单元格数量
@@ -97,8 +102,8 @@ public:
      * @param endCol 结束列
      * @return 成功返回true，失败返回false
      */
-    bool mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                   TXTypes::RowIndex endRow, TXTypes::ColIndex endCol);
+    bool mergeCells(row_t startRow, column_t startCol,
+                   row_t endRow, column_t endCol);
 
     /**
      * @brief 合并单元格区域
@@ -122,7 +127,7 @@ public:
      * @param col 单元格列号
      * @return 成功返回true，失败返回false
      */
-    bool unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col);
+    bool unmergeCells(row_t row, column_t col);
 
     /**
      * @brief 拆分指定的合并区域
@@ -151,7 +156,7 @@ public:
      * @param col 列号
      * @return 被合并返回true，否则返回false
      */
-    bool isMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    bool isMerged(row_t row, column_t col) const;
 
     /**
      * @brief 获取包含指定单元格的合并区域
@@ -159,7 +164,7 @@ public:
      * @param col 列号
      * @return 合并区域指针，如果不存在返回nullptr
      */
-    const MergeRegion* getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    const MergeRegion* getMergeRegion(row_t row, column_t col) const;
 
     /**
      * @brief 获取所有合并区域
@@ -181,8 +186,8 @@ public:
      * @param endCol 结束列
      * @return 可以合并返回true，否则返回false
      */
-    bool canMerge(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                  TXTypes::RowIndex endRow, TXTypes::ColIndex endCol) const;
+    bool canMerge(row_t startRow, column_t startCol,
+                  row_t endRow, column_t endCol) const;
 
     /**
      * @brief 获取与指定范围重叠的合并区域

@@ -60,7 +60,7 @@ public:
     /**
      * @brief 值类型
      */
-    using Value = TXTypes::CellValue;
+    using Value = cell_value_t;
 
 public:
     TXNumberFormat();

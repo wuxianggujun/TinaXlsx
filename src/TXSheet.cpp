@@ -10,8 +10,8 @@ namespace TinaXlsx {
 // TXCoordinate的哈希函数特化
 struct CoordinateHash {
     std::size_t operator()(const TXCoordinate& coord) const {
-        return std::hash<TXTypes::RowIndex>()(coord.getRow()) ^ 
-               (std::hash<TXTypes::ColIndex>()(coord.getCol()) << 1);
+        return std::hash<row_t>()(coord.getRow()) ^ 
+               (std::hash<column_t>()(coord.getCol()) << 1);
     }
 };
 
@@ -69,8 +69,8 @@ public:
         return nullptr;
     }
 
-    bool insertRows(TXTypes::RowIndex row, TXTypes::RowIndex count) {
-        if (!TXTypes::isValidRow(row)) {
+    bool insertRows(row_t row, row_t count) {
+        if (!row.is_valid()) {
             last_error_ = "Invalid row number";
             return false;
         }
@@ -82,7 +82,7 @@ public:
             const auto& coord = pair.first;
             if (coord.getRow() >= row) {
                 // 向下移动
-                Coordinate new_coord(coord.getRow() + count, coord.getCol());
+                Coordinate new_coord(row_t(coord.getRow().index() + count.index()), coord.getCol());
                 new_cells[new_coord] = std::move(pair.second);
             } else {
                 new_cells[coord] = std::move(pair.second);
@@ -94,8 +94,8 @@ public:
         return true;
     }
 
-    bool deleteRows(TXTypes::RowIndex row, TXTypes::RowIndex count) {
-        if (!TXTypes::isValidRow(row)) {
+    bool deleteRows(row_t row, row_t count) {
+        if (!row.is_valid()) {
             last_error_ = "Invalid row number";
             return false;
         }
@@ -107,9 +107,9 @@ public:
             if (coord.getRow() < row) {
                 // 保持不变
                 new_cells[coord] = std::move(pair.second);
-            } else if (coord.getRow() >= row + count) {
+            } else if (coord.getRow().index() >= row.index() + count.index()) {
                 // 向上移动
-                Coordinate new_coord(coord.getRow() - count, coord.getCol());
+                Coordinate new_coord(row_t(coord.getRow().index() - count.index()), coord.getCol());
                 new_cells[new_coord] = std::move(pair.second);
             }
             // 在删除范围内的单元格被丢弃
@@ -120,8 +120,8 @@ public:
         return true;
     }
 
-    bool insertColumns(TXTypes::ColIndex col, TXTypes::ColIndex count) {
-        if (!TXTypes::isValidCol(col)) {
+    bool insertColumns(column_t col, column_t count) {
+        if (!col.is_valid()) {
             last_error_ = "Invalid column number";
             return false;
         }
@@ -132,7 +132,7 @@ public:
             const auto& coord = pair.first;
             if (coord.getCol() >= col) {
                 // 向右移动
-                Coordinate new_coord(coord.getRow(), coord.getCol() + count);
+                Coordinate new_coord(coord.getRow(), column_t(coord.getCol().index() + count.index()));
                 new_cells[new_coord] = std::move(pair.second);
             } else {
                 new_cells[coord] = std::move(pair.second);
@@ -144,8 +144,8 @@ public:
         return true;
     }
 
-    bool deleteColumns(TXTypes::ColIndex col, TXTypes::ColIndex count) {
-        if (!TXTypes::isValidCol(col)) {
+    bool deleteColumns(column_t col, column_t count) {
+        if (!col.is_valid()) {
             last_error_ = "Invalid column number";
             return false;
         }
@@ -157,9 +157,9 @@ public:
             if (coord.getCol() < col) {
                 // 保持不变
                 new_cells[coord] = std::move(pair.second);
-            } else if (coord.getCol() >= col + count) {
+            } else if (coord.getCol().index() >= col.index() + count.index()) {
                 // 向左移动
-                Coordinate new_coord(coord.getRow(), coord.getCol() - count);
+                Coordinate new_coord(coord.getRow(), column_t(coord.getCol().index() - count.index()));
                 new_cells[new_coord] = std::move(pair.second);
             }
             // 在删除范围内的单元格被丢弃
@@ -170,8 +170,8 @@ public:
         return true;
     }
 
-    TXTypes::RowIndex getUsedRowCount() const {
-        TXTypes::RowIndex max_row = 0;
+    row_t getUsedRowCount() const {
+        row_t max_row = row_t(0);
         for (const auto& pair : cells_) {
             if (!pair.second.isEmpty()) {
                 max_row = std::max(max_row, pair.first.getRow());
@@ -180,8 +180,8 @@ public:
         return max_row;
     }
 
-    TXTypes::ColIndex getUsedColumnCount() const {
-        TXTypes::ColIndex max_col = 0;
+    column_t getUsedColumnCount() const {
+        column_t max_col = column_t(1);
         for (const auto& pair : cells_) {
             if (!pair.second.isEmpty()) {
                 max_col = std::max(max_col, pair.first.getCol());
@@ -195,8 +195,8 @@ public:
             return Range();  // 返回默认范围 A1:A1
         }
 
-        TXTypes::RowIndex min_row = TXTypes::MAX_ROWS, max_row = 0;
-        TXTypes::ColIndex min_col = TXTypes::MAX_COLS, max_col = 0;
+        row_t min_row = row_t::last(), max_row = row_t(1);
+        column_t min_col = column_t::last(), max_col = column_t(1);
 
         for (const auto& pair : cells_) {
             if (!pair.second.isEmpty()) {
@@ -249,23 +249,23 @@ public:
             return false;
         }
 
-        TXTypes::RowIndex row_count = range.getRowCount();
-        TXTypes::ColIndex col_count = range.getColCount();
+        row_t row_count = range.getRowCount();
+        column_t col_count = range.getColCount();
 
-        if (values.size() != static_cast<size_t>(row_count)) {
+        if (values.size() != static_cast<size_t>(row_count.index())) {
             last_error_ = "Row count mismatch";
             return false;
         }
 
-        for (TXTypes::RowIndex i = 0; i < row_count; ++i) {
-            if (values[i].size() != static_cast<size_t>(col_count)) {
-                last_error_ = "Column count mismatch at row " + std::to_string(i);
+        for (u32 i = 0; i < row_count.index(); ++i) {
+            if (values[i].size() != static_cast<size_t>(col_count.index())) {
+                last_error_ = "Column count mismatch at row " + std::to_string(i + 1);
                 return false;
             }
             
-            for (TXTypes::ColIndex j = 0; j < col_count; ++j) {
-                Coordinate coord(range.getStart().getRow() + i, 
-                               range.getStart().getCol() + j);
+            for (u32 j = 0; j < col_count.index(); ++j) {
+                Coordinate coord(row_t(range.getStart().getRow().index() + static_cast<u32>(i)), 
+                               column_t(range.getStart().getCol().index() + static_cast<u32>(j)));
                 setCellValue(coord, values[i][j]);
             }
         }
@@ -275,16 +275,16 @@ public:
     }
 
     std::vector<std::vector<TXSheet::CellValue>> getRangeValues(const TXSheet::Range& range) const {
-        TXTypes::RowIndex row_count = range.getRowCount();
-        TXTypes::ColIndex col_count = range.getColCount();
+        row_t row_count = range.getRowCount();
+        column_t col_count = range.getColCount();
         
-        std::vector<std::vector<CellValue>> result(row_count);
+        std::vector<std::vector<CellValue>> result(row_count.index());
         
-        for (TXTypes::RowIndex i = 0; i < row_count; ++i) {
-            result[i].resize(col_count);
-            for (TXTypes::ColIndex j = 0; j < col_count; ++j) {
-                Coordinate coord(range.getStart().getRow() + i, 
-                               range.getStart().getCol() + j);
+        for (u32 i = 0; i < row_count.index(); ++i) {
+            result[i].resize(col_count.index());
+            for (u32 j = 0; j < col_count.index(); ++j) {
+                Coordinate coord(row_t(range.getStart().getRow().index() + static_cast<u32>(i)), 
+                               column_t(range.getStart().getCol().index() + static_cast<u32>(j)));
                 result[i][j] = getCellValue(coord);
             }
         }
@@ -321,8 +321,8 @@ public:
         auto start = range.getStart();
         auto end = range.getEnd();
 
-        for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
-            for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+        for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
+            for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
                 Coordinate coord(row, col);
                 TXCell* cell = getCell(coord);
                 if (cell) {
@@ -333,7 +333,7 @@ public:
                     } else {
                         // 从属单元格
                         cell->setMasterCell(false);
-                        cell->setMasterCellPosition(start.getRow(), start.getCol());
+                        cell->setMasterCellPosition(start.getRow().index(), start.getCol().index());
                     }
                 }
             }
@@ -343,7 +343,7 @@ public:
         return true;
     }
 
-    bool unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+    bool unmergeCells(row_t row, column_t col) {
         const auto* region = merged_cells_.getMergeRegion(row, col);
         if (!region) {
             last_error_ = "Cell is not in a merged region";
@@ -357,8 +357,8 @@ public:
         }
 
         // 更新单元格状态
-        for (TXTypes::RowIndex r = region->startRow; r <= region->endRow; ++r) {
-            for (TXTypes::ColIndex c = region->startCol; c <= region->endCol; ++c) {
+        for (row_t r = region->startRow; r <= region->endRow; ++r) {
+            for (column_t c = region->startCol; c <= region->endCol; ++c) {
                 Coordinate cell_coord(r, c);
                 TXCell* cell = getCell(cell_coord);
                 if (cell) {
@@ -377,14 +377,16 @@ public:
         return merged_cells_.unmergeCellsInRange(range);
     }
 
-    bool isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    bool isCellMerged(row_t row, column_t col) const {
         return merged_cells_.isMerged(row, col);
     }
 
-    TXSheet::Range getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+    TXSheet::Range getMergeRegion(row_t row, column_t col) const {
         const auto* region = merged_cells_.getMergeRegion(row, col);
         if (region) {
-            return TXSheet::Range(region->startRow, region->startCol, region->endRow, region->endCol);
+            TXCoordinate start(region->startRow, region->startCol);
+            TXCoordinate end(region->endRow, region->endCol);
+            return TXSheet::Range(start, end);
         }
         return TXSheet::Range(); // 返回无效范围
     }
@@ -394,7 +396,8 @@ public:
         std::vector<TXSheet::Range> result;
         result.reserve(regions.size());
         for (const auto& region : regions) {
-            result.emplace_back(region.startRow, region.startCol, region.endRow, region.endCol);
+            result.emplace_back(TXCoordinate(region.startRow, region.startCol), 
+                              TXCoordinate(region.endRow, region.endCol));
         }
         return result;
     }
@@ -422,8 +425,8 @@ public:
         auto start = range.getStart();
         auto end = range.getEnd();
         
-        for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
-            for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+        for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
+            for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
                 Coordinate coord(row, col);
                 auto it = cells_.find(coord);
                 if (it != cells_.end() && it->second.isFormula()) {
@@ -464,7 +467,7 @@ void TXSheet::setName(const std::string& name) {
     pImpl->setName(name);
 }
 
-TXSheet::CellValue TXSheet::getCellValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+TXSheet::CellValue TXSheet::getCellValue(row_t row, column_t col) const {
     return pImpl->getCellValue(Coordinate(row, col));
 }
 
@@ -476,7 +479,7 @@ TXSheet::CellValue TXSheet::getCellValue(const std::string& address) const {
     return pImpl->getCellValue(Coordinate::fromAddress(address));
 }
 
-bool TXSheet::setCellValue(TXTypes::RowIndex row, TXTypes::ColIndex col, const CellValue& value) {
+bool TXSheet::setCellValue(row_t row, column_t col, const CellValue& value) {
     return pImpl->setCellValue(Coordinate(row, col), value);
 }
 
@@ -488,11 +491,11 @@ bool TXSheet::setCellValue(const std::string& address, const CellValue& value) {
     return pImpl->setCellValue(Coordinate::fromAddress(address), value);
 }
 
-TXCell* TXSheet::getCell(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+TXCell* TXSheet::getCell(row_t row, column_t col) {
     return pImpl->getCell(Coordinate(row, col));
 }
 
-const TXCell* TXSheet::getCell(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+const TXCell* TXSheet::getCell(row_t row, column_t col) const {
     return pImpl->getCell(Coordinate(row, col));
 }
 
@@ -512,27 +515,27 @@ const TXCell* TXSheet::getCell(const std::string& address) const {
     return pImpl->getCell(Coordinate::fromAddress(address));
 }
 
-bool TXSheet::insertRows(TXTypes::RowIndex row, TXTypes::RowIndex count) {
+bool TXSheet::insertRows(row_t row, row_t count) {
     return pImpl->insertRows(row, count);
 }
 
-bool TXSheet::deleteRows(TXTypes::RowIndex row, TXTypes::RowIndex count) {
+bool TXSheet::deleteRows(row_t row, row_t count) {
     return pImpl->deleteRows(row, count);
 }
 
-bool TXSheet::insertColumns(TXTypes::ColIndex col, TXTypes::ColIndex count) {
+bool TXSheet::insertColumns(column_t col, column_t count) {
     return pImpl->insertColumns(col, count);
 }
 
-bool TXSheet::deleteColumns(TXTypes::ColIndex col, TXTypes::ColIndex count) {
+bool TXSheet::deleteColumns(column_t col, column_t count) {
     return pImpl->deleteColumns(col, count);
 }
 
-TXTypes::RowIndex TXSheet::getUsedRowCount() const {
+row_t TXSheet::getUsedRowCount() const {
     return pImpl->getUsedRowCount();
 }
 
-TXTypes::ColIndex TXSheet::getUsedColumnCount() const {
+column_t TXSheet::getUsedColumnCount() const {
     return pImpl->getUsedColumnCount();
 }
 
@@ -567,8 +570,8 @@ const std::string& TXSheet::getLastError() const {
 
 // ==================== 合并单元格功能公共接口 ====================
 
-bool TXSheet::mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                        TXTypes::RowIndex endRow, TXTypes::ColIndex endCol) {
+bool TXSheet::mergeCells(row_t startRow, column_t startCol,
+                        row_t endRow, column_t endCol) {
     Range range(Coordinate(startRow, startCol), Coordinate(endRow, endCol));
     return pImpl->mergeCells(range);
 }
@@ -586,7 +589,7 @@ bool TXSheet::mergeCells(const std::string& rangeStr) {
     }
 }
 
-bool TXSheet::unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col) {
+bool TXSheet::unmergeCells(row_t row, column_t col) {
     return pImpl->unmergeCells(row, col);
 }
 
@@ -594,11 +597,11 @@ std::size_t TXSheet::unmergeCellsInRange(const Range& range) {
     return pImpl->unmergeCellsInRange(range);
 }
 
-bool TXSheet::isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+bool TXSheet::isCellMerged(row_t row, column_t col) const {
     return pImpl->isCellMerged(row, col);
 }
 
-TXSheet::Range TXSheet::getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+TXSheet::Range TXSheet::getMergeRegion(row_t row, column_t col) const {
     return pImpl->getMergeRegion(row, col);
 }
 
@@ -620,7 +623,7 @@ std::size_t TXSheet::calculateFormulasInRange(const Range& range) {
     return pImpl->calculateFormulasInRange(range);
 }
 
-bool TXSheet::setCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col, const std::string& formula) {
+bool TXSheet::setCellFormula(row_t row, column_t col, const std::string& formula) {
     TXCell* cell = getCell(row, col);
     if (!cell) {
         return false;
@@ -630,7 +633,7 @@ bool TXSheet::setCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col, const
     return true;
 }
 
-std::string TXSheet::getCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+std::string TXSheet::getCellFormula(row_t row, column_t col) const {
     const TXCell* cell = getCell(row, col);
     if (!cell) {
         return "";
@@ -651,7 +654,7 @@ std::size_t TXSheet::setCellFormulas(const std::vector<std::pair<Coordinate, std
 
 // ==================== 数字格式化功能公共接口 ====================
 
-bool TXSheet::setCellNumberFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+bool TXSheet::setCellNumberFormat(row_t row, column_t col, 
                                  TXCell::NumberFormat formatType, int decimalPlaces) {
     TXCell* cell = getCell(row, col);
     if (!cell) {
@@ -662,7 +665,7 @@ bool TXSheet::setCellNumberFormat(TXTypes::RowIndex row, TXTypes::ColIndex col,
     return true;
 }
 
-bool TXSheet::setCellCustomFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+bool TXSheet::setCellCustomFormat(row_t row, column_t col, 
                                  const std::string& formatString) {
     TXCell* cell = getCell(row, col);
     if (!cell) {
@@ -679,8 +682,8 @@ std::size_t TXSheet::setRangeNumberFormat(const Range& range, TXCell::NumberForm
     auto start = range.getStart();
     auto end = range.getEnd();
     
-    for (TXTypes::RowIndex row = start.getRow(); row <= end.getRow(); ++row) {
-        for (TXTypes::ColIndex col = start.getCol(); col <= end.getCol(); ++col) {
+    for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
+        for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
             if (setCellNumberFormat(row, col, formatType, decimalPlaces)) {
                 count++;
             }
@@ -689,7 +692,7 @@ std::size_t TXSheet::setRangeNumberFormat(const Range& range, TXCell::NumberForm
     return count;
 }
 
-std::string TXSheet::getCellFormattedValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const {
+std::string TXSheet::getCellFormattedValue(row_t row, column_t col) const {
     const TXCell* cell = getCell(row, col);
     if (!cell) {
         return "";

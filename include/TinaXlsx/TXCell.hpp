@@ -20,10 +20,8 @@ class TXSheet;
  */
 class TXCell {
 public:
-    /**
-     * @brief 单元格值类型
-     */
-    using CellValue = TXTypes::CellValue;
+    // ==================== 类型别名 ====================
+    using CellValue = cell_value_t;
 
     /**
      * @brief 单元格类型枚举

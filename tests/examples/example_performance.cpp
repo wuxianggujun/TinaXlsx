@@ -140,7 +140,7 @@ TEST_F(PerformanceExampleTest, BatchOperationPerformance) {
     
     for (int i = 1; i <= CELL_COUNT; ++i) {
         batch_data.emplace_back(
-            TinaXlsx::TXCoordinate(static_cast<TinaXlsx::TXTypes::RowIndex>(i), 1),
+            TinaXlsx::TXCoordinate(TinaXlsx::row_t(i), TinaXlsx::column_t(1)),
             std::string("BatchData_") + std::to_string(i)
         );
     }
@@ -168,8 +168,8 @@ TEST_F(PerformanceExampleTest, BatchOperationPerformance) {
     std::cout << "Total time: " << total_duration.count() << "ms" << std::endl;
     
     // 验证批量操作的效果
-    auto first_cell = sheet->getCellValue(1, 1);
-    auto last_cell = sheet->getCellValue(CELL_COUNT, 1);
+    auto first_cell = sheet->getCellValue(TinaXlsx::row_t(1), TinaXlsx::column_t(1));
+    auto last_cell = sheet->getCellValue(TinaXlsx::row_t(CELL_COUNT), TinaXlsx::column_t(1));
     
     EXPECT_TRUE(std::holds_alternative<std::string>(first_cell));
     EXPECT_TRUE(std::holds_alternative<std::string>(last_cell));

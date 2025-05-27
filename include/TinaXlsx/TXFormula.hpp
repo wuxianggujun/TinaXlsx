@@ -47,14 +47,14 @@ public:
      * @brief 单元格引用类型
      */
     struct CellReference {
-        TXTypes::RowIndex row;
-        TXTypes::ColIndex col;
-        bool absoluteRow = false;    ///< 绝对行引用（$A1）
-        bool absoluteCol = false;    ///< 绝对列引用（A$1）
+        row_t row;
+        column_t col;
+        bool absoluteRow;
+        bool absoluteCol;
         std::string sheetName;       ///< 工作表名称（跨表引用）
         
-        CellReference() : row(0), col(0) {}
-        CellReference(TXTypes::RowIndex r, TXTypes::ColIndex c) : row(r), col(c) {}
+        CellReference() : row(1), col(1), absoluteRow(false), absoluteCol(false) {}
+        CellReference(row_t r, column_t c) : row(r), col(c), absoluteRow(false), absoluteCol(false) {}
         
         std::string toString() const;
         static CellReference fromString(const std::string& ref);
@@ -101,7 +101,7 @@ public:
      * @param currentCol 当前单元格列号
      * @return 计算结果
      */
-    FormulaValue evaluate(const TXSheet* sheet, TXTypes::RowIndex currentRow, TXTypes::ColIndex currentCol);
+    FormulaValue evaluate(const TXSheet* sheet, row_t currentRow, column_t currentCol);
 
     /**
      * @brief 获取公式字符串

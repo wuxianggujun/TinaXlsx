@@ -24,7 +24,7 @@ public:
      * @brief 从颜色值构造
      * @param color ARGB颜色值
      */
-    explicit TXColor(TXTypes::ColorValue color) : value_(color) {}
+    explicit TXColor(color_value_t color) : value_(color) {}
     
     /**
      * @brief 从RGB分量构造
@@ -47,7 +47,7 @@ public:
      * @brief 获取ARGB颜色值
      * @return ARGB颜色值
      */
-    TXTypes::ColorValue getValue() const { return value_; }
+    color_value_t getValue() const { return value_; }
     
     /**
      * @brief 获取红色分量
@@ -86,7 +86,7 @@ public:
      * @param color ARGB颜色值
      * @return 自身引用，支持链式调用
      */
-    TXColor& setValue(TXTypes::ColorValue color);
+    TXColor& setValue(color_value_t color);
     
     /**
      * @brief 设置RGB分量
@@ -208,7 +208,7 @@ public:
      * @brief 隐式转换为颜色值
      * @return ARGB颜色值
      */
-    operator TXTypes::ColorValue() const { return value_; }
+    operator color_value_t() const { return value_; }
     
     // ==================== 静态工厂方法 ====================
     
@@ -240,7 +240,7 @@ public:
     static TXColor fromHex(const std::string& hex);
 
 private:
-    TXTypes::ColorValue value_;
+    color_value_t value_;
     
     // 辅助方法
     static uint8_t clamp(double value);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TXCoordinate.hpp"
+#include "TXRange.hpp"
 #include "TXCell.hpp"
 #include "TXTypes.hpp"
 #include <string>
@@ -20,14 +21,10 @@ class TXCell;
  */
 class TXSheet {
 public:
-    /**
-     * @brief 单元格值类型
-     */
-    using CellValue = TXTypes::CellValue;
-    
-    // 使用统一的坐标系统
-    using Coordinate = TXCoordinate;  ///< 坐标类型别名
-    using Range = TXRange;            ///< 范围类型别名
+    // ==================== 类型别名 ====================
+    using CellValue = cell_value_t;
+    using Coordinate = TXCoordinate;
+    using Range = TXRange;
 
 public:
     explicit TXSheet(const std::string& name);
@@ -57,11 +54,11 @@ public:
 
     /**
      * @brief 获取单元格值
-     * @param row 行号（1开始）
-     * @param col 列号（1开始）
+     * @param row 行号 (1-based)
+     * @param col 列号 (1-based)
      * @return 单元格值
      */
-    CellValue getCellValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    CellValue getCellValue(row_t row, column_t col) const;
 
     /**
      * @brief 获取单元格值
@@ -84,7 +81,7 @@ public:
      * @param value 单元格值
      * @return 成功返回true，失败返回false
      */
-    bool setCellValue(TXTypes::RowIndex row, TXTypes::ColIndex col, const CellValue& value);
+    bool setCellValue(row_t row, column_t col, const CellValue& value);
 
     /**
      * @brief 设置单元格值
@@ -110,7 +107,7 @@ public:
      * @param col 列号（1开始）
      * @return 单元格指针，如果不存在返回nullptr
      */
-    TXCell* getCell(TXTypes::RowIndex row, TXTypes::ColIndex col);
+    TXCell* getCell(row_t row, column_t col);
 
     /**
      * @brief 获取单元格（const版本）
@@ -118,7 +115,7 @@ public:
      * @param col 列号（1开始）
      * @return 单元格指针，如果不存在返回nullptr
      */
-    const TXCell* getCell(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    const TXCell* getCell(row_t row, column_t col) const;
 
     /**
      * @brief 获取单元格
@@ -156,7 +153,7 @@ public:
      * @param count 插入行数
      * @return 成功返回true，失败返回false
      */
-    bool insertRows(TXTypes::RowIndex row, TXTypes::RowIndex count = 1);
+    bool insertRows(row_t row, row_t count = row_t(1));
 
     /**
      * @brief 删除行
@@ -164,7 +161,7 @@ public:
      * @param count 删除行数
      * @return 成功返回true，失败返回false
      */
-    bool deleteRows(TXTypes::RowIndex row, TXTypes::RowIndex count = 1);
+    bool deleteRows(row_t row, row_t count = row_t(1));
 
     /**
      * @brief 插入列
@@ -172,7 +169,7 @@ public:
      * @param count 插入列数
      * @return 成功返回true，失败返回false
      */
-    bool insertColumns(TXTypes::ColIndex col, TXTypes::ColIndex count = 1);
+    bool insertColumns(column_t col, column_t count = column_t(1));
 
     /**
      * @brief 删除列
@@ -180,7 +177,7 @@ public:
      * @param count 删除列数
      * @return 成功返回true，失败返回false
      */
-    bool deleteColumns(TXTypes::ColIndex col, TXTypes::ColIndex count = 1);
+    bool deleteColumns(column_t col, column_t count = column_t(1));
 
     // ==================== 范围信息 ====================
 
@@ -188,13 +185,13 @@ public:
      * @brief 获取使用的行数
      * @return 最大使用行号
      */
-    TXTypes::RowIndex getUsedRowCount() const;
+    row_t getUsedRowCount() const;
 
     /**
      * @brief 获取使用的列数
      * @return 最大使用列号
      */
-    TXTypes::ColIndex getUsedColumnCount() const;
+    column_t getUsedColumnCount() const;
 
     /**
      * @brief 获取使用的范围
@@ -248,8 +245,8 @@ public:
      * @param endCol 结束列
      * @return 成功返回true，失败返回false
      */
-    bool mergeCells(TXTypes::RowIndex startRow, TXTypes::ColIndex startCol,
-                   TXTypes::RowIndex endRow, TXTypes::ColIndex endCol);
+    bool mergeCells(row_t startRow, column_t startCol,
+                   row_t endRow, column_t endCol);
 
     /**
      * @brief 合并单元格区域
@@ -271,7 +268,7 @@ public:
      * @param col 单元格列号
      * @return 成功返回true，失败返回false
      */
-    bool unmergeCells(TXTypes::RowIndex row, TXTypes::ColIndex col);
+    bool unmergeCells(row_t row, column_t col);
 
     /**
      * @brief 拆分指定范围的所有合并区域
@@ -286,7 +283,7 @@ public:
      * @param col 列号
      * @return 被合并返回true，否则返回false
      */
-    bool isCellMerged(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    bool isCellMerged(row_t row, column_t col) const;
 
     /**
      * @brief 获取包含指定单元格的合并区域
@@ -294,7 +291,7 @@ public:
      * @param col 列号
      * @return 合并区域，如果不存在返回空Range
      */
-    Range getMergeRegion(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    Range getMergeRegion(row_t row, column_t col) const;
 
     /**
      * @brief 获取所有合并区域
@@ -330,7 +327,7 @@ public:
      * @param formula 公式字符串
      * @return 成功返回true，失败返回false
      */
-    bool setCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col, const std::string& formula);
+    bool setCellFormula(row_t row, column_t col, const std::string& formula);
 
     /**
      * @brief 获取单元格公式
@@ -338,7 +335,7 @@ public:
      * @param col 列号
      * @return 公式字符串，如果不是公式返回空字符串
      */
-    std::string getCellFormula(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    std::string getCellFormula(row_t row, column_t col) const;
 
     /**
      * @brief 批量设置公式（高性能版本）
@@ -357,7 +354,7 @@ public:
      * @param decimalPlaces 小数位数
      * @return 成功返回true，失败返回false
      */
-    bool setCellNumberFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+    bool setCellNumberFormat(row_t row, column_t col, 
                            TXCell::NumberFormat formatType, int decimalPlaces = 2);
 
     /**
@@ -367,7 +364,7 @@ public:
      * @param formatString 格式字符串
      * @return 成功返回true，失败返回false
      */
-    bool setCellCustomFormat(TXTypes::RowIndex row, TXTypes::ColIndex col, 
+    bool setCellCustomFormat(row_t row, column_t col, 
                            const std::string& formatString);
 
     /**
@@ -386,7 +383,7 @@ public:
      * @param col 列号
      * @return 格式化后的字符串
      */
-    std::string getCellFormattedValue(TXTypes::RowIndex row, TXTypes::ColIndex col) const;
+    std::string getCellFormattedValue(row_t row, column_t col) const;
 
     /**
      * @brief 批量设置格式（高性能版本）
