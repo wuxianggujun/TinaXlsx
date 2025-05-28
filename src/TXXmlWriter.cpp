@@ -1,147 +1,214 @@
+//
+// @file TXXmlWriter.cpp
+// @brief XML 写入器实现
+//
+
 #include "TinaXlsx/TXXmlWriter.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include <pugixml.hpp>
 #include <sstream>
-#include <stack>
-#include <regex>
 
 namespace TinaXlsx {
 
-// XML实体编码函数
-std::string encodeXmlEntities(const std::string& input) {
-    std::string result = input;
-    result = std::regex_replace(result, std::regex("&"), "&amp;");
-    result = std::regex_replace(result, std::regex("<"), "&lt;");
-    result = std::regex_replace(result, std::regex(">"), "&gt;");
-    result = std::regex_replace(result, std::regex("\""), "&quot;");
-    result = std::regex_replace(result, std::regex("'"), "&apos;");
-    return result;
+// XmlNodeBuilder 实现
+XmlNodeBuilder::XmlNodeBuilder(const std::string& name) : name_(name) {}
+
+XmlNodeBuilder& XmlNodeBuilder::setText(const std::string& text) {
+    text_ = text;
+    return *this;
 }
 
+XmlNodeBuilder& XmlNodeBuilder::addAttribute(const std::string& name, const std::string& value) {
+    attributes_[name] = value;
+    return *this;
+}
+
+XmlNodeBuilder& XmlNodeBuilder::addChild(const XmlNodeBuilder& child) {
+    children_.push_back(child);
+    return *this;
+}
+
+const std::string& XmlNodeBuilder::getName() const { return name_; }
+const std::string& XmlNodeBuilder::getText() const { return text_; }
+const std::unordered_map<std::string, std::string>& XmlNodeBuilder::getAttributes() const { return attributes_; }
+const std::vector<XmlNodeBuilder>& XmlNodeBuilder::getChildren() const { return children_; }
+
+// TXXmlWriter::Impl 实现
 class TXXmlWriter::Impl {
 public:
-    Impl() {
-        reset();
-    }
-    
-    void startDocument(const std::string& encoding, bool standalone) {
-        reset();
+    pugi::xml_document doc_;
+    XmlWriteOptions options_;
+    std::string lastError_;
+    bool isValid_ = false;
+
+    // 递归构建 XML 节点
+    void buildNode(pugi::xml_node& parent, const XmlNodeBuilder& builder) {
+        pugi::xml_node node = parent.append_child(builder.getName().c_str());
         
-        // 创建XML声明
-        auto declaration = doc_.prepend_child(pugi::node_declaration);
-        declaration.append_attribute("version") = "1.0";
-        declaration.append_attribute("encoding") = encoding.c_str();
-        if (standalone) {
-            declaration.append_attribute("standalone") = "yes";
-        }
-        
-        currentNode_ = &doc_;
-    }
-    
-    void startElement(const std::string& name) {
-        if (!currentNode_) {
-            // 如果没有调用startDocument，创建一个默认的根节点
-            currentNode_ = &doc_;
+        // 设置属性
+        for (const auto& [name, value] : builder.getAttributes()) {
+            node.append_attribute(name.c_str()).set_value(value.c_str());
         }
         
-        pugi::xml_node newNode = currentNode_->append_child(name.c_str());
-        nodeStack_.push(currentNode_);
-        currentNode_ = &newNode;
-    }
-    
-    void startElement(const std::string& name, const std::vector<std::pair<std::string, std::string>>& attributes) {
-        startElement(name);
+        // 设置文本内容
+        if (!builder.getText().empty()) {
+            node.text().set(builder.getText().c_str());
+        }
         
-        for (const auto& attr : attributes) {
-            addAttribute(attr.first, attr.second);
+        // 递归添加子节点
+        for (const auto& child : builder.getChildren()) {
+            buildNode(node, child);
         }
     }
-    
-    void endElement() {
-        if (!nodeStack_.empty()) {
-            currentNode_ = nodeStack_.top();
-            nodeStack_.pop();
+
+    // 生成格式化的 XML 字符串
+    std::string generateString() const {
+        if (!isValid_) {
+            return "";
         }
-    }
-    
-    void addAttribute(const std::string& name, const std::string& value) {
-        if (currentNode_ && currentNode_->type() == pugi::node_element) {
-            currentNode_->append_attribute(name.c_str()) = value.c_str();
-        }
-    }
-    
-    void addText(const std::string& text, bool encode) {
-        if (currentNode_ && currentNode_->type() == pugi::node_element) {
-            std::string textToAdd = encode ? encodeXmlEntities(text) : text;
-            currentNode_->text().set(textToAdd.c_str());
-        }
-    }
-    
-    void addCData(const std::string& data) {
-        if (currentNode_ && currentNode_->type() == pugi::node_element) {
-            auto cdataNode = currentNode_->append_child(pugi::node_cdata);
-            cdataNode.set_value(data.c_str());
-        }
-    }
-    
-    std::string toString() const {
+
         std::ostringstream oss;
-        doc_.save(oss, "  ", pugi::format_default, pugi::encoding_utf8);
+        
+        if (options_.include_declaration) {
+            oss << "<?xml version=\"1.0\" encoding=\"" << options_.encoding << "\"?>";
+            if (options_.format_output) {
+                oss << "\n";
+            }
+        }
+
+        if (options_.format_output) {
+            doc_.save(oss, options_.indent.c_str(), pugi::format_default, pugi::encoding_utf8);
+        } else {
+            doc_.save(oss, "", pugi::format_raw | pugi::format_no_declaration, pugi::encoding_utf8);
+        }
+
         return oss.str();
     }
-    
-    void reset() {
-        doc_.reset();
-        while (!nodeStack_.empty()) {
-            nodeStack_.pop();
-        }
-        currentNode_ = nullptr;
-    }
 
-private:
-    pugi::xml_document doc_;
-    pugi::xml_node* currentNode_;
-    std::stack<pugi::xml_node*> nodeStack_;
+    // 统计文档信息
+    DocumentStats calculateStats(const pugi::xml_node& node) const {
+        DocumentStats stats;
+        
+        // 统计当前节点
+        if (node.type() == pugi::node_element) {
+            stats.nodeCount++;
+            stats.attributeCount += std::distance(node.attributes_begin(), node.attributes_end());
+            stats.textLength += std::strlen(node.text().as_string());
+        }
+        
+        // 递归统计子节点
+        for (const auto& child : node.children()) {
+            auto childStats = calculateStats(child);
+            stats.nodeCount += childStats.nodeCount;
+            stats.attributeCount += childStats.attributeCount;
+            stats.textLength += childStats.textLength;
+        }
+        
+        return stats;
+    }
 };
 
-// TXXmlWriter 实现
-TXXmlWriter::TXXmlWriter() : pImpl(std::make_unique<Impl>()) {}
+TXXmlWriter::TXXmlWriter() : pImpl_(std::make_unique<Impl>()) {}
+
+TXXmlWriter::TXXmlWriter(const XmlWriteOptions& options) 
+    : pImpl_(std::make_unique<Impl>()) {
+    pImpl_->options_ = options;
+}
 
 TXXmlWriter::~TXXmlWriter() = default;
 
-void TXXmlWriter::startDocument(const std::string& encoding, bool standalone) {
-    pImpl->startDocument(encoding, standalone);
+TXXmlWriter::TXXmlWriter(TXXmlWriter&& other) noexcept 
+    : pImpl_(std::move(other.pImpl_)) {}
+
+TXXmlWriter& TXXmlWriter::operator=(TXXmlWriter&& other) noexcept {
+    if (this != &other) {
+        pImpl_ = std::move(other.pImpl_);
+    }
+    return *this;
 }
 
-void TXXmlWriter::startElement(const std::string& name) {
-    pImpl->startElement(name);
+void TXXmlWriter::setRootNode(const XmlNodeBuilder& rootNode) {
+    pImpl_->doc_.reset();
+    pImpl_->buildNode(pImpl_->doc_, rootNode);
+    pImpl_->isValid_ = true;
+    pImpl_->lastError_.clear();
 }
 
-void TXXmlWriter::startElement(const std::string& name, const std::vector<std::pair<std::string, std::string>>& attributes) {
-    pImpl->startElement(name, attributes);
+void TXXmlWriter::createDocument(const std::string& rootNodeName) {
+    pImpl_->doc_.reset();
+    auto root = pImpl_->doc_.append_child(rootNodeName.c_str());
+    pImpl_->isValid_ = true;
+    pImpl_->lastError_.clear();
 }
 
-void TXXmlWriter::endElement() {
-    pImpl->endElement();
+void TXXmlWriter::addRootChild(const XmlNodeBuilder& node) {
+    if (!pImpl_->isValid_) {
+        pImpl_->lastError_ = "Document not initialized";
+        return;
+    }
+
+    auto root = pImpl_->doc_.document_element();
+    if (!root) {
+        pImpl_->lastError_ = "No root element found";
+        return;
+    }
+
+    pImpl_->buildNode(root, node);
 }
 
-void TXXmlWriter::addAttribute(const std::string& name, const std::string& value) {
-    pImpl->addAttribute(name, value);
+std::string TXXmlWriter::generateXmlString() const {
+    return pImpl_->generateString();
 }
 
-void TXXmlWriter::addText(const std::string& text, bool encode) {
-    pImpl->addText(text, encode);
+bool TXXmlWriter::writeToZip(TXZipArchiveWriter& zipWriter, const std::string& xmlPath) const {
+    if (!pImpl_->isValid_) {
+        pImpl_->lastError_ = "Document not valid";
+        return false;
+    }
+
+    std::string xmlContent = generateXmlString();
+    if (xmlContent.empty()) {
+        pImpl_->lastError_ = "Failed to generate XML content";
+        return false;
+    }
+
+    std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
+    bool success = zipWriter.write(xmlPath, xmlData);
+    
+    if (!success) {
+        pImpl_->lastError_ = "Failed to write to ZIP: " + zipWriter.lastError();
+    }
+
+    return success;
 }
 
-void TXXmlWriter::addCData(const std::string& data) {
-    pImpl->addCData(data);
+bool TXXmlWriter::writeStringToZip(TXZipArchiveWriter& zipWriter, 
+                                  const std::string& xmlPath, 
+                                  const std::string& xmlContent) {
+    std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
+    return zipWriter.write(xmlPath, xmlData);
 }
 
-std::string TXXmlWriter::toString() const {
-    return pImpl->toString();
+bool TXXmlWriter::isValid() const {
+    return pImpl_->isValid_;
+}
+
+const std::string& TXXmlWriter::getLastError() const {
+    return pImpl_->lastError_;
 }
 
 void TXXmlWriter::reset() {
-    pImpl->reset();
+    pImpl_->doc_.reset();
+    pImpl_->isValid_ = false;
+    pImpl_->lastError_.clear();
 }
 
-} // namespace TinaXlsx 
+TXXmlWriter::DocumentStats TXXmlWriter::getStats() const {
+    if (!pImpl_->isValid_) {
+        return {};
+    }
+
+    return pImpl_->calculateStats(pImpl_->doc_.document_element());
+}
+
+} // namespace TinaXlsx

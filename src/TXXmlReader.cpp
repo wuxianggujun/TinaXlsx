@@ -1,230 +1,195 @@
+//
+// @file TXXmlReader.cpp
+// @brief XML 读取器实现
+//
+
 #include "TinaXlsx/TXXmlReader.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include <pugixml.hpp>
-#include <algorithm>
+#include <sstream>
 
 namespace TinaXlsx {
 
-// TXXmlNode 方法实现
-std::string TXXmlNode::getAttribute(const std::string& attrName, const std::string& defaultValue) const {
-    auto it = std::find_if(attributes.begin(), attributes.end(),
-        [&attrName](const std::pair<std::string, std::string>& attr) {
-            return attr.first == attrName;
-        });
-    
-    return (it != attributes.end()) ? it->second : defaultValue;
-}
-
-bool TXXmlNode::hasAttribute(const std::string& attrName) const {
-    return std::any_of(attributes.begin(), attributes.end(),
-        [&attrName](const std::pair<std::string, std::string>& attr) {
-            return attr.first == attrName;
-        });
-}
-
-const TXXmlNode* TXXmlNode::findChild(const std::string& childName) const {
-    auto it = std::find_if(children.begin(), children.end(),
-        [&childName](const TXXmlNode& child) {
-            return child.name == childName;
-        });
-    
-    return (it != children.end()) ? &(*it) : nullptr;
-}
-
-std::vector<const TXXmlNode*> TXXmlNode::findChildren(const std::string& childName) const {
-    std::vector<const TXXmlNode*> result;
-    
-    for (const auto& child : children) {
-        if (child.name == childName) {
-            result.push_back(&child);
-        }
-    }
-    
-    return result;
-}
-
+// TXXmlReader::Impl 实现
 class TXXmlReader::Impl {
 public:
-    Impl() = default;
-    
-    bool loadFromString(const std::string& xmlString) {
-        reset();
-        
-        pugi::xml_parse_result result = doc_.load_string(xmlString.c_str());
-        if (!result) {
-            lastError_ = "XML parse error: " + std::string(result.description()) +
-                        " at offset " + std::to_string(result.offset);
-            return false;
-        }
-        
-        // 构建内部节点结构
-        buildNodeTree();
-        
-        lastError_.clear();
-        return true;
-    }
-    
-    bool loadFromFile(const std::string& filename) {
-        reset();
-        
-        pugi::xml_parse_result result = doc_.load_file(filename.c_str());
-        if (!result) {
-            lastError_ = "XML parse error: " + std::string(result.description()) +
-                        " in file " + filename;
-            return false;
-        }
-        
-        // 构建内部节点结构
-        buildNodeTree();
-        
-        lastError_.clear();
-        return true;
-    }
-    
-    const TXXmlNode* getRootNode() const {
-        return rootNode_.name.empty() ? nullptr : &rootNode_;
-    }
-    
-    std::vector<const TXXmlNode*> findNodesByXPath(const std::string& xpath) const {
-        std::vector<const TXXmlNode*> result;
-        
-        try {
-            pugi::xpath_node_set nodes = doc_.select_nodes(xpath.c_str());
-            
-            for (const auto& node : nodes) {
-                if (node.node()) {
-                    // 在我们的节点树中找到对应的节点
-                    const TXXmlNode* found = findNodeInTree(&rootNode_, node.node());
-                    if (found) {
-                        result.push_back(found);
-                    }
-                }
-            }
-        } catch (const pugi::xpath_exception& e) {
-            lastError_ = "XPath error: " + std::string(e.what());
-        }
-        
-        return result;
-    }
-    
-    const TXXmlNode* findFirstNodeByXPath(const std::string& xpath) const {
-        auto nodes = findNodesByXPath(xpath);
-        return nodes.empty() ? nullptr : nodes[0];
-    }
-    
-    void traverse(const std::function<void(const TXXmlNode*)>& visitor) const {
-        if (!rootNode_.name.empty()) {
-            traverseNode(&rootNode_, visitor);
-        }
-    }
-    
-    const std::string& getLastError() const {
-        return lastError_;
-    }
-    
-    void reset() {
-        doc_.reset();
-        rootNode_ = TXXmlNode{};
-        lastError_.clear();
-    }
-
-private:
-    void buildNodeTree() {
-        auto root = doc_.document_element();
-        if (root) {
-            rootNode_ = convertNode(root);
-        }
-    }
-    
-    TXXmlNode convertNode(const pugi::xml_node& pugiNode) {
-        TXXmlNode node;
-        node.name = pugiNode.name();
-        node.text = pugiNode.text().get();
-        
-        // 转换属性
-        for (const auto& attr : pugiNode.attributes()) {
-            node.attributes.emplace_back(attr.name(), attr.value());
-        }
-        
-        // 递归转换子节点
-        for (const auto& child : pugiNode.children()) {
-            if (child.type() == pugi::node_element) {
-                node.children.push_back(convertNode(child));
-            }
-        }
-        
-        return node;
-    }
-    
-    const TXXmlNode* findNodeInTree(const TXXmlNode* node, const pugi::xml_node& pugiNode) const {
-        if (!node) return nullptr;
-        
-        // 简单的名称匹配（这里可以改进为更精确的匹配）
-        if (node->name == pugiNode.name()) {
-            return node;
-        }
-        
-        // 递归查找子节点
-        for (const auto& child : node->children) {
-            const TXXmlNode* found = findNodeInTree(&child, pugiNode);
-            if (found) {
-                return found;
-            }
-        }
-        
-        return nullptr;
-    }
-    
-    void traverseNode(const TXXmlNode* node, const std::function<void(const TXXmlNode*)>& visitor) const {
-        if (!node) return;
-        
-        visitor(node);
-        
-        for (const auto& child : node->children) {
-            traverseNode(&child, visitor);
-        }
-    }
-
-private:
     pugi::xml_document doc_;
-    TXXmlNode rootNode_;
-    mutable std::string lastError_;
+    XmlParseOptions options_;
+    std::string lastError_;
+    bool isValid_ = false;
+
+    // 将 pugi::xml_node 转换为 XmlNodeInfo
+    XmlNodeInfo convertNode(const pugi::xml_node& node) const {
+        XmlNodeInfo info;
+        info.name = node.name();
+        info.value = node.text().as_string();
+
+        // 转换属性
+        for (const auto& attr : node.attributes()) {
+            info.attributes[attr.name()] = attr.value();
+        }
+
+        // 转换子节点
+        for (const auto& child : node.children()) {
+            if (child.type() == pugi::node_element) {
+                info.children.push_back(convertNode(child));
+            }
+        }
+
+        return info;
+    }
+
+    // 设置解析选项
+    unsigned int getParseFlags() const {
+        unsigned int flags = pugi::parse_default;
+        
+        if (!options_.preserve_whitespace) {
+            flags |= pugi::parse_trim_pcdata;
+        }
+        if (!options_.merge_pcdata) {
+            flags &= ~pugi::parse_merge_pcdata;
+        }
+        if (options_.trim_pcdata) {
+            flags |= pugi::parse_trim_pcdata;
+        }
+        
+        return flags;
+    }
 };
 
-// TXXmlReader 实现
-TXXmlReader::TXXmlReader() : pImpl(std::make_unique<Impl>()) {}
+TXXmlReader::TXXmlReader() : pImpl_(std::make_unique<Impl>()) {}
+
+TXXmlReader::TXXmlReader(const XmlParseOptions& options) 
+    : pImpl_(std::make_unique<Impl>()) {
+    pImpl_->options_ = options;
+}
 
 TXXmlReader::~TXXmlReader() = default;
 
-bool TXXmlReader::loadFromString(const std::string& xmlString) {
-    return pImpl->loadFromString(xmlString);
+TXXmlReader::TXXmlReader(TXXmlReader&& other) noexcept 
+    : pImpl_(std::move(other.pImpl_)) {}
+
+TXXmlReader& TXXmlReader::operator=(TXXmlReader&& other) noexcept {
+    if (this != &other) {
+        pImpl_ = std::move(other.pImpl_);
+    }
+    return *this;
 }
 
-bool TXXmlReader::loadFromFile(const std::string& filename) {
-    return pImpl->loadFromFile(filename);
+bool TXXmlReader::readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath) {
+    auto xmlData = zipReader.read(xmlPath);
+    if (xmlData.empty()) {
+        pImpl_->lastError_ = "Failed to read XML from ZIP: " + zipReader.lastError();
+        pImpl_->isValid_ = false;
+        return false;
+    }
+
+    std::string xmlContent(xmlData.begin(), xmlData.end());
+    return parseFromString(xmlContent);
 }
 
-const TXXmlNode* TXXmlReader::getRootNode() const {
-    return pImpl->getRootNode();
+bool TXXmlReader::parseFromString(const std::string& xmlContent) {
+    auto parseResult = pImpl_->doc_.load_string(xmlContent.c_str(), pImpl_->getParseFlags());
+    
+    if (!parseResult) {
+        std::ostringstream oss;
+        oss << "XML parse error: " << parseResult.description() 
+            << " at offset " << parseResult.offset;
+        pImpl_->lastError_ = oss.str();
+        pImpl_->isValid_ = false;
+        return false;
+    }
+
+    pImpl_->isValid_ = true;
+    pImpl_->lastError_.clear();
+    return true;
 }
 
-std::vector<const TXXmlNode*> TXXmlReader::findNodesByXPath(const std::string& xpath) const {
-    return pImpl->findNodesByXPath(xpath);
+std::vector<XmlNodeInfo> TXXmlReader::findNodes(const std::string& xpath) const {
+    std::vector<XmlNodeInfo> results;
+    
+    if (!pImpl_->isValid_) {
+        return results;
+    }
+
+    try {
+        auto nodeSet = pImpl_->doc_.select_nodes(xpath.c_str());
+        for (const auto& nodeWrapper : nodeSet) {
+            results.push_back(pImpl_->convertNode(nodeWrapper.node()));
+        }
+    } catch (const pugi::xpath_exception& e) {
+        pImpl_->lastError_ = "XPath error: " + std::string(e.what());
+    }
+
+    return results;
 }
 
-const TXXmlNode* TXXmlReader::findFirstNodeByXPath(const std::string& xpath) const {
-    return pImpl->findFirstNodeByXPath(xpath);
+XmlNodeInfo TXXmlReader::getRootNode() const {
+    if (!pImpl_->isValid_) {
+        return {};
+    }
+
+    auto root = pImpl_->doc_.document_element();
+    return pImpl_->convertNode(root);
 }
 
-void TXXmlReader::traverse(const std::function<void(const TXXmlNode*)>& visitor) const {
-    pImpl->traverse(visitor);
+std::string TXXmlReader::getNodeText(const std::string& xpath) const {
+    if (!pImpl_->isValid_) {
+        return "";
+    }
+
+    try {
+        auto node = pImpl_->doc_.select_node(xpath.c_str()).node();
+        return node.text().as_string();
+    } catch (const pugi::xpath_exception&) {
+        return "";
+    }
+}
+
+std::string TXXmlReader::getNodeAttribute(const std::string& xpath, const std::string& attributeName) const {
+    if (!pImpl_->isValid_) {
+        return "";
+    }
+
+    try {
+        auto node = pImpl_->doc_.select_node(xpath.c_str()).node();
+        return node.attribute(attributeName.c_str()).as_string();
+    } catch (const pugi::xpath_exception&) {
+        return "";
+    }
+}
+
+std::vector<std::string> TXXmlReader::getAllNodeTexts(const std::string& xpath) const {
+    std::vector<std::string> results;
+    
+    if (!pImpl_->isValid_) {
+        return results;
+    }
+
+    try {
+        auto nodeSet = pImpl_->doc_.select_nodes(xpath.c_str());
+        for (const auto& nodeWrapper : nodeSet) {
+            results.push_back(nodeWrapper.node().text().as_string());
+        }
+    } catch (const pugi::xpath_exception&) {
+        // Ignore XPath errors for this method
+    }
+
+    return results;
+}
+
+bool TXXmlReader::isValid() const {
+    return pImpl_->isValid_;
 }
 
 const std::string& TXXmlReader::getLastError() const {
-    return pImpl->getLastError();
+    return pImpl_->lastError_;
 }
 
 void TXXmlReader::reset() {
-    pImpl->reset();
+    pImpl_->doc_.reset();
+    pImpl_->isValid_ = false;
+    pImpl_->lastError_.clear();
 }
 
-} // namespace TinaXlsx 
+} // namespace TinaXlsx

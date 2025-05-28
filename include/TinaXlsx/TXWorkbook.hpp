@@ -12,8 +12,8 @@ namespace TinaXlsx {
 
 // Forward declarations
 class TXSheet;
-class TXZipArchiveReader;
-class TXZipArchiveWriter;
+class TXWorksheetReader;
+class TXWorksheetWriter;
 
 /**
  * @brief Excel工作簿类

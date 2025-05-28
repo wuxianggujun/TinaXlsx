@@ -1,115 +1,127 @@
+//
+// @file TXXmlReader.hpp
+// @brief XML 读取器 - 专门处理 XLSX 文件的 XML 读取操作
+//
+
 #pragma once
 
 #include <string>
 #include <vector>
 #include <memory>
-#include <functional>
+#include <unordered_map>
 
 namespace TinaXlsx {
 
+// 前向声明
+class TXZipArchiveReader;
+
 /**
- * @brief XML节点信息结构
+ * @brief XML 节点信息
  */
-struct TXXmlNode {
-    std::string name;
-    std::string text;
-    std::vector<std::pair<std::string, std::string>> attributes;
-    std::vector<TXXmlNode> children;
-    
-    /**
-     * @brief 获取属性值
-     * @param attrName 属性名
-     * @param defaultValue 默认值
-     * @return 属性值
-     */
-    std::string getAttribute(const std::string& attrName, const std::string& defaultValue = "") const;
-    
-    /**
-     * @brief 检查是否有指定属性
-     * @param attrName 属性名
-     * @return 有属性返回true
-     */
-    bool hasAttribute(const std::string& attrName) const;
-    
-    /**
-     * @brief 查找第一个匹配名称的子节点
-     * @param childName 子节点名称
-     * @return 子节点指针，未找到返回nullptr
-     */
-    const TXXmlNode* findChild(const std::string& childName) const;
-    
-    /**
-     * @brief 查找所有匹配名称的子节点
-     * @param childName 子节点名称
-     * @return 子节点列表
-     */
-    std::vector<const TXXmlNode*> findChildren(const std::string& childName) const;
+struct XmlNodeInfo {
+    std::string name;           ///< 节点名称
+    std::string value;          ///< 节点值
+    std::unordered_map<std::string, std::string> attributes;  ///< 属性映射
+    std::vector<XmlNodeInfo> children;  ///< 子节点
 };
 
 /**
- * @brief XML读取器 - 专门的DOM读取包装（基于pugixml）
+ * @brief XML 解析选项
+ */
+struct XmlParseOptions {
+    bool preserve_whitespace = false;    ///< 是否保留空白字符
+    bool merge_pcdata = true;           ///< 是否合并PCDATA节点
+    bool validate_encoding = true;      ///< 是否验证编码
+    bool trim_pcdata = true;           ///< 是否去除文本首尾空白
+};
+
+/**
+ * @brief XML 读取器
  * 
- * 提供结构化的XML读取功能，简化XML解析操作
+ * 专门用于读取 XLSX 文件中的 XML 内容，封装了 ZIP 读取操作
  */
 class TXXmlReader {
 public:
     TXXmlReader();
+    explicit TXXmlReader(const XmlParseOptions& options);
     ~TXXmlReader();
 
-    /**
-     * @brief 从字符串加载XML
-     * @param xmlString XML字符串
-     * @return 成功返回true
-     */
-    bool loadFromString(const std::string& xmlString);
+    // 禁用拷贝，支持移动
+    TXXmlReader(const TXXmlReader&) = delete;
+    TXXmlReader& operator=(const TXXmlReader&) = delete;
+    TXXmlReader(TXXmlReader&& other) noexcept;
+    TXXmlReader& operator=(TXXmlReader&& other) noexcept;
 
     /**
-     * @brief 从文件加载XML
-     * @param filename 文件路径
-     * @return 成功返回true
+     * @brief 从 ZIP 中读取 XML 文件
+     * @param zipReader ZIP 读取器引用
+     * @param xmlPath XML 文件在 ZIP 中的路径
+     * @return 是否成功读取
      */
-    bool loadFromFile(const std::string& filename);
+    bool readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath);
+
+    /**
+     * @brief 从字符串解析 XML
+     * @param xmlContent XML 内容字符串
+     * @return 是否解析成功
+     */
+    bool parseFromString(const std::string& xmlContent);
+
+    /**
+     * @brief 查找节点
+     * @param xpath XPath 表达式
+     * @return 匹配的节点列表
+     */
+    std::vector<XmlNodeInfo> findNodes(const std::string& xpath) const;
 
     /**
      * @brief 获取根节点
-     * @return 根节点指针，失败返回nullptr
+     * @return 根节点信息
      */
-    const TXXmlNode* getRootNode() const;
+    XmlNodeInfo getRootNode() const;
 
     /**
-     * @brief 使用XPath查找节点
-     * @param xpath XPath表达式
-     * @return 匹配的节点列表
+     * @brief 获取节点文本内容
+     * @param xpath XPath 表达式
+     * @return 节点文本，如果不存在返回空字符串
      */
-    std::vector<const TXXmlNode*> findNodesByXPath(const std::string& xpath) const;
+    std::string getNodeText(const std::string& xpath) const;
 
     /**
-     * @brief 查找第一个匹配XPath的节点
-     * @param xpath XPath表达式
-     * @return 节点指针，未找到返回nullptr
+     * @brief 获取节点属性值
+     * @param xpath XPath 表达式
+     * @param attributeName 属性名
+     * @return 属性值，如果不存在返回空字符串
      */
-    const TXXmlNode* findFirstNodeByXPath(const std::string& xpath) const;
+    std::string getNodeAttribute(const std::string& xpath, const std::string& attributeName) const;
 
     /**
-     * @brief 遍历所有节点
-     * @param visitor 访问函数，参数为节点指针
+     * @brief 获取所有匹配节点的文本内容
+     * @param xpath XPath 表达式
+     * @return 所有匹配节点的文本列表
      */
-    void traverse(const std::function<void(const TXXmlNode*)>& visitor) const;
+    std::vector<std::string> getAllNodeTexts(const std::string& xpath) const;
 
     /**
-     * @brief 获取最后的错误信息
-     * @return 错误信息
+     * @brief 检查 XML 是否有效
+     * @return true 如果 XML 已加载且有效
+     */
+    bool isValid() const;
+
+    /**
+     * @brief 获取错误信息
+     * @return 最后一次操作的错误信息
      */
     const std::string& getLastError() const;
 
     /**
-     * @brief 重置读取器
+     * @brief 重置读取器状态
      */
     void reset();
 
 private:
     class Impl;
-    std::unique_ptr<Impl> pImpl;
+    std::unique_ptr<Impl> pImpl_;
 };
 
-} // namespace TinaXlsx 
+} // namespace TinaXlsx
