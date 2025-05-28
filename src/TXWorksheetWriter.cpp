@@ -48,6 +48,30 @@ bool TXWorksheetWriter::writeWorksheetToFile(const std::string& xlsxFilePath, co
     return true;
 }
 
+bool TXWorksheetWriter::writeWorksheetToZip(TXZipArchiveWriter& zipWriter, const TXSheet* sheet, std::size_t sheetIndex) {
+    if (!sheet) {
+        lastError_ = "Sheet is null";
+        return false;
+    }
+    
+    // 构建工作表 XML
+    XmlNodeBuilder worksheetXml = buildWorksheetXml(sheet);
+    
+    // 设置到 XML 写入器
+    xmlWriter_->setRootNode(worksheetXml);
+    
+    // 获取工作表的 XML 路径
+    std::string xmlPath = getWorksheetXmlPath(sheetIndex);
+    
+    // 写入到 ZIP 文件
+    if (!xmlWriter_->writeToZip(zipWriter, xmlPath)) {
+        lastError_ = "Failed to write worksheet XML: " + xmlWriter_->getLastError();
+        return false;
+    }
+    
+    return true;
+}
+
 std::string TXWorksheetWriter::generateXml(const TXSheet* sheet) {
     if (!sheet) {
         lastError_ = "Sheet is null";

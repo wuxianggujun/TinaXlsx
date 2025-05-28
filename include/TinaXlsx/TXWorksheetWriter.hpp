@@ -35,6 +35,15 @@ public:
                              std::size_t sheetIndex, bool appendMode = false);
 
     /**
+     * @brief 将工作表写入到现有的ZIP写入器中
+     * @param zipWriter ZIP写入器
+     * @param sheet 工作表对象
+     * @param sheetIndex 工作表索引（从1开始）
+     * @return 成功返回true
+     */
+    bool writeWorksheetToZip(class TXZipArchiveWriter& zipWriter, const TXSheet* sheet, std::size_t sheetIndex);
+
+    /**
      * @brief 生成工作表XML字符串
      * @param sheet 工作表对象
      * @return XML字符串
@@ -47,7 +56,6 @@ public:
      */
     const std::string& getLastError() const;
 
-private:
     /**
      * @brief 构建工作表XML结构
      * @param sheet 工作表对象
@@ -55,6 +63,7 @@ private:
      */
     XmlNodeBuilder buildWorksheetXml(const TXSheet* sheet);
 
+private:
     /**
      * @brief 构建维度信息节点
      * @param sheet 工作表对象

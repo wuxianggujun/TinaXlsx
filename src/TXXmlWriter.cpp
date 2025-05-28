@@ -69,17 +69,27 @@ public:
 
         std::ostringstream oss;
         
+        // 根据选项决定如何生成XML
         if (options_.include_declaration) {
+            // 手动添加XML声明以确保包含自定义编码
             oss << "<?xml version=\"1.0\" encoding=\"" << options_.encoding << "\"?>";
             if (options_.format_output) {
                 oss << "\n";
             }
-        }
-
-        if (options_.format_output) {
-            doc_.save(oss, options_.indent.c_str(), pugi::format_default, pugi::encoding_utf8);
+            
+            // 保存文档内容，但不包含声明（因为我们已经手动添加了）
+            if (options_.format_output) {
+                doc_.save(oss, options_.indent.c_str(), pugi::format_default | pugi::format_no_declaration, pugi::encoding_utf8);
+            } else {
+                doc_.save(oss, "", pugi::format_raw | pugi::format_no_declaration, pugi::encoding_utf8);
+            }
         } else {
-            doc_.save(oss, "", pugi::format_raw | pugi::format_no_declaration, pugi::encoding_utf8);
+            // 不包含声明
+            if (options_.format_output) {
+                doc_.save(oss, options_.indent.c_str(), pugi::format_default | pugi::format_no_declaration, pugi::encoding_utf8);
+            } else {
+                doc_.save(oss, "", pugi::format_raw | pugi::format_no_declaration, pugi::encoding_utf8);
+            }
         }
 
         return oss.str();
