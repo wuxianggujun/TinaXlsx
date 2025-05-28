@@ -117,10 +117,10 @@ struct TXFont {
         strikethrough = (fontStyle == FontStyle::Strikethrough);
         return *this; 
     }
-    TXFont& setBold(bool bold = true) { this->bold = bold; return *this; }
-    TXFont& setItalic(bool italic = true) { this->italic = italic; return *this; }
-    TXFont& setUnderline(bool underline = true) { this->underline = underline; return *this; }
-    TXFont& setStrikethrough(bool strikethrough = true) { this->strikethrough = strikethrough; return *this; }
+    TXFont& setBold(bool value = true) { this->bold = value; return *this; }
+    TXFont& setItalic(bool value = true) { this->italic = value; return *this; }
+    TXFont& setUnderline(bool value = true) { this->underline = value; return *this; }
+    TXFont& setStrikethrough(bool value = true) { this->strikethrough = value; return *this; }
     
     // 查询方法
     bool isBold() const { return bold; }

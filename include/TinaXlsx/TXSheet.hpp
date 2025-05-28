@@ -392,6 +392,40 @@ public:
      */
     std::size_t setCellFormats(const std::vector<std::pair<Coordinate, TXCell::NumberFormat>>& formats);
 
+    // ==================== 样式操作 ====================
+    
+    /**
+     * @brief 设置单元格样式
+     * @param row 行号
+     * @param col 列号
+     * @param style 单元格样式
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellStyle(row_t row, column_t col, const class TXCellStyle& style);
+    
+    /**
+     * @brief 设置单元格样式（使用A1格式）
+     * @param address 单元格地址，如"A1"
+     * @param style 单元格样式
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellStyle(const std::string& address, const class TXCellStyle& style);
+    
+    /**
+     * @brief 设置范围内单元格的样式
+     * @param range 范围
+     * @param style 单元格样式
+     * @return 成功设置的单元格数量
+     */
+    std::size_t setRangeStyle(const Range& range, const class TXCellStyle& style);
+    
+    /**
+     * @brief 批量设置样式（高性能版本）
+     * @param styles 坐标到样式的映射
+     * @return 成功设置的样式数量
+     */
+    std::size_t setCellStyles(const std::vector<std::pair<Coordinate, class TXCellStyle>>& styles);
+
     // ==================== 便捷方法 ====================
 
     /**

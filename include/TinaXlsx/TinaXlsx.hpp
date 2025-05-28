@@ -23,6 +23,11 @@
 #include "TXMergedCells.hpp"   ///< 合并单元格管理类
 #include "TXNumberFormat.hpp"  ///< 数字格式化类
 
+// ==================== 单元格格式设置功能模块 ====================
+#include "TXConditionalFormat.hpp"  ///< 条件格式系统
+#include "TXStyleTemplate.hpp"      ///< 样式模板系统
+#include "TXBatchFormat.hpp"        ///< 批量格式应用系统
+
 // ==================== 核心业务类 ====================
 #include "TXCell.hpp"          ///< 单元格类
 #include "TXSheet.hpp"         ///< 工作表类

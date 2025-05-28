@@ -254,6 +254,7 @@ namespace ColorConstants {
     extern const TXColor RED;
     extern const TXColor GREEN;
     extern const TXColor BLUE;
+    extern const TXColor DARK_BLUE;
     extern const TXColor YELLOW;
     extern const TXColor CYAN;
     extern const TXColor MAGENTA;

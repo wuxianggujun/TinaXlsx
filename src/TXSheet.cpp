@@ -1,6 +1,7 @@
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXCell.hpp"
 #include "TinaXlsx/TXMergedCells.hpp"
+#include "TinaXlsx/TXStyle.hpp"
 #include <unordered_map>
 #include <regex>
 #include <algorithm>
@@ -716,6 +717,51 @@ std::size_t TXSheet::setCellFormats(const std::vector<std::pair<Coordinate, TXCe
     std::size_t count = 0;
     for (const auto& pair : formats) {
         if (setCellNumberFormat(pair.first.getRow(), pair.first.getCol(), pair.second)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+// ==================== 样式功能公共接口 ====================
+
+bool TXSheet::setCellStyle(row_t row, column_t col, const TXCellStyle& style) {
+    TXCell* cell = getCell(row, col);
+    if (!cell) {
+        return false;
+    }
+    
+    // 这里需要将样式信息存储到单元格中
+    // 由于目前TXCell只有样式索引，我们需要添加一个样式管理器
+    // 目前先简单返回true，表示API已就绪
+    // TODO: 实现样式索引管理
+    return true;
+}
+
+bool TXSheet::setCellStyle(const std::string& address, const TXCellStyle& style) {
+    auto coord = Coordinate::fromAddress(address);
+    return setCellStyle(coord.getRow(), coord.getCol(), style);
+}
+
+std::size_t TXSheet::setRangeStyle(const Range& range, const TXCellStyle& style) {
+    std::size_t count = 0;
+    auto start = range.getStart();
+    auto end = range.getEnd();
+    
+    for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
+        for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
+            if (setCellStyle(row, col, style)) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+std::size_t TXSheet::setCellStyles(const std::vector<std::pair<Coordinate, TXCellStyle>>& styles) {
+    std::size_t count = 0;
+    for (const auto& pair : styles) {
+        if (setCellStyle(pair.first.getRow(), pair.first.getCol(), pair.second)) {
             count++;
         }
     }

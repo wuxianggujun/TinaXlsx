@@ -271,6 +271,7 @@ namespace ColorConstants {
     const TXColor RED(0xFFFF0000);       // 红色
     const TXColor GREEN(0xFF00FF00);     // 绿色
     const TXColor BLUE(0xFF0000FF);      // 蓝色
+    const TXColor DARK_BLUE(0xFF000080); // 深蓝色
     const TXColor YELLOW(0xFFFFFF00);    // 黄色
     const TXColor CYAN(0xFF00FFFF);      // 青色
     const TXColor MAGENTA(0xFFFF00FF);   // 洋红色
