@@ -143,9 +143,12 @@ TXStyleTemplateManager::~TXStyleTemplateManager() = default;
 
 // Template management
 bool TXStyleTemplateManager::registerTemplate(const TXStyleTemplate& styleTemplate) {
-    // 从模板中获取名称作为key
-    std::string name = "template_" + std::to_string(pImpl->templates_.size());
-    auto result = pImpl->templates_.emplace(name, styleTemplate);
+    // 从模板中获取实际的ID作为key
+    std::string templateId = styleTemplate.getId();
+    if (templateId.empty()) {
+        return false; // 无效的模板ID
+    }
+    auto result = pImpl->templates_.emplace(templateId, styleTemplate);
     return result.second;
 }
 
