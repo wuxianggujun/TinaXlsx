@@ -1,11 +1,28 @@
 #include "TinaXlsx/TXWorkbook.hpp"
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXCell.hpp"
-#include "TinaXlsx/TXZipHandler.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include "TinaXlsx/TXXmlHandler.hpp"
+#include "TinaXlsx/TXWorksheetWriter.hpp"
+#include "TinaXlsx/TXWorksheetReader.hpp"
+#include "TinaXlsx/TXComponentManager.hpp"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
+#include <iostream>
+#include <regex>
+
+// XML特殊字符编码
+std::string encodeXmlEntities(const std::string& input) {
+    std::string result = input;
+    result = std::regex_replace(result, std::regex("&"), "&amp;");
+    result = std::regex_replace(result, std::regex("<"), "&lt;");
+    result = std::regex_replace(result, std::regex(">"), "&gt;");
+    result = std::regex_replace(result, std::regex("\""), "&quot;");
+    result = std::regex_replace(result, std::regex("'"), "&apos;");
+    return result;
+}
 
 namespace TinaXlsx {
 
@@ -21,21 +38,21 @@ public:
         // 清空现有数据
         clear();
         
-        TXZipHandler zip;
-        if (!zip.open(filename, TXZipHandler::OpenMode::Read)) {
-            last_error_ = "Failed to open XLSX file: " + zip.getLastError();
+        TXZipArchiveReader zip;
+        if (!zip.open(filename)) {
+            last_error_ = "Failed to open XLSX file: " + zip.lastError();
             return false;
         }
 
         // 检查是否是有效的XLSX文件
-        if (!zip.hasFile("[Content_Types].xml")) {
+        if (!zip.has("[Content_Types].xml")) {
             last_error_ = "Invalid XLSX file: missing [Content_Types].xml";
             return false;
         }
 
         // 读取工作簿结构（简化版）
-        if (zip.hasFile("xl/workbook.xml")) {
-            std::string workbook_xml = zip.readFileToString("xl/workbook.xml");
+        if (zip.has("xl/workbook.xml")) {
+            std::string workbook_xml = zip.readString("xl/workbook.xml");
             if (workbook_xml.empty()) {
                 last_error_ = "Failed to read workbook.xml";
                 return false;
@@ -67,9 +84,9 @@ public:
             performAutoComponentDetection();
         }
 
-        TXZipHandler zip;
-        if (!zip.open(filename, TXZipHandler::OpenMode::Write)) {
-            last_error_ = "Failed to create XLSX file: " + zip.getLastError();
+        TXZipArchiveWriter zip;
+        if (!zip.open(filename, false)) {
+            last_error_ = "Failed to create XLSX file: " + zip.lastError();
             return false;
         }
 
@@ -244,20 +261,22 @@ private:
         return true;
     }
 
-    bool writeXlsxStructureWithComponents(TXZipHandler& zip) {
+    bool writeXlsxStructureWithComponents(TXZipArchiveWriter& zip) {
         auto& components = component_manager_.getComponents();
         
         // 生成Content-Types.xml
         std::string content_types = ComponentGenerator::generateContentTypes(components, sheets_.size());
-        if (!zip.writeFile("[Content_Types].xml", content_types)) {
-            last_error_ = "Failed to write Content Types: " + zip.getLastError();
+        std::vector<uint8_t> content_types_data(content_types.begin(), content_types.end());
+        if (!zip.write("[Content_Types].xml", content_types_data)) {
+            last_error_ = "Failed to write Content Types: " + zip.lastError();
             return false;
         }
 
         // 生成主关系文件
         std::string main_rels = ComponentGenerator::generateMainRelationships(components);
-        if (!zip.writeFile("_rels/.rels", main_rels)) {
-            last_error_ = "Failed to write main relationships: " + zip.getLastError();
+        std::vector<uint8_t> main_rels_data(main_rels.begin(), main_rels.end());
+        if (!zip.write("_rels/.rels", main_rels_data)) {
+            last_error_ = "Failed to write main relationships: " + zip.lastError();
             return false;
         }
 
@@ -268,38 +287,43 @@ private:
 
         // 生成工作簿关系文件
         std::string workbook_rels = ComponentGenerator::generateWorkbookRelationships(components, sheets_.size());
-        if (!zip.writeFile("xl/_rels/workbook.xml.rels", workbook_rels)) {
-            last_error_ = "Failed to write workbook relationships: " + zip.getLastError();
+        std::vector<uint8_t> workbook_rels_data(workbook_rels.begin(), workbook_rels.end());
+        if (!zip.write("xl/_rels/workbook.xml.rels", workbook_rels_data)) {
+            last_error_ = "Failed to write workbook relationships: " + zip.lastError();
             return false;
         }
 
         // 按需写入组件文件
         if (component_manager_.hasComponent(ExcelComponent::Styles)) {
             std::string styles_xml = ComponentGenerator::generateStyles();
-            if (!zip.writeFile("xl/styles.xml", styles_xml)) {
-                last_error_ = "Failed to write styles: " + zip.getLastError();
+            std::vector<uint8_t> styles_data(styles_xml.begin(), styles_xml.end());
+            if (!zip.write("xl/styles.xml", styles_data)) {
+                last_error_ = "Failed to write styles: " + zip.lastError();
                 return false;
             }
         }
 
         if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
-            // TODO: 收集实际的字符串数据
-            std::vector<std::string> strings;
+            // 收集实际的字符串数据
+            std::vector<std::string> strings = collectAllStrings();
             std::string shared_strings_xml = ComponentGenerator::generateSharedStrings(strings);
-            if (!zip.writeFile("xl/sharedStrings.xml", shared_strings_xml)) {
-                last_error_ = "Failed to write shared strings: " + zip.getLastError();
+            std::vector<uint8_t> shared_strings_data(shared_strings_xml.begin(), shared_strings_xml.end());
+            if (!zip.write("xl/sharedStrings.xml", shared_strings_data)) {
+                last_error_ = "Failed to write shared strings: " + zip.lastError();
                 return false;
             }
         }
 
         if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
             auto doc_props = ComponentGenerator::generateDocumentProperties();
-            if (!zip.writeFile("docProps/core.xml", doc_props.first)) {
-                last_error_ = "Failed to write core properties: " + zip.getLastError();
+            std::vector<uint8_t> core_data(doc_props.first.begin(), doc_props.first.end());
+            std::vector<uint8_t> app_data(doc_props.second.begin(), doc_props.second.end());
+            if (!zip.write("docProps/core.xml", core_data)) {
+                last_error_ = "Failed to write core properties: " + zip.lastError();
                 return false;
             }
-            if (!zip.writeFile("docProps/app.xml", doc_props.second)) {
-                last_error_ = "Failed to write app properties: " + zip.getLastError();
+            if (!zip.write("docProps/app.xml", app_data)) {
+                last_error_ = "Failed to write app properties: " + zip.lastError();
                 return false;
             }
         }
@@ -314,7 +338,7 @@ private:
         return true;
     }
 
-    bool writeWorkbook(TXZipHandler& zip) {
+    bool writeWorkbook(TXZipArchiveWriter& zip) {
         std::string workbook_xml = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheets>)";
@@ -327,87 +351,30 @@ private:
 
         workbook_xml += "</sheets></workbook>";
 
-        if (!zip.writeFile("xl/workbook.xml", workbook_xml)) {
-            last_error_ = "Failed to write workbook: " + zip.getLastError();
+        std::vector<uint8_t> workbook_data(workbook_xml.begin(), workbook_xml.end());
+        if (!zip.write("xl/workbook.xml", workbook_data)) {
+            last_error_ = "Failed to write workbook: " + zip.lastError();
             return false;
         }
 
         return true;
     }
 
-    bool writeWorksheet(TXZipHandler& zip, std::size_t sheet_index) {
+    bool writeWorksheet(TXZipArchiveWriter& zip, std::size_t sheet_index) {
         if (sheet_index >= sheets_.size()) {
             last_error_ = "Invalid sheet index";
             return false;
         }
 
         const auto& sheet = sheets_[sheet_index];
-        std::string worksheet_xml = R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<sheetData>)";
-
-        // 获取使用的范围
-        auto used_range = sheet->getUsedRange();
         
-        // 写入单元格数据（简化版）
-        if (used_range.isValid()) {
-            for (row_t row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
-            bool has_data = false;
-            std::string row_xml = R"(<row r=")" + std::to_string(row.index()) + R"(">)";
-            
-            for (column_t col = used_range.getStart().getCol(); col <= used_range.getEnd().getCol(); ++col) {
-                const TXCell* cell = sheet->getCell(row, col);
-                if (cell && !cell->isEmpty()) {
-                    has_data = true;
-                    TXCoordinate coord(row, col);
-                    std::string cell_ref = coord.toAddress();
-                    std::string cell_value = cell->getStringValue();
-                    
-                    // 根据数据类型生成正确的XML
-                    auto cell_variant = cell->getValue();
-                    if (std::holds_alternative<std::string>(cell_variant)) {
-                        // 字符串类型 - 使用内联字符串
-                        row_xml += R"(<c r=")" + cell_ref + R"(" t="inlineStr">)";
-                        row_xml += "<is><t>" + cell_value + "</t></is>";
-                    } else {
-                        // 数值类型
-                        row_xml += R"(<c r=")" + cell_ref + R"(">)";
-                        row_xml += "<v>" + cell_value + "</v>";
-                    }
-                    row_xml += "</c>";
-                }
-            }
-            
-            row_xml += "</row>";
-            
-            if (has_data) {
-                worksheet_xml += row_xml;
-            }
-        }
-        }
-
-        worksheet_xml += "</sheetData>";
-
-        // 写入合并单元格信息
-        auto merge_regions = sheet->getAllMergeRegions();
-        if (!merge_regions.empty()) {
-            worksheet_xml += R"(<mergeCells count=")" + std::to_string(merge_regions.size()) + R"(">)";
-            
-            for (const auto& region : merge_regions) {
-                worksheet_xml += R"(<mergeCell ref=")" + region.toAddress() + R"("/>)";
-            }
-            
-            worksheet_xml += "</mergeCells>";
-        }
-
-        worksheet_xml += "</worksheet>";
-
-        std::string filename = "xl/worksheets/sheet" + std::to_string(sheet_index + 1) + ".xml";
-        if (!zip.writeFile(filename, worksheet_xml)) {
-            last_error_ = "Failed to write worksheet: " + zip.getLastError();
+        // 使用新的工作表写入器
+        TXWorksheetWriter writer;
+        if (!writer.writeToZip(zip, sheet.get(), sheet_index + 1)) {
+            last_error_ = "Failed to write worksheet: " + writer.getLastError();
             return false;
         }
-
+        
         return true;
     }
 
@@ -433,6 +400,34 @@ private:
             component_manager_.registerComponent(ExcelComponent::Styles);
             component_manager_.registerComponent(ExcelComponent::DocumentProperties);
         }
+    }
+
+    std::vector<std::string> collectAllStrings() {
+        std::vector<std::string> strings;
+        std::unordered_set<std::string> unique_strings;
+        
+        for (const auto& sheet : sheets_) {
+            auto used_range = sheet->getUsedRange();
+            if (used_range.isValid()) {
+                for (row_t row = used_range.getStart().getRow(); row <= used_range.getEnd().getRow(); ++row) {
+                    for (column_t col = used_range.getStart().getCol(); col <= used_range.getEnd().getCol(); ++col) {
+                        const TXCell* cell = sheet->getCell(row, col);
+                        if (cell && !cell->isEmpty()) {
+                            const auto& value = cell->getValue();
+                            if (std::holds_alternative<std::string>(value)) {
+                                const std::string& str_value = std::get<std::string>(value);
+                                if (unique_strings.find(str_value) == unique_strings.end()) {
+                                    unique_strings.insert(str_value);
+                                    strings.push_back(str_value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return strings;
     }
 
 private:

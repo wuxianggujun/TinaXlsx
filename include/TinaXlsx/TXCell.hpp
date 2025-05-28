@@ -268,6 +268,26 @@ public:
      */
     void setMasterCellPosition(uint32_t row, uint32_t col);
 
+    // ==================== 样式方法 ====================
+    
+    /**
+     * @brief 检查单元格是否有样式
+     * @return 有样式返回true，否则返回false
+     */
+    bool hasStyle() const;
+    
+    /**
+     * @brief 获取单元格样式索引
+     * @return 样式索引，如果没有样式返回0
+     */
+    uint32_t getStyleIndex() const;
+    
+    /**
+     * @brief 设置单元格样式索引
+     * @param index 样式索引
+     */
+    void setStyleIndex(uint32_t index);
+
     // ==================== 工具方法 ====================
 
     /**

@@ -30,8 +30,27 @@
 
 // ==================== 辅助工具类 ====================
 #include "TXUtils.hpp"         ///< 工具函数
-#include "TXZipHandler.hpp"    ///< ZIP处理
+#include "TXZipArchive.hpp"    ///< ZIP处理
 #include "TXXmlHandler.hpp"    ///< XML处理
+
+// 包含所有公共头文件
+#include "TXTypes.hpp"
+#include "TXCoordinate.hpp"
+#include "TXRange.hpp"
+#include "TXCell.hpp"
+#include "TXSheet.hpp"
+#include "TXWorkbook.hpp"
+#include "TXZipArchive.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXComponentManager.hpp"
+
+// 包含 XML 读写器
+#include "TXXmlWriter.hpp"
+#include "TXXmlReader.hpp"
+
+// 包含工作表读写器
+#include "TXWorksheetWriter.hpp"
+#include "TXWorksheetReader.hpp"
 
 /**
  * @namespace TinaXlsx

@@ -14,13 +14,13 @@ public:
              number_format_(TXCell::NumberFormat::General), 
              custom_format_(""), formula_(""),
              is_merged_(false), is_master_cell_(false),
-             master_row_(0), master_col_(0) {}
+             master_row_(0), master_col_(0), has_style_(false), style_index_(0) {}
     
     explicit Impl(const CellValue& value) : value_(value), 
              number_format_(TXCell::NumberFormat::General), 
              custom_format_(""), formula_(""),
              is_merged_(false), is_master_cell_(false),
-             master_row_(0), master_col_(0) {
+             master_row_(0), master_col_(0), has_style_(false), style_index_(0) {
         updateType();
     }
 
@@ -28,7 +28,8 @@ public:
              number_format_(other.number_format_), 
              custom_format_(other.custom_format_), formula_(other.formula_),
              is_merged_(other.is_merged_), is_master_cell_(other.is_master_cell_),
-             master_row_(other.master_row_), master_col_(other.master_col_) {
+             master_row_(other.master_row_), master_col_(other.master_col_),
+             has_style_(other.has_style_), style_index_(other.style_index_) {
         // 注意：TXFormula禁用了拷贝构造，所以暂时不拷贝公式对象
         // 只拷贝公式字符串，需要时重新解析
         if (other.formula_object_) {
@@ -53,6 +54,8 @@ public:
             is_master_cell_ = other.is_master_cell_;
             master_row_ = other.master_row_;
             master_col_ = other.master_col_;
+            has_style_ = other.has_style_;
+            style_index_ = other.style_index_;
             
             // 注意：TXFormula禁用了拷贝构造，所以暂时不拷贝公式对象
             // 只拷贝公式字符串，需要时重新解析
@@ -206,6 +209,8 @@ public:
         is_master_cell_ = false;
         master_row_ = 0;
         master_col_ = 0;
+        has_style_ = false;
+        style_index_ = 0;
     }
 
     bool fromString(const std::string& str, bool auto_detect_type) {
@@ -337,6 +342,8 @@ public:
     void copyFormatTo(Impl& target) const {
         target.number_format_ = number_format_;
         target.custom_format_ = custom_format_;
+        target.has_style_ = has_style_;
+        target.style_index_ = style_index_;
         
         // 深拷贝格式对象
         if (number_format_object_) {
@@ -344,6 +351,20 @@ public:
         } else {
             target.number_format_object_.reset();
         }
+    }
+    
+    // 样式相关方法
+    bool hasStyle() const {
+        return has_style_;
+    }
+    
+    uint32_t getStyleIndex() const {
+        return style_index_;
+    }
+    
+    void setStyleIndex(uint32_t index) {
+        style_index_ = index;
+        has_style_ = true;
     }
 
 private:
@@ -356,6 +377,8 @@ private:
     bool is_master_cell_;
     int master_row_;
     int master_col_;
+    bool has_style_;
+    uint32_t style_index_;
     std::unique_ptr<TXFormula> formula_object_;
     std::unique_ptr<TXNumberFormat> number_format_object_;
 };
@@ -628,6 +651,20 @@ std::pair<uint32_t, uint32_t> TXCell::getMasterCellPosition() const {
 
 void TXCell::setMasterCellPosition(uint32_t row, uint32_t col) {
     pImpl->setMasterCellPosition(row, col);
+}
+
+// ==================== 样式相关功能实现 ====================
+
+bool TXCell::hasStyle() const {
+    return pImpl->hasStyle();
+}
+
+uint32_t TXCell::getStyleIndex() const {
+    return pImpl->getStyleIndex();
+}
+
+void TXCell::setStyleIndex(uint32_t index) {
+    pImpl->setStyleIndex(index);
 }
 
 // ==================== 其他功能实现 ====================

@@ -4,7 +4,7 @@
 //
 
 #include <gtest/gtest.h>
-#include "TinaXlsx/TXZipHandler.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include <iostream>
 #include <filesystem>
 
@@ -22,18 +22,18 @@ protected:
 };
 
 TEST_F(DebugZipTest, DiagnoseWriteFailure) {
-    TinaXlsx::TXZipHandler zip;
+    TinaXlsx::TXZipArchiveWriter zip;
     
-    std::cout << "=== ZIP Handler Debug Test ===" << std::endl;
+    std::cout << "=== ZIP Archive Debug Test ===" << std::endl;
     
     // 步骤1: 打开ZIP文件
     std::cout << "1. Opening ZIP file for writing..." << std::endl;
-    bool opened = zip.open("debug_test.zip", TinaXlsx::TXZipHandler::OpenMode::Write);
+    bool opened = zip.open("debug_test.zip", false);
     std::cout << "   Open result: " << (opened ? "SUCCESS" : "FAILED") << std::endl;
     
     if (!opened) {
-        std::cout << "   Error: " << zip.getLastError() << std::endl;
-        FAIL() << "Failed to open ZIP file: " << zip.getLastError();
+        std::cout << "   Error: " << zip.lastError() << std::endl;
+        FAIL() << "Failed to open ZIP file: " << zip.lastError();
     }
     
     // 步骤2: 检查是否真的打开了
@@ -48,11 +48,12 @@ TEST_F(DebugZipTest, DiagnoseWriteFailure) {
     std::cout << "   Content: \"" << content << "\"" << std::endl;
     std::cout << "   Content size: " << content.size() << " bytes" << std::endl;
     
-    bool written = zip.writeFile("test.txt", content);
+    std::vector<uint8_t> content_data(content.begin(), content.end());
+    bool written = zip.write("test.txt", content_data);
     std::cout << "   Write result: " << (written ? "SUCCESS" : "FAILED") << std::endl;
     
     if (!written) {
-        std::cout << "   Error: " << zip.getLastError() << std::endl;
+        std::cout << "   Error: " << zip.lastError() << std::endl;
         // 不要立即失败，继续收集信息
     }
     
@@ -75,22 +76,23 @@ TEST_F(DebugZipTest, DiagnoseWriteFailure) {
     
     // 只有在写入失败时才标记测试失败
     if (!written) {
-        FAIL() << "ZIP write operation failed: " << zip.getLastError();
+        FAIL() << "ZIP write operation failed: " << zip.lastError();
     }
 }
 
 TEST_F(DebugZipTest, BasicFunctionality) {
-    TinaXlsx::TXZipHandler zip;
+    TinaXlsx::TXZipArchiveWriter zip;
     
     // 简单的功能测试
-    EXPECT_TRUE(zip.open("debug_test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
+    EXPECT_TRUE(zip.open("debug_test.zip", false));
     EXPECT_TRUE(zip.isOpen());
     
     std::string content = "Test content";
-    bool writeResult = zip.writeFile("simple.txt", content);
+    std::vector<uint8_t> content_data(content.begin(), content.end());
+    bool writeResult = zip.write("simple.txt", content_data);
     
     if (!writeResult) {
-        std::cout << "Write failed with error: " << zip.getLastError() << std::endl;
+        std::cout << "Write failed with error: " << zip.lastError() << std::endl;
     }
     
     zip.close();
@@ -98,5 +100,5 @@ TEST_F(DebugZipTest, BasicFunctionality) {
     
     // 如果写入失败，输出详细信息但不一定失败测试
     // 这样我们可以看到具体的错误信息
-    EXPECT_TRUE(writeResult) << "Write failed: " << zip.getLastError();
+    EXPECT_TRUE(writeResult) << "Write failed: " << zip.lastError();
 } 

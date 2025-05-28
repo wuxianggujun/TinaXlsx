@@ -118,5 +118,3 @@ if(BUILD_TESTS)
     gtest_discover_tests(${PROJECT_NAME}_test)
 endif()
 
-# 注意：示例和演示测试现在位于 tests/examples/ 目录中
-# 可以通过 ctest 或直接运行测试程序来执行它们

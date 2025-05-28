@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include "TinaXlsx/TXZipHandler.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include <fstream>
 #include <filesystem>
 
-class TXZipHandlerTest : public ::testing::Test {
+class TXZipArchiveTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // 创建测试目录
@@ -23,16 +23,17 @@ protected:
     }
 };
 
-TEST_F(TXZipHandlerTest, CreateAndWriteZip) {
-    TinaXlsx::TXZipHandler zip;
+TEST_F(TXZipArchiveTest, CreateAndWriteZip) {
+    TinaXlsx::TXZipArchiveWriter zip;
     
     // 测试创建新的ZIP文件
-    EXPECT_TRUE(zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
+    EXPECT_TRUE(zip.open("test.zip", false));
     EXPECT_TRUE(zip.isOpen());
     
     // 写入文件
     std::string content = "This is a test file content.";
-    EXPECT_TRUE(zip.writeFile("test.txt", content));
+    std::vector<uint8_t> content_data(content.begin(), content.end());
+    EXPECT_TRUE(zip.write("test.txt", content_data));
     
     // 写入多个文件
     std::unordered_map<std::string, std::string> files;
@@ -40,7 +41,13 @@ TEST_F(TXZipHandlerTest, CreateAndWriteZip) {
     files["file2.txt"] = "Content of file 2";
     files["dir/file3.txt"] = "Content of file 3 in subdirectory";
     
-    std::size_t written = zip.writeMultipleFiles(files);
+    std::size_t written = 0;
+    for (const auto& [filename, file_content] : files) {
+        std::vector<uint8_t> file_data(file_content.begin(), file_content.end());
+        if (zip.write(filename, file_data)) {
+            written++;
+        }
+    }
     EXPECT_EQ(written, 3);
     
     zip.close();
@@ -50,90 +57,98 @@ TEST_F(TXZipHandlerTest, CreateAndWriteZip) {
     EXPECT_TRUE(std::filesystem::exists("test.zip"));
 }
 
-TEST_F(TXZipHandlerTest, ReadZip) {
+TEST_F(TXZipArchiveTest, ReadZip) {
     // 首先创建一个ZIP文件
-    TinaXlsx::TXZipHandler write_zip;
-    ASSERT_TRUE(write_zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
+    TinaXlsx::TXZipArchiveWriter write_zip;
+    ASSERT_TRUE(write_zip.open("test.zip", false));
     
     std::string test_content = "Test content for reading";
-    ASSERT_TRUE(write_zip.writeFile("read_test.txt", test_content));
+    std::vector<uint8_t> test_data(test_content.begin(), test_content.end());
+    ASSERT_TRUE(write_zip.write("read_test.txt", test_data));
     
     std::vector<uint8_t> binary_data = {0x48, 0x65, 0x6C, 0x6C, 0x6F}; // "Hello"
-    ASSERT_TRUE(write_zip.writeFile("binary_test.bin", binary_data));
+    ASSERT_TRUE(write_zip.write("binary_test.bin", binary_data));
     
     write_zip.close();
     
     // 现在读取ZIP文件
-    TinaXlsx::TXZipHandler read_zip;
-    ASSERT_TRUE(read_zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Read));
+    TinaXlsx::TXZipArchiveReader read_zip;
+    ASSERT_TRUE(read_zip.open("test.zip"));
     
     // 测试文件存在性检查
-    EXPECT_TRUE(read_zip.hasFile("read_test.txt"));
-    EXPECT_TRUE(read_zip.hasFile("binary_test.bin"));
-    EXPECT_FALSE(read_zip.hasFile("nonexistent.txt"));
+    EXPECT_TRUE(read_zip.has("read_test.txt"));
+    EXPECT_TRUE(read_zip.has("binary_test.bin"));
+    EXPECT_FALSE(read_zip.has("nonexistent.txt"));
     
     // 读取文本文件
-    std::string read_content = read_zip.readFileToString("read_test.txt");
+    std::string read_content = read_zip.readString("read_test.txt");
     EXPECT_EQ(read_content, test_content);
     
     // 读取二进制文件
-    std::vector<uint8_t> read_binary = read_zip.readFileToBytes("binary_test.bin");
+    std::vector<uint8_t> read_binary = read_zip.read("binary_test.bin");
     EXPECT_EQ(read_binary, binary_data);
     
     // 获取ZIP条目列表
-    auto entries = read_zip.getEntries();
+    auto entries = read_zip.entries();
     EXPECT_EQ(entries.size(), 2);
     
-    // 测试批量读取
+    // 测试批量读取（简化版本）
     std::vector<std::string> filenames = {"read_test.txt", "binary_test.bin"};
     std::vector<std::pair<std::string, std::string>> results;
     
-    std::size_t read_count = read_zip.readMultipleFiles(filenames, 
-        [&results](const std::string& filename, const std::string& content) {
+    for (const auto& filename : filenames) {
+        if (read_zip.has(filename)) {
+            std::string content = read_zip.readString(filename);
             results.emplace_back(filename, content);
-        });
+        }
+    }
     
-    EXPECT_EQ(read_count, 2);
     EXPECT_EQ(results.size(), 2);
     
     read_zip.close();
 }
 
-TEST_F(TXZipHandlerTest, ErrorHandling) {
-    TinaXlsx::TXZipHandler zip;
+TEST_F(TXZipArchiveTest, ErrorHandling) {
+    TinaXlsx::TXZipArchiveReader zip;
     
     // 测试打开不存在的文件
-    EXPECT_FALSE(zip.open("nonexistent.zip", TinaXlsx::TXZipHandler::OpenMode::Read));
-    EXPECT_FALSE(zip.getLastError().empty());
+    EXPECT_FALSE(zip.open("nonexistent.zip"));
+    EXPECT_FALSE(zip.lastError().empty());
     
     // 测试在未打开的情况下操作
-    EXPECT_FALSE(zip.hasFile("test.txt"));
-    EXPECT_TRUE(zip.readFileToString("test.txt").empty());
+    EXPECT_FALSE(zip.has("test.txt"));
+    EXPECT_TRUE(zip.readString("test.txt").empty());
     
-    // 测试在只读模式下写入
-    ASSERT_TRUE(zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
-    ASSERT_TRUE(zip.writeFile("test.txt", "test"));
-    zip.close();
+    // 创建一个测试文件用于读取测试
+    {
+        TinaXlsx::TXZipArchiveWriter writer;
+        ASSERT_TRUE(writer.open("test.zip", false));
+        std::string test_content = "test";
+        std::vector<uint8_t> test_data(test_content.begin(), test_content.end());
+        ASSERT_TRUE(writer.write("test.txt", test_data));
+        writer.close();
+    }
     
-    ASSERT_TRUE(zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Read));
-    EXPECT_FALSE(zip.writeFile("new_file.txt", "content"));
-    EXPECT_FALSE(zip.getLastError().empty());
+    ASSERT_TRUE(zip.open("test.zip"));
+    // 读取器不支持写入操作，这是预期的行为
     
     zip.close();
 }
 
-TEST_F(TXZipHandlerTest, MoveSemantics) {
-    TinaXlsx::TXZipHandler zip1;
-    ASSERT_TRUE(zip1.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
-    ASSERT_TRUE(zip1.writeFile("test.txt", "test content"));
+TEST_F(TXZipArchiveTest, MoveSemantics) {
+    TinaXlsx::TXZipArchiveWriter zip1;
+    ASSERT_TRUE(zip1.open("test.zip", false));
+    std::string test_content = "test content";
+    std::vector<uint8_t> test_data(test_content.begin(), test_content.end());
+    ASSERT_TRUE(zip1.write("test.txt", test_data));
     
     // 测试移动构造
-    TinaXlsx::TXZipHandler zip2 = std::move(zip1);
+    TinaXlsx::TXZipArchiveWriter zip2 = std::move(zip1);
     EXPECT_TRUE(zip2.isOpen());
     EXPECT_FALSE(zip1.isOpen()); // zip1 应该被移动清空
     
     // 测试移动赋值
-    TinaXlsx::TXZipHandler zip3;
+    TinaXlsx::TXZipArchiveWriter zip3;
     zip3 = std::move(zip2);
     EXPECT_TRUE(zip3.isOpen());
     EXPECT_FALSE(zip2.isOpen()); // zip2 应该被移动清空
@@ -141,27 +156,23 @@ TEST_F(TXZipHandlerTest, MoveSemantics) {
     zip3.close();
 }
 
-TEST_F(TXZipHandlerTest, CompressionLevels) {
-    TinaXlsx::TXZipHandler zip;
-    ASSERT_TRUE(zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Write));
+TEST_F(TXZipArchiveTest, CompressionLevels) {
+    TinaXlsx::TXZipArchiveWriter zip;
+    ASSERT_TRUE(zip.open("test.zip", false));
     
     std::string large_content(10000, 'A'); // 创建一个较大的字符串用于测试压缩
+    std::vector<uint8_t> large_data(large_content.begin(), large_content.end());
     
-    // 测试不同的压缩级别
-    EXPECT_TRUE(zip.writeFile("no_compression.txt", large_content, 0));
-    EXPECT_TRUE(zip.writeFile("fast_compression.txt", large_content, 1));
-    EXPECT_TRUE(zip.writeFile("default_compression.txt", large_content, 6));
-    EXPECT_TRUE(zip.writeFile("best_compression.txt", large_content, 9));
+    // 测试写入文件（新API不直接暴露压缩级别设置）
+    EXPECT_TRUE(zip.write("test_file.txt", large_data));
     
     zip.close();
     
     // 验证文件可以被正确读取
-    ASSERT_TRUE(zip.open("test.zip", TinaXlsx::TXZipHandler::OpenMode::Read));
+    TinaXlsx::TXZipArchiveReader reader;
+    ASSERT_TRUE(reader.open("test.zip"));
     
-    EXPECT_EQ(zip.readFileToString("no_compression.txt"), large_content);
-    EXPECT_EQ(zip.readFileToString("fast_compression.txt"), large_content);
-    EXPECT_EQ(zip.readFileToString("default_compression.txt"), large_content);
-    EXPECT_EQ(zip.readFileToString("best_compression.txt"), large_content);
+    EXPECT_EQ(reader.readString("test_file.txt"), large_content);
     
-    zip.close();
+    reader.close();
 } 
