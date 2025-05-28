@@ -67,7 +67,7 @@ TEST_F(PerformanceExampleTest, Handle1000Rows) {
     auto write_duration = std::chrono::duration_cast<std::chrono::milliseconds>(write_time - start_time);
     
     // 保存文件
-    bool saved = workbook.saveToFile("PerformanceTest.xlsx");
+    bool saved = workbook.saveToFile("output/PerformanceTest.xlsx");
     ASSERT_TRUE(saved) << "Failed to save large dataset: " << workbook.getLastError();
     
     auto save_time = std::chrono::high_resolution_clock::now();
@@ -75,7 +75,7 @@ TEST_F(PerformanceExampleTest, Handle1000Rows) {
     
     // 重新加载文件
     TinaXlsx::TXWorkbook verify_workbook;
-    bool loaded = verify_workbook.loadFromFile("PerformanceTest.xlsx");
+    bool loaded = verify_workbook.loadFromFile("output/PerformanceTest.xlsx");
     ASSERT_TRUE(loaded) << "Failed to load large dataset: " << verify_workbook.getLastError();
     
     auto load_time = std::chrono::high_resolution_clock::now();
@@ -115,8 +115,10 @@ TEST_F(PerformanceExampleTest, Handle1000Rows) {
     std::cout << "Total time: " << total_duration.count() << "ms" << std::endl;
     
     // 检查文件大小
-    auto file_size = std::filesystem::file_size("PerformanceTest.xlsx");
-    std::cout << "File size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
+    if (std::filesystem::exists("output/PerformanceTest.xlsx")) {
+        auto file_size = std::filesystem::file_size("output/PerformanceTest.xlsx");
+        std::cout << "File size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
+    }
     
     // 性能基准 - 这些值可以根据实际情况调整
     EXPECT_LT(write_duration.count(), 5000);  // 写入应该在5秒内完成
@@ -157,7 +159,7 @@ TEST_F(PerformanceExampleTest, BatchOperationPerformance) {
     auto batch_duration = std::chrono::duration_cast<std::chrono::microseconds>(batch_end - batch_start);
     
     // 保存文件
-    bool saved = workbook.saveToFile("PerformanceTest.xlsx");
+    bool saved = workbook.saveToFile("output/PerformanceTest.xlsx");
     EXPECT_TRUE(saved);
     
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -217,7 +219,7 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     
     // 保存多工作表文件
     std::cout << "保存前最终工作表数量: " << workbook.getSheetCount() << std::endl;
-    bool saved = workbook.saveToFile("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
+    bool saved = workbook.saveToFile("output/PerformanceTest.xlsx");
     ASSERT_TRUE(saved) << "保存失败: " << workbook.getLastError();
     
     auto save_time = std::chrono::high_resolution_clock::now();
@@ -235,11 +237,13 @@ TEST_F(PerformanceExampleTest, MultiSheetPerformance) {
     
     // 重新加载文件验证
     TinaXlsx::TXWorkbook verify_workbook;
-    bool loaded = verify_workbook.loadFromFile("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
+    bool loaded = verify_workbook.loadFromFile("output/PerformanceTest.xlsx");
     ASSERT_TRUE(loaded) << "加载失败: " << verify_workbook.getLastError();
     std::cout << "重新加载后工作表数量: " << verify_workbook.getSheetCount() << std::endl;
     
     // 验证文件大小
-    auto file_size = std::filesystem::file_size("C:/Users/wuxianggujun/Desktop/DEBUG_MultiSheet_Test.xlsx");
-    std::cout << "Multi-sheet file size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
+    if (std::filesystem::exists("output/PerformanceTest.xlsx")) {
+        auto file_size = std::filesystem::file_size("output/PerformanceTest.xlsx");
+        std::cout << "Multi-sheet file size: " << file_size << " bytes (" << file_size / 1024.0 << " KB)" << std::endl;
+    }
 }

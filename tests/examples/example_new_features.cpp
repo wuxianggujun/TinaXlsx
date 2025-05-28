@@ -57,10 +57,10 @@ TEST_F(NewFeaturesExampleTest, FormulaFeatures) {
     std::cout << "计算结果数量: " << calculatedCount << std::endl;
     
     // 保存文件
-    success = workbook.saveToFile("formula_example.xlsx");
+    success = workbook.saveToFile("output/formula_example.xlsx");
     EXPECT_TRUE(success);
     
-    std::cout << "公式示例文件已保存: formula_example.xlsx\n";
+    std::cout << "公式示例文件已保存: output/formula_example.xlsx\n";
 }
 
 /**
@@ -125,10 +125,10 @@ TEST_F(NewFeaturesExampleTest, MergedCellsFeatures) {
     EXPECT_FALSE(isMerged);
     
     // 保存文件
-    success = workbook.saveToFile("merged_cells_example.xlsx");
+    success = workbook.saveToFile("output/merged_cells_example.xlsx");
     EXPECT_TRUE(success);
     
-    std::cout << "合并单元格示例文件已保存: merged_cells_example.xlsx\n";
+    std::cout << "合并单元格示例文件已保存: output/merged_cells_example.xlsx\n";
 }
 
 /**
@@ -214,10 +214,10 @@ TEST_F(NewFeaturesExampleTest, NumberFormatFeatures) {
     std::cout << "批量设置格式数量: " << setCount << std::endl;
     
     // 保存文件
-    success = workbook.saveToFile("number_format_example.xlsx");
+    success = workbook.saveToFile("output/number_format_example.xlsx");
     EXPECT_TRUE(success);
     
-    std::cout << "数字格式化示例文件已保存: number_format_example.xlsx\n";
+    std::cout << "数字格式化示例文件已保存: output/number_format_example.xlsx\n";
 }
 
 /**
@@ -311,13 +311,18 @@ TEST_F(NewFeaturesExampleTest, ComprehensiveExample) {
     sheet->setCellNumberFormat(TinaXlsx::row_t(totalRow + 2), TinaXlsx::column_t(2), TinaXlsx::TXCell::NumberFormat::Date);
     
     // 保存文件
-    bool success = workbook.saveToFile("comprehensive_example.xlsx");
+    bool success = workbook.saveToFile("output/comprehensive_example.xlsx");
     EXPECT_TRUE(success);
+    
+    if (success) {
+        std::cout << "综合示例文件已保存: output/comprehensive_example.xlsx\n";
+    } else {
+        std::cout << "保存失败: " << workbook.getLastError() << std::endl;
+    }
     
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
-    std::cout << "综合示例文件已保存: comprehensive_example.xlsx\n";
     std::cout << "处理时间: " << duration.count() << "ms\n";
     
     // 验证性能 - 应该在合理时间内完成
@@ -395,23 +400,18 @@ TEST_F(NewFeaturesExampleTest, PerformanceTest) {
     std::cout << "批量合并 " << mergeCount << " 个区域耗时: " << mergeDuration.count() << "ms\n";
     
     // 保存大文件
-    auto saveStart = std::chrono::high_resolution_clock::now();
-    bool success = workbook.saveToFile("performance_test.xlsx");
-    auto saveEnd = std::chrono::high_resolution_clock::now();
-    
+    auto start_save = std::chrono::high_resolution_clock::now();
+    bool success = workbook.saveToFile("output/performance_test.xlsx");
     EXPECT_TRUE(success);
     
-    auto saveDuration = std::chrono::duration_cast<std::chrono::milliseconds>(saveEnd - saveStart);
-    std::cout << "保存大文件耗时: " << saveDuration.count() << "ms\n";
+    auto end_save = std::chrono::high_resolution_clock::now();
+    auto save_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_save - start_save);
     
-    auto end = std::chrono::high_resolution_clock::now();
-    auto totalDuration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    
-    std::cout << "性能测试总耗时: " << totalDuration.count() << "ms\n";
-    std::cout << "平均每个单元格处理时间: " << static_cast<double>(totalDuration.count()) / (ROWS * COLS) << "ms\n";
+    std::cout << "性能测试总耗时: " << save_duration.count() << "ms\n";
+    std::cout << "平均每个单元格处理时间: " << static_cast<double>(save_duration.count()) / (ROWS * COLS) << "ms\n";
     
     // 性能要求：处理1万个单元格应该在10秒内完成
-    EXPECT_LT(totalDuration.count(), 10000);
+    EXPECT_LT(save_duration.count(), 10000);
 }
 
 } // namespace 

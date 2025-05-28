@@ -204,9 +204,20 @@ XmlNodeBuilder TXWorksheetWriter::buildCellNode(const TXCell* cell, const std::s
 XmlNodeBuilder TXWorksheetWriter::buildMergeCellsNode(const TXSheet* sheet) {
     XmlNodeBuilder mergeCells("mergeCells");
     
-    // 获取合并单元格列表（这需要在 TXSheet 中实现）
-    // 暂时返回空节点
-    // TODO: 实现合并单元格的获取和写入
+    // 获取合并单元格列表
+    auto mergeRegions = sheet->getAllMergeRegions();
+    
+    if (!mergeRegions.empty()) {
+        // 设置count属性
+        mergeCells.addAttribute("count", std::to_string(mergeRegions.size()));
+        
+        // 为每个合并区域添加mergeCell节点
+        for (const auto& region : mergeRegions) {
+            XmlNodeBuilder mergeCell("mergeCell");
+            mergeCell.addAttribute("ref", region.toAddress());
+            mergeCells.addChild(mergeCell);
+        }
+    }
     
     return mergeCells;
 }
