@@ -18,7 +18,7 @@ namespace TinaXlsx {
 
         bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override {
             XmlNodeBuilder relationships("Relationships");
-            relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/relationships");
+            relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
 
             size_t rid = 1;
 

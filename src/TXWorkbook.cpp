@@ -142,6 +142,13 @@ namespace TinaXlsx
                 return false;
             }
 
+            // 保存 workbook.xml.rels
+            TXWorkbookRelsXmlHandler workbookRelsHandler;
+            if (!workbookRelsHandler.save(zipWriter, context)) {
+                last_error_ = workbookRelsHandler.lastError();
+                return false;
+            }
+
             // 保存 styles.xml（如果启用了样式组件）
             if (component_manager_.hasComponent(ExcelComponent::Styles))
             {
