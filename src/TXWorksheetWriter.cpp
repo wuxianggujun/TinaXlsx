@@ -151,7 +151,7 @@ XmlNodeBuilder TXWorksheetWriter::buildRowNode(const TXSheet* sheet, row_t row, 
     for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
         const TXCell* cell = sheet->getCell(row, col);
         
-        if (cell && !cell->isEmpty()) {
+        if (cell && !cell->isEmpty() || cell->getStyleIndex() != 0) {
             std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
             XmlNodeBuilder cellNode = buildCellNode(cell, cellRef);
             rowNode.addChild(cellNode);
@@ -164,6 +164,15 @@ XmlNodeBuilder TXWorksheetWriter::buildRowNode(const TXSheet* sheet, row_t row, 
 XmlNodeBuilder TXWorksheetWriter::buildCellNode(const TXCell* cell, const std::string& cellRef) {
     XmlNodeBuilder cellNode("c");
     cellNode.addAttribute("r", cellRef);
+
+    if (cell)
+    {
+        u32 styleIndex = cell->getStyleIndex();
+        if (styleIndex != 0)
+        {
+            cellNode.addAttribute("s", std::to_string(styleIndex));
+        }
+    }
     
     // 根据单元格类型设置属性和值
     cell_value_t value = cell->getValue();

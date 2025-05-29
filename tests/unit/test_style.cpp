@@ -125,10 +125,6 @@ TEST_F(TXTypesTest, ValidityChecks) {
     EXPECT_FALSE(TXCoordinate::isValidCoordinate(row_t(0), column_t(static_cast<u32>(1))));
     EXPECT_FALSE(TXCoordinate::isValidCoordinate(row_t(1), column_t(static_cast<u32>(0))));
     EXPECT_FALSE(TXCoordinate::isValidCoordinate(row_t(0), column_t(static_cast<u32>(0))));
-    
-    // 测试字体大小有效性 - 已移除，使用类内部验证
-    
-    // 测试工作表名称有效性 - 已移除，使用类内部验证
 }
 
 // ==================== TXFont 测试 ====================

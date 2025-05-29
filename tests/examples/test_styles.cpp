@@ -20,7 +20,7 @@ protected:
     }
 
     void TearDown() override {
-        std::filesystem::remove("output/styles_test.xlsx");
+        // std::filesystem::remove("output/styles_test.xlsx");
     }
 };
 

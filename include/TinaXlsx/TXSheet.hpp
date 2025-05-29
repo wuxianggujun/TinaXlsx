@@ -13,6 +13,7 @@ namespace TinaXlsx {
 
 // Forward declarations
 class TXCell;
+    class TXWorkbook;
 
 /**
  * @brief Excel工作表类
@@ -27,7 +28,7 @@ public:
     using Range = TXRange;
 
 public:
-    explicit TXSheet(const std::string& name);
+    explicit TXSheet(const std::string& name,TXWorkbook* parentWorkbook);
     ~TXSheet();
 
     // 禁用拷贝构造和赋值

@@ -189,7 +189,7 @@ public:
             formula_object_.reset();
         }
     }
-
+    
     const std::string& getFormula() const {
         return formula_;
     }
@@ -358,19 +358,19 @@ public:
         return has_style_;
     }
     
-    uint32_t getStyleIndex() const {
+    u32 getStyleIndex() const {
         return style_index_;
     }
     
-    void setStyleIndex(uint32_t index) {
+    void setStyleIndex(u32 index) {
         style_index_ = index;
         has_style_ = true;
     }
 
 private:
     CellValue value_;
-    TXCell::CellType type_;
-    TXCell::NumberFormat number_format_;
+    CellType type_;
+    NumberFormat number_format_;
     std::string custom_format_;
     std::string formula_;
     bool is_merged_;
@@ -378,7 +378,7 @@ private:
     int master_row_;
     int master_col_;
     bool has_style_;
-    uint32_t style_index_;
+    u32 style_index_;
     std::unique_ptr<TXFormula> formula_object_;
     std::unique_ptr<TXNumberFormat> number_format_object_;
 };

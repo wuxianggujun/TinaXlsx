@@ -156,6 +156,17 @@ bool TXColor::isDark() const {
     return luminance < 128.0;
 }
 
+std::string TXColor::toARGBHexString() const
+{
+    std::ostringstream oss;
+    oss << std::hex << std::setfill('0')
+       << std::setw(2) << static_cast<int>(getAlpha())   // AA
+       << std::setw(2) << static_cast<int>(getRed())     // RR
+       << std::setw(2) << static_cast<int>(getGreen())   // GG
+       << std::setw(2) << static_cast<int>(getBlue());    // BB
+    return oss.str();
+}
+
 // ==================== TXColor 静态工厂方法实现 ====================
 
 TXColor TXColor::fromHSV(int h, int s, int v, uint8_t a) {
