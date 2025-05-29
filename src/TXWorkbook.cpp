@@ -387,6 +387,14 @@ namespace TinaXlsx
                 types.addChild(worksheetOverride);
             }
 
+            if (style_manager_pimpl_)
+            {
+                XmlNodeBuilder styleOverride("Override");
+                styleOverride.addAttribute("PartName", "/xl/styles.xml")
+                             .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml");
+                types.addChild(styleOverride);
+            }
+
             TXXmlWriter xmlWriter;
             xmlWriter.setRootNode(types);
 
@@ -446,8 +454,11 @@ namespace TinaXlsx
             relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
 
             // 为每个工作表创建关系
+            std::size_t current_rid_index = 0; // 用于生成 rId
             for (std::size_t i = 0; i < sheets_.size(); ++i)
             {
+                current_rid_index++; // 先生成 rId1，然后 rId2，以此类推
+                
                 XmlNodeBuilder relationship("Relationship");
                 relationship.addAttribute("Id", "rId" + std::to_string(i + 1))
                             .addAttribute(
@@ -456,6 +467,16 @@ namespace TinaXlsx
                 relationships.addChild(relationship);
             }
 
+            if (style_manager_pimpl_) // 再次假设 hasStyles() 或类似条件
+            {
+                current_rid_index++; // 确保 rId 是唯一的
+                XmlNodeBuilder styleRelationship("Relationship");
+                styleRelationship.addAttribute("Id", "rId" + std::to_string(current_rid_index))
+                                 .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles")
+                                 .addAttribute("Target", "styles.xml"); // Target 是相对于 xl/_rels/workbook.xml.rels 的 xl/styles.xml
+                relationships.addChild(styleRelationship);
+            }
+            
             TXXmlWriter xmlWriter;
             xmlWriter.setRootNode(relationships);
 
