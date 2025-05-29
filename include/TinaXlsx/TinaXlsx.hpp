@@ -47,9 +47,11 @@
 #include "TXWorkbook.hpp"
 #include "TXComponentManager.hpp"
 
-// 包含工作表读写器
-#include "TXWorksheetWriter.hpp"
-#include "TXWorksheetReader.hpp"
+// XML处理器 - 新架构使用Handler模式
+#include "TXWorksheetXmlHandler.hpp"
+#include "TXWorkbookXmlHandler.hpp"
+#include "TXStylesXmlHandler.hpp"
+#include "TXDocumentPropertiesXmlHandler.hpp"
 
 /**
  * @namespace TinaXlsx

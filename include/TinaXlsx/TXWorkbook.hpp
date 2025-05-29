@@ -54,6 +54,13 @@ namespace TinaXlsx
         TXSheet* addSheet(const std::string& name);
 
         /**
+         * @brief 添加工作表
+         * @param sheet 工作表指针
+         * @return 成功返回工作表指针，失败返回nullptr
+         */
+        TXSheet* addSheet(std::unique_ptr<TXSheet> sheet);
+
+        /**
          * @brief 获取工作表
          * @param name 工作表名称
          * @return 工作表指针，如果不存在返回nullptr
@@ -157,6 +164,30 @@ namespace TinaXlsx
          * @param component 要注册的组件
          */
         void registerComponent(ExcelComponent component);
+
+        /**
+         * @brief 获取工作表列表
+         * @return 工作表列表引用
+         */
+        std::vector<std::unique_ptr<TXSheet>>& getSheets();
+
+        /**
+         * @brief 获取工作表列表（常量版本）
+         * @return 工作表列表常量引用
+         */
+        const std::vector<std::unique_ptr<TXSheet>>& getSheets() const;
+
+        /**
+         * @brief 获取样式管理器
+         * @return 样式管理器引用
+         */
+        TXStyleManager& getStyleManager();
+
+        /**
+         * @brief 获取样式管理器（常量版本）
+         * @return 样式管理器常量引用
+         */
+        const TXStyleManager& getStyleManager() const;
 
     private:
         class Impl;

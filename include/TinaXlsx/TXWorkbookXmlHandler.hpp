@@ -73,7 +73,7 @@ namespace TinaXlsx
         }
 
 
-        std::string_view partName() const override
+        std::string partName() const override
         {
             return "xl/workbook.xml";
         }

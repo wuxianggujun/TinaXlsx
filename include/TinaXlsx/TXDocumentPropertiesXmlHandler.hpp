@@ -6,6 +6,7 @@
 #include "TinaXlsx/TXXmlHandler.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
 #include "TinaXlsx/TXWorkbookContext.hpp"
+#include "TinaXlsx/TXComponentManager.hpp"
 
 namespace TinaXlsx
 {
@@ -35,7 +36,7 @@ public:
         return true; // 或者根据需要实现
     }
 
-    [[nodiscard]] std::string_view partName() const override {
+    [[nodiscard]] std::string partName() const override {
         return "docProps/"; // 定义路径前缀
     }
 };

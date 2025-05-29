@@ -8,6 +8,9 @@
 #include "TinaXlsx/TXXmlReader.hpp"
 #include "TinaXlsx/TXXmlWriter.hpp"
 #include "TinaXlsx/TXSheet.hpp"
+#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXRange.hpp"
+#include "TinaXlsx/TXTypes.hpp"
 
 namespace TinaXlsx
 {
@@ -52,22 +55,61 @@ namespace TinaXlsx
             worksheet.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
                      .addAttribute("xmlns:r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
 
-            XmlNodeBuilder sheetData("sheetData");
+            // 添加维度信息
+            XmlNodeBuilder dimension("dimension");
+            TXRange usedRange = sheet->getUsedRange();
+            if (usedRange.isValid()) {
+                dimension.addAttribute("ref", usedRange.toAddress());
+            } else {
+                dimension.addAttribute("ref", "A1:A1");
+            }
+            worksheet.addChild(dimension);
 
-            // TODO: 这里应该根据 sheet 提供的行和单元格的迭代接口，生成 sheetData 节点下面的子节点
-            // 示例：假设 sheet 提供了行和单元格的迭代接口
-            // for (const auto& row : sheet->rows()) {
-            //     XmlNodeBuilder rowNode("row");
-            //     for (const auto& cell : row.cells()) {
-            //         XmlNodeBuilder c("c");
-            //         c.addAttribute("r", cell.ref());
-            //         c.addChild(XmlNodeBuilder("v").setText(cell.value()));
-            //         rowNode.addChild(c);
-            //     }
-            //     sheetData.addChild(rowNode);
-            // }
+            // 构建工作表数据
+            XmlNodeBuilder sheetData("sheetData");
+            
+            if (usedRange.isValid()) {
+                // 遍历所有使用的行
+                for (row_t row = usedRange.getStart().getRow(); row <= usedRange.getEnd().getRow(); ++row) {
+                    XmlNodeBuilder rowNode("row");
+                    rowNode.addAttribute("r", std::to_string(row.index()));
+                    
+                    bool hasData = false;
+                    // 遍历这一行的所有列
+                    for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
+                        const TXCell* cell = sheet->getCell(row, col);
+                        
+                        if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
+                            std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
+                            XmlNodeBuilder cellNode = buildCellNode(cell, cellRef);
+                            rowNode.addChild(cellNode);
+                            hasData = true;
+                        }
+                    }
+                    
+                    // 只添加非空行
+                    if (hasData) {
+                        sheetData.addChild(rowNode);
+                    }
+                }
+            }
             
             worksheet.addChild(sheetData);
+
+            // 添加合并单元格（如果有）
+            auto mergeRegions = sheet->getAllMergeRegions();
+            if (!mergeRegions.empty()) {
+                XmlNodeBuilder mergeCells("mergeCells");
+                mergeCells.addAttribute("count", std::to_string(mergeRegions.size()));
+                
+                for (const auto& range : mergeRegions) {
+                    XmlNodeBuilder mergeCell("mergeCell");
+                    mergeCell.addAttribute("ref", range.toAddress());
+                    mergeCells.addChild(mergeCell);
+                }
+                
+                worksheet.addChild(mergeCells);
+            }
 
             TXXmlWriter writer;
             writer.setRootNode(worksheet);
@@ -80,11 +122,19 @@ namespace TinaXlsx
             return true;
         }
 
-        [[nodiscard]] std::string_view partName() const override {
+        [[nodiscard]] std::string partName() const override {
             return "xl/worksheets/sheet" + std::to_string(m_sheetIndex + 1) + ".xml";
         }
 
     private:
+        /**
+         * @brief 构建单个单元格节点
+         * @param cell 单元格对象
+         * @param cellRef 单元格引用（如A1）
+         * @return 单元格节点
+         */
+        XmlNodeBuilder buildCellNode(const TXCell* cell, const std::string& cellRef) const;
+
         u64 m_sheetIndex;
     };
 }

@@ -20,7 +20,7 @@ namespace TinaXlsx
 
         virtual bool save(TXZipArchiveWriter& zipWriter,const TXWorkbookContext& context)  = 0;
 
-        [[nodiscard]] virtual std::string_view partName() const = 0;
+        [[nodiscard]] virtual std::string partName() const = 0;
 
         [[nodiscard]] std::string lastError() const { return m_lastError; }
 

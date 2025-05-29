@@ -24,27 +24,15 @@ namespace TinaXlsx {
                 m_lastError = "Failed to parse styles.xml: " + reader.getLastError();
                 return false;
             }
-            // 解析 cellXfs 节点，填充 context.styleManager
-            auto styleNodes = reader.findNodes("//cellXfs/xf");
-            for (const auto& styleNode : styleNodes) {
-                // 假设 styleManager 有 addStyle 接口
-                // context.styleManager.addStyle(parseStyle(styleNode));
-            }
+            
+            // TODO: 解析 cellXfs 节点，填充 context.styleManager
+            // 目前暂时返回true，等待后续实现样式加载逻辑
             return true;
         }
 
         bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override {
-            XmlNodeBuilder styleSheet("styleSheet");
-            styleSheet.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main");
-
-            XmlNodeBuilder cellXfs("cellXfs");
-            // 示例：假设 styleManager 提供样式迭代
-            // for (const auto& style : context.styleManager.styles()) {
-            //     XmlNodeBuilder xf("xf");
-            //     xf.addAttribute("numFmtId", style.numFmtId());
-            //     cellXfs.addChild(xf);
-            // }
-            styleSheet.addChild(cellXfs);
+            // 使用styleManager的createStylesXmlNode方法生成样式XML
+            XmlNodeBuilder styleSheet = context.styleManager.createStylesXmlNode();
 
             TXXmlWriter writer;
             writer.setRootNode(styleSheet);
@@ -57,7 +45,7 @@ namespace TinaXlsx {
             return true;
         }
 
-        std::string_view partName() const override {
+        std::string partName() const override {
             return "xl/styles.xml";
         }
     };

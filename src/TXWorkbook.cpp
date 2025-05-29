@@ -149,7 +149,7 @@ namespace TinaXlsx
             return true;
         }
         
-        TXSheet* Impl::storeSheet(std::unique_ptr<TXSheet> sheet_uptr) {
+        TXSheet* storeSheet(std::unique_ptr<TXSheet> sheet_uptr) {
             if (!sheet_uptr) {
                 last_error_ = "Attempted to store a null sheet.";
                 return nullptr;
@@ -362,6 +362,26 @@ namespace TinaXlsx
         void registerComponent(ExcelComponent component)
         {
             component_manager_.registerComponent(component);
+        }
+
+        std::vector<std::unique_ptr<TXSheet>>& getSheets()
+        {
+            return sheets_;
+        }
+
+        const std::vector<std::unique_ptr<TXSheet>>& getSheets() const
+        {
+            return sheets_;
+        }
+
+        TXStyleManager& getStyleManagerRef()
+        {
+            return *style_manager_pimpl_;
+        }
+
+        const TXStyleManager& getStyleManagerRef() const
+        {
+            return *style_manager_pimpl_;
         }
 
     private:
@@ -655,5 +675,34 @@ namespace TinaXlsx
     bool TXWorkbook::isEmpty() const
     {
         return pImpl->getSheetCount() == 0;
+    }
+
+    std::vector<std::unique_ptr<TXSheet>>& TXWorkbook::getSheets()
+    {
+        return pImpl->getSheets();
+    }
+
+    const std::vector<std::unique_ptr<TXSheet>>& TXWorkbook::getSheets() const
+    {
+        return pImpl->getSheets();
+    }
+
+    TXStyleManager& TXWorkbook::getStyleManager()
+    {
+        return pImpl->getStyleManagerRef();
+    }
+
+    const TXStyleManager& TXWorkbook::getStyleManager() const
+    {
+        return pImpl->getStyleManagerRef();
+    }
+
+    TXSheet* TXWorkbook::addSheet(std::unique_ptr<TXSheet> sheet)
+    {
+        if (!pImpl || !sheet)
+        {
+            return nullptr;
+        }
+        return pImpl->storeSheet(std::move(sheet));
     }
 } // namespace TinaXlsx
