@@ -1,20 +1,17 @@
 #pragma once
 
-#include "TXTypes.hpp"
-#include "TXComponentManager.hpp"
 #include <string>
 #include <vector>
 #include <memory>
-#include <unordered_map>
-#include <unordered_set>
+#include "TinaXlsx/TXTypes.hpp"
+#include "TinaXlsx/TXComponentManager.hpp"
 
 namespace TinaXlsx
 {
     class TXCellStyle;
     class TXSheet;
     class TXStyleManager;
-    class TXWorksheetReader;
-    class TXWorksheetWriter;
+    class TXXmlHandler;
 
     /**
      * @brief Excel工作簿类
@@ -68,7 +65,7 @@ namespace TinaXlsx
          * @param index 工作表索引
          * @return 工作表指针，如果索引无效返回nullptr
          */
-        TXSheet* getSheet(std::size_t index);
+        TXSheet* getSheet(u64 index);
 
         /**
          * @brief 删除工作表
@@ -83,7 +80,7 @@ namespace TinaXlsx
          * @brief 获取工作表数量
          * @return 工作表数量
          */
-        std::size_t getSheetCount() const;
+        u64 getSheetCount() const;
 
         /**
          * @brief 获取所有工作表名称
@@ -123,7 +120,7 @@ namespace TinaXlsx
          * @brief 获取最后的错误信息
          * @return 错误信息字符串
          */
-        const std::string& getLastError() const;
+        [[nodiscard]] const std::string& getLastError() const;
 
         /**
          * @brief 清空工作簿
@@ -146,7 +143,7 @@ namespace TinaXlsx
          * @brief 获取组件管理器（常量版本）
          * @return 组件管理器常量引用
          */
-        const ComponentManager& getComponentManager() const;
+        [[nodiscard]] const ComponentManager& getComponentManager() const;
 
         /**
          * @brief 启用智能组件检测（默认启用）

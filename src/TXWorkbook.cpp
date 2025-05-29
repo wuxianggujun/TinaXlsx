@@ -5,17 +5,14 @@
 #include "TinaXlsx/TXWorkbook.hpp"
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXStyleManager.hpp"
-#include "TinaXlsx/TXCell.hpp"
-#include "TinaXlsx/TXWorksheetWriter.hpp"
-#include "TinaXlsx/TXWorksheetReader.hpp"
-#include "TinaXlsx/TXComponentManager.hpp"
+#include "TinaXlsx/TXXmlHandler.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
 #include "TinaXlsx/TXXmlWriter.hpp"
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
+#include "TinaXlsx/TXStylesXmlHandler.hpp"
+#include "TinaXlsx/TXWorkbookXmlHandler.hpp"
+#include "TinaXlsx/TXWorksheetXmlHandler.hpp"
+#include "TinaXlsx/TXDocumentPropertiesXmlHandler.hpp"
 #include <algorithm>
-#include <iostream>
 #include <regex>
 
 namespace TinaXlsx
@@ -34,99 +31,121 @@ namespace TinaXlsx
         bool loadFromFile(const std::string& filename)
         {
             // TODO 等待后续修改实现，然后真正的读取工作簿数据
-            /*
             // 清空现有数据
             clear();
 
-            // 使用工作表读取器读取每个工作表
-            TXWorksheetReader reader;
-
-            // 首先我们需要确定有多少个工作表
-            // 这需要读取 workbook.xml，但为了简化，我们先假设只有一个工作表
-
-            // 创建一个新工作表并读取
-            auto sheet = addSheet("Sheet1");
-            if (!sheet)
+            TXZipArchiveReader zipReader;
+            if (!zipReader.open(filename))
             {
-                last_error_ = "Failed to create sheet";
+                last_error_ = "Failed to open XLSX file: " + zipReader.lastError();
                 return false;
             }
 
-            if (!reader.readWorksheetFromFile(filename, sheet, 1))
+            TXWorkbookContext context{sheets_,*style_manager_pimpl_, component_manager_};
+
+            // 加载 workbook.xml（必须首先加载以获取工作表信息）
+            TXWorkbookXmlHandler workbookHandler;
+            if (!workbookHandler.load(zipReader, context))
             {
-                last_error_ = "Failed to read worksheet: " + reader.getLastError();
+                last_error_ = workbookHandler.lastError();
                 return false;
             }
-            */
 
+            // 加载 styles.xml（如果存在）
+            if (component_manager_.hasComponent(ExcelComponent::Styles))
+            {
+                StylesXmlHandler stylesHandler;
+                if (!stylesHandler.load(zipReader, context))
+                {
+                    last_error_ = stylesHandler.lastError();
+                    return false;
+                }
+            }
+
+            // TODO 加载 sharedStrings.xml（如果存在）
+            // 加载 sharedStrings.xml（如果存在）
+            /*if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
+                SharedStringsXmlHandler sharedStringsHandler;
+                if (!sharedStringsHandler.load(zipReader, context)) {
+                    last_error_ = sharedStringsHandler.lastError();
+                    return false;
+                }
+            }*/
+
+            // 加载每个工作表
+            for (size_t i = 0; i < sheets_.size(); ++i) {
+                TXWorksheetXmlHandler worksheetHandler(i);
+                if (!worksheetHandler.load(zipReader, context)) {
+                    last_error_ = worksheetHandler.lastError();
+                    return false;
+                }
+            }
+
+            // 加载其他组件（如文档属性）
+            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+                TXDocumentPropertiesXmlHandler docPropsHandler;
+                if (!docPropsHandler.load(zipReader, context)) {
+                    last_error_ = docPropsHandler.lastError();
+                    return false;
+                }
+            }
             return true;
         }
 
         bool saveToFile(const std::string& filename)
         {
-            if (sheets_.empty())
-            {
-                last_error_ = "No sheets to save";
-                return false;
-            }
-
-            // 创建 ZIP 写入器（一次性创建整个XLSX文件）
             TXZipArchiveWriter zipWriter;
-            if (!zipWriter.open(filename, false))
-            {
-                // 不使用追加模式，重新创建文件
-                last_error_ = "Failed to create XLSX file: " + zipWriter.lastError();
+            if (!zipWriter.open(filename, false)) {
+                last_error_ = "无法创建文件: " + filename;
                 return false;
             }
 
-            // 1. 创建 [Content_Types].xml
-            if (!createContentTypesXml(zipWriter))
-            {
-                last_error_ = "Failed to create content types";
+            TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_};
+
+            // 保存 workbook.xml
+            TXWorkbookXmlHandler workbookHandler;
+            if (!workbookHandler.save(zipWriter, context)) {
+                last_error_ = workbookHandler.lastError();
                 return false;
             }
 
-            // 2. 创建 _rels/.rels
-            if (!createMainRelsXml(zipWriter))
-            {
-                last_error_ = "Failed to create main relationships";
-                return false;
-            }
-
-            // 3. 创建 xl/workbook.xml
-            if (!createWorkbookXml(zipWriter))
-            {
-                last_error_ = "Failed to create workbook.xml";
-                return false;
-            }
-
-            // 3.5 创建 xl/styles.xml
-            if (!createStylesXml(zipWriter))
-            {
-                zipWriter.close();
-                return false;
-            }
-
-            // 4. 创建 xl/_rels/workbook.xml.rels
-            if (!createWorkbookRelsXml(zipWriter))
-            {
-                last_error_ = "Failed to create workbook relationships";
-                return false;
-            }
-
-            // 5. 创建所有工作表文件
-            TXWorksheetWriter worksheetWriter;
-            for (std::size_t i = 0; i < sheets_.size(); ++i)
-            {
-                // 使用TXWorksheetWriter正确写入工作表
-                if (!worksheetWriter.writeWorksheetToZip(zipWriter, sheets_[i].get(), i + 1))
-                {
-                    last_error_ = "Failed to write worksheet " + std::to_string(i + 1) +
-                        ": " + worksheetWriter.getLastError();
+            // 保存 styles.xml（如果启用了样式组件）
+            if (component_manager_.hasComponent(ExcelComponent::Styles)) {
+                StylesXmlHandler stylesHandler;
+                if (!stylesHandler.save(zipWriter, context)) {
+                    last_error_ = stylesHandler.lastError();
                     return false;
                 }
             }
 
+            // TODO 保存 sharedStrings.xml（如果启用了共享字符串组件）
+            /*// 保存 sharedStrings.xml（如果启用了共享字符串组件）
+            if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
+                SharedStringsXmlHandler sharedStringsHandler;
+                if (!sharedStringsHandler.save(zipWriter, context)) {
+                    last_error_ = sharedStringsHandler.lastError();
+                    return false;
+                }
+            }*/
+
+            // 保存每个工作表
+            for (size_t i = 0; i < sheets_.size(); ++i) {
+                TXWorksheetXmlHandler worksheetHandler(i);
+                if (!worksheetHandler.save(zipWriter, context)) {
+                    last_error_ = worksheetHandler.lastError();
+                    return false;
+                }
+            }
+
+            // 保存其他组件（如文档属性）
+            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+                TXDocumentPropertiesXmlHandler docPropsHandler;
+                if (!docPropsHandler.save(zipWriter, context)) {
+                    last_error_ = docPropsHandler.lastError();
+                    return false;
+                }
+            }
+            
             return true;
         }
         
