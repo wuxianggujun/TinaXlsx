@@ -58,7 +58,7 @@ namespace TinaXlsx
          * @param sheet 工作表指针
          * @return 成功返回工作表指针，失败返回nullptr
          */
-        TXSheet* addSheet(std::unique_ptr<TXSheet> sheet);
+        TXSheet* addSheet(std::unique_ptr<TXSheet> sheet) const;
 
         /**
          * @brief 获取工作表
@@ -72,7 +72,7 @@ namespace TinaXlsx
          * @param index 工作表索引
          * @return 工作表指针，如果索引无效返回nullptr
          */
-        TXSheet* getSheet(u64 index);
+        TXSheet* getSheet(u64 index) const;
 
         /**
          * @brief 删除工作表

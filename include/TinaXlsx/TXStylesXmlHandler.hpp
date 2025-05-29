@@ -26,6 +26,8 @@ namespace TinaXlsx {
             }
             
             // TODO: 解析 cellXfs 节点，填充 context.styleManager
+            // 解析样式（示例，需根据 TXStyleManager 实现）
+            auto xfNodes = reader.findNodes("//cellXfs/xf");
             // 目前暂时返回true，等待后续实现样式加载逻辑
             return true;
         }

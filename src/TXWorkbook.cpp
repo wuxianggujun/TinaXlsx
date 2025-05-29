@@ -4,14 +4,17 @@
 
 #include "TinaXlsx/TXWorkbook.hpp"
 #include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXStyleManager.hpp"
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXZipArchive.hpp"
-#include "TinaXlsx/TXXmlWriter.hpp"
+
 #include "TinaXlsx/TXStylesXmlHandler.hpp"
 #include "TinaXlsx/TXWorkbookXmlHandler.hpp"
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
 #include "TinaXlsx/TXDocumentPropertiesXmlHandler.hpp"
+
+#include "TinaXlsx/TXContentTypesXmlHandler.hpp"
+#include "TinaXlsx/TXMainRelsXmlHandler.hpp"
+#include "TinaXlsx/TXWorkbookRelsXmlHandler.hpp"
+#include "TinaXlsx/TXSharedStringsXmlHandler.hpp"
+
 #include <algorithm>
 #include <regex>
 
@@ -30,7 +33,6 @@ namespace TinaXlsx
 
         bool loadFromFile(const std::string& filename)
         {
-            // TODO 等待后续修改实现，然后真正的读取工作簿数据
             // 清空现有数据
             clear();
 
@@ -41,7 +43,7 @@ namespace TinaXlsx
                 return false;
             }
 
-            TXWorkbookContext context{sheets_,*style_manager_pimpl_, component_manager_};
+            TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_};
 
             // 加载 workbook.xml（必须首先加载以获取工作表信息）
             TXWorkbookXmlHandler workbookHandler;
@@ -62,29 +64,34 @@ namespace TinaXlsx
                 }
             }
 
-            // TODO 加载 sharedStrings.xml（如果存在）
             // 加载 sharedStrings.xml（如果存在）
-            /*if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
-                SharedStringsXmlHandler sharedStringsHandler;
-                if (!sharedStringsHandler.load(zipReader, context)) {
+            if (component_manager_.hasComponent(ExcelComponent::SharedStrings))
+            {
+                TXSharedStringsXmlHandler sharedStringsHandler;
+                if (!sharedStringsHandler.load(zipReader, context))
+                {
                     last_error_ = sharedStringsHandler.lastError();
                     return false;
                 }
-            }*/
+            }
 
             // 加载每个工作表
-            for (size_t i = 0; i < sheets_.size(); ++i) {
+            for (size_t i = 0; i < sheets_.size(); ++i)
+            {
                 TXWorksheetXmlHandler worksheetHandler(i);
-                if (!worksheetHandler.load(zipReader, context)) {
+                if (!worksheetHandler.load(zipReader, context))
+                {
                     last_error_ = worksheetHandler.lastError();
                     return false;
                 }
             }
 
             // 加载其他组件（如文档属性）
-            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties))
+            {
                 TXDocumentPropertiesXmlHandler docPropsHandler;
-                if (!docPropsHandler.load(zipReader, context)) {
+                if (!docPropsHandler.load(zipReader, context))
+                {
                     last_error_ = docPropsHandler.lastError();
                     return false;
                 }
@@ -95,62 +102,97 @@ namespace TinaXlsx
         bool saveToFile(const std::string& filename)
         {
             TXZipArchiveWriter zipWriter;
-            if (!zipWriter.open(filename, false)) {
+            if (!zipWriter.open(filename, false))
+            {
                 last_error_ = "无法创建文件: " + filename;
                 return false;
             }
 
+            if (auto_component_detection_)
+            {
+                for (const auto& sheet : sheets_)
+                {
+                    component_manager_.autoDetectComponents(sheet.get());
+                }
+            }
+
+
             TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_};
+
+            // 保存 [Content_Types].xml
+            TXContentTypesXmlHandler contentTypesHandler;
+            if (!contentTypesHandler.save(zipWriter, context))
+            {
+                last_error_ = contentTypesHandler.lastError();
+                return false;
+            }
+
+            TXMainRelsXmlHandler mainRelsHandler;
+            if (!mainRelsHandler.save(zipWriter, context))
+            {
+                last_error_ = mainRelsHandler.lastError();
+                return false;
+            }
 
             // 保存 workbook.xml
             TXWorkbookXmlHandler workbookHandler;
-            if (!workbookHandler.save(zipWriter, context)) {
+            if (!workbookHandler.save(zipWriter, context))
+            {
                 last_error_ = workbookHandler.lastError();
                 return false;
             }
 
             // 保存 styles.xml（如果启用了样式组件）
-            if (component_manager_.hasComponent(ExcelComponent::Styles)) {
+            if (component_manager_.hasComponent(ExcelComponent::Styles))
+            {
                 StylesXmlHandler stylesHandler;
-                if (!stylesHandler.save(zipWriter, context)) {
+                if (!stylesHandler.save(zipWriter, context))
+                {
                     last_error_ = stylesHandler.lastError();
                     return false;
                 }
             }
 
-            // TODO 保存 sharedStrings.xml（如果启用了共享字符串组件）
-            /*// 保存 sharedStrings.xml（如果启用了共享字符串组件）
-            if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
-                SharedStringsXmlHandler sharedStringsHandler;
-                if (!sharedStringsHandler.save(zipWriter, context)) {
+            // 保存 sharedStrings.xml（如果启用了共享字符串组件）
+            if (component_manager_.hasComponent(ExcelComponent::SharedStrings))
+            {
+                TXSharedStringsXmlHandler sharedStringsHandler;
+                if (!sharedStringsHandler.save(zipWriter, context))
+                {
                     last_error_ = sharedStringsHandler.lastError();
                     return false;
                 }
-            }*/
+            }
 
             // 保存每个工作表
-            for (size_t i = 0; i < sheets_.size(); ++i) {
+            for (size_t i = 0; i < sheets_.size(); ++i)
+            {
                 TXWorksheetXmlHandler worksheetHandler(i);
-                if (!worksheetHandler.save(zipWriter, context)) {
+                if (!worksheetHandler.save(zipWriter, context))
+                {
                     last_error_ = worksheetHandler.lastError();
                     return false;
                 }
             }
 
-            // 保存其他组件（如文档属性）
-            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+            // 保存文档属性
+            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties))
+            {
                 TXDocumentPropertiesXmlHandler docPropsHandler;
-                if (!docPropsHandler.save(zipWriter, context)) {
+                if (!docPropsHandler.save(zipWriter, context))
+                {
                     last_error_ = docPropsHandler.lastError();
                     return false;
                 }
             }
-            
+
             return true;
         }
-        
-        TXSheet* storeSheet(std::unique_ptr<TXSheet> sheet_uptr) {
-            if (!sheet_uptr) {
+
+        TXSheet* storeSheet(std::unique_ptr<TXSheet> sheet_uptr)
+        {
+            if (!sheet_uptr)
+            {
                 last_error_ = "Attempted to store a null sheet.";
                 return nullptr;
             }
@@ -158,18 +200,20 @@ namespace TinaXlsx
             sheets_.push_back(std::move(sheet_uptr));
 
             // 更新组件使用记录
-            if (auto_component_detection_) {
+            if (auto_component_detection_)
+            {
                 component_manager_.registerComponent(ExcelComponent::BasicWorkbook);
             }
 
             // 如果这是第一个工作表，则将其设为活动工作表
-            if (sheets_.size() == 1) {
+            if (sheets_.size() == 1)
+            {
                 active_sheet_index_ = 0;
             }
             last_error_.clear();
             return sheet_ptr;
         }
-        
+
 
         bool removeSheet(const std::string& name)
         {
@@ -191,6 +235,10 @@ namespace TinaXlsx
             if (active_sheet_index_ >= sheets_.size() && !sheets_.empty())
             {
                 active_sheet_index_ = sheets_.size() - 1;
+            }
+            else if (sheets_.empty())
+            {
+                active_sheet_index_ = 0;
             }
 
             return true;
@@ -342,6 +390,8 @@ namespace TinaXlsx
             sheets_.clear();
             active_sheet_index_ = 0;
             last_error_.clear();
+            component_manager_.reset();
+            style_manager_pimpl_ = std::make_unique<TXStyleManager>();
         }
 
         ComponentManager& getComponentManager()
@@ -391,157 +441,6 @@ namespace TinaXlsx
         ComponentManager component_manager_;
         bool auto_component_detection_;
         std::unique_ptr<TXStyleManager> style_manager_pimpl_;
-
-        // 辅助方法：创建Content Types文件
-        bool createContentTypesXml(TXZipArchiveWriter& zipWriter)
-        {
-            XmlNodeBuilder types("Types");
-            types.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/content-types");
-
-            // 添加默认类型
-            XmlNodeBuilder defaultRels("Default");
-            defaultRels.addAttribute("Extension", "rels")
-                       .addAttribute("ContentType", "application/vnd.openxmlformats-package.relationships+xml");
-            types.addChild(defaultRels);
-
-            XmlNodeBuilder defaultXml("Default");
-            defaultXml.addAttribute("Extension", "xml")
-                      .addAttribute("ContentType", "application/xml");
-            types.addChild(defaultXml);
-
-            // 添加workbook override
-            XmlNodeBuilder workbookOverride("Override");
-            workbookOverride.addAttribute("PartName", "/xl/workbook.xml")
-                            .addAttribute("ContentType",
-                                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml");
-            types.addChild(workbookOverride);
-
-            // 为每个工作表添加Override
-            for (std::size_t i = 0; i < sheets_.size(); ++i)
-            {
-                XmlNodeBuilder worksheetOverride("Override");
-                worksheetOverride.addAttribute("PartName", "/xl/worksheets/sheet" + std::to_string(i + 1) + ".xml")
-                                 .addAttribute("ContentType",
-                                               "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml");
-                types.addChild(worksheetOverride);
-            }
-
-            if (style_manager_pimpl_)
-            {
-                XmlNodeBuilder styleOverride("Override");
-                styleOverride.addAttribute("PartName", "/xl/styles.xml")
-                             .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml");
-                types.addChild(styleOverride);
-            }
-
-            TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(types);
-
-            return xmlWriter.writeToZip(zipWriter, "[Content_Types].xml");
-        }
-
-        // 辅助方法：创建主关系文件
-        bool createMainRelsXml(TXZipArchiveWriter& zipWriter)
-        {
-            XmlNodeBuilder relationships("Relationships");
-            relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
-
-            XmlNodeBuilder relationship("Relationship");
-            relationship.addAttribute("Id", "rId1")
-                        .addAttribute(
-                            "Type",
-                            "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument")
-                        .addAttribute("Target", "xl/workbook.xml");
-            relationships.addChild(relationship);
-
-            TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(relationships);
-
-            return xmlWriter.writeToZip(zipWriter, "_rels/.rels");
-        }
-
-        // 辅助方法：创建workbook.xml
-        bool createWorkbookXml(TXZipArchiveWriter& zipWriter)
-        {
-            XmlNodeBuilder workbook("workbook");
-            workbook.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
-                    .addAttribute("xmlns:r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
-
-            // 创建sheets节点
-            XmlNodeBuilder sheets("sheets");
-            for (std::size_t i = 0; i < sheets_.size(); ++i)
-            {
-                XmlNodeBuilder sheet("sheet");
-                sheet.addAttribute("name", sheets_[i]->getName())
-                     .addAttribute("sheetId", std::to_string(i + 1))
-                     .addAttribute("r:id", "rId" + std::to_string(i + 1));
-                sheets.addChild(sheet);
-            }
-
-            workbook.addChild(sheets);
-
-            TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(workbook);
-
-            return xmlWriter.writeToZip(zipWriter, "xl/workbook.xml");
-        }
-
-        // 辅助方法：创建workbook关系文件
-        bool createWorkbookRelsXml(TXZipArchiveWriter& zipWriter)
-        {
-            XmlNodeBuilder relationships("Relationships");
-            relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
-
-            // 为每个工作表创建关系
-            std::size_t current_rid_index = 0; // 用于生成 rId
-            for (std::size_t i = 0; i < sheets_.size(); ++i)
-            {
-                current_rid_index++; // 先生成 rId1，然后 rId2，以此类推
-                
-                XmlNodeBuilder relationship("Relationship");
-                relationship.addAttribute("Id", "rId" + std::to_string(i + 1))
-                            .addAttribute(
-                                "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet")
-                            .addAttribute("Target", "worksheets/sheet" + std::to_string(i + 1) + ".xml");
-                relationships.addChild(relationship);
-            }
-
-            if (style_manager_pimpl_) // 再次假设 hasStyles() 或类似条件
-            {
-                current_rid_index++; // 确保 rId 是唯一的
-                XmlNodeBuilder styleRelationship("Relationship");
-                styleRelationship.addAttribute("Id", "rId" + std::to_string(current_rid_index))
-                                 .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles")
-                                 .addAttribute("Target", "styles.xml"); // Target 是相对于 xl/_rels/workbook.xml.rels 的 xl/styles.xml
-                relationships.addChild(styleRelationship);
-            }
-            
-            TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(relationships);
-
-            return xmlWriter.writeToZip(zipWriter, "xl/_rels/workbook.xml.rels");
-        }
-
-        bool createStylesXml(TXZipArchiveWriter& zipWriter)
-        {
-            if (!style_manager_pimpl_)
-            {
-                last_error_ = "Style manager not initialized";
-                return false;
-            }
-
-            XmlNodeBuilder styles_root_node = style_manager_pimpl_->createStylesXmlNode();
-
-            TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(styles_root_node);
-
-            if (!xmlWriter.writeToZip(zipWriter, "xl/styles.xml"))
-            {
-                last_error_ = "Failed to write styles.xml: " + xmlWriter.getLastError();
-                return false;
-            }
-            return true;
-        }
     };
 
     // TXWorkbook 实现
@@ -588,7 +487,14 @@ namespace TinaXlsx
         return pImpl->storeSheet(std::move(sheet_obj));
     }
 
-    TXSheet* TXWorkbook::getSheet(std::size_t index)
+    TXSheet* TXWorkbook::addSheet(std::unique_ptr<TXSheet> sheet) const
+    {
+        if (!pImpl || !sheet) return nullptr;
+        return pImpl->storeSheet(std::move(sheet));
+    }
+
+    
+    TXSheet* TXWorkbook::getSheet(u64 index) const
     {
         return pImpl->getSheet(index);
     }
@@ -620,11 +526,7 @@ namespace TinaXlsx
 
     u32 TXWorkbook::registerOrGetStyleFId(const TXCellStyle& style)
     {
-        if (pImpl && pImpl->getStyleManager())
-        {
-            return pImpl->getStyleManager()->registerCellStyleXF(style);
-        }
-        return 0;
+        return pImpl->getStyleManager()->registerCellStyleXF(style);
     }
 
     bool TXWorkbook::hasSheet(const std::string& name) const
@@ -695,14 +597,5 @@ namespace TinaXlsx
     const TXStyleManager& TXWorkbook::getStyleManager() const
     {
         return pImpl->getStyleManagerRef();
-    }
-
-    TXSheet* TXWorkbook::addSheet(std::unique_ptr<TXSheet> sheet)
-    {
-        if (!pImpl || !sheet)
-        {
-            return nullptr;
-        }
-        return pImpl->storeSheet(std::move(sheet));
     }
 } // namespace TinaXlsx

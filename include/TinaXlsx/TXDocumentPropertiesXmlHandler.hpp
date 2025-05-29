@@ -10,34 +10,72 @@
 
 namespace TinaXlsx
 {
+    class TXDocumentPropertiesXmlHandler : public TXXmlHandler
+    {
+    public:
+        bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
+        {
+            // 生成 core.xml
+            XmlNodeBuilder coreProps("cp:coreProperties");
+            coreProps.addAttribute(
+                         "xmlns:cp", "http://schemas.openxmlformats.org/package/2006/metadata/core-properties")
+                     .addAttribute("xmlns:dc", "http://purl.org/dc/elements/1.1/")
+                     .addAttribute("xmlns:dcterms", "http://purl.org/dc/terms/")
+                     .addAttribute("xmlns:dcmitype", "http://purl.org/dc/dcmitype/")
+                     .addAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+            coreProps.addChild(XmlNodeBuilder("dc:creator").setText("TinaXlsx"));
+            coreProps.addChild(XmlNodeBuilder("cp:lastModifiedBy").setText("TinaXlsx"));
+            coreProps.addChild(XmlNodeBuilder("dcterms:created")
+                               .addAttribute("xsi:type", "dcterms:W3CDTF")
+                               .setText("2025-05-29T00:00:00Z"));
+            coreProps.addChild(XmlNodeBuilder("dcterms:modified")
+                               .addAttribute("xsi:type", "dcterms:W3CDTF")
+                               .setText("2025-05-29T00:00:00Z"));
 
-class TXDocumentPropertiesXmlHandler : public TXXmlHandler {
-public:
-    bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override {
-        // 生成 XML 内容
-        auto [core_xml, app_xml] = ComponentGenerator::generateDocumentProperties();
-
-        // 转换为字节数据
-        std::vector<uint8_t> core_data(core_xml.begin(), core_xml.end());
-        std::vector<uint8_t> app_data(app_xml.begin(), app_xml.end());
-
-        // 写入 ZIP 文件
-        if (!zipWriter.write("docProps/core.xml", core_data) ||
-            !zipWriter.write("docProps/app.xml", app_data)) {
-            m_lastError = "写入文档属性 XML 文件失败";
-            return false;
+            TXXmlWriter coreWriter;
+            coreWriter.setRootNode(coreProps);
+            std::string coreContent = coreWriter.generateXmlString();
+            std::vector<uint8_t> coreData(coreContent.begin(), coreContent.end());
+            if (!zipWriter.write("docProps/core.xml", coreData))
+            {
+                m_lastError = "Failed to write docProps/core.xml";
+                return false;
             }
-        return true;
-    }
 
-    // 如果不需要读取，可以简单实现
-    bool load(TXZipArchiveReader&, TXWorkbookContext&) override {
-        // TODO: 读取文档属性 XML 文件
-        return true; // 或者根据需要实现
-    }
+            // 生成 app.xml
+            XmlNodeBuilder appProps("Properties");
+            appProps.addAttribute("xmlns", "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties")
+                    .addAttribute("xmlns:vt", "http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes");
+            appProps.addChild(XmlNodeBuilder("Application").setText("TinaXlsx"));
+            appProps.addChild(XmlNodeBuilder("DocSecurity").setText("0"));
+            appProps.addChild(XmlNodeBuilder("ScaleCrop").setText("false"));
+            appProps.addChild(XmlNodeBuilder("SharedDoc").setText("false"));
+            appProps.addChild(XmlNodeBuilder("HyperlinksChanged").setText("false"));
+            appProps.addChild(XmlNodeBuilder("AppVersion").setText("16.0300"));
 
-    [[nodiscard]] std::string partName() const override {
-        return "docProps/"; // 定义路径前缀
-    }
-};
+            TXXmlWriter appWriter;
+            appWriter.setRootNode(appProps);
+            std::string appContent = appWriter.generateXmlString();
+            std::vector<uint8_t> appData(appContent.begin(), appContent.end());
+            if (!zipWriter.write("docProps/app.xml", appData))
+            {
+                m_lastError = "Failed to write docProps/app.xml";
+                return false;
+            }
+
+            return true;
+        }
+
+        // 如果不需要读取，可以简单实现
+        bool load(TXZipArchiveReader&, TXWorkbookContext&) override
+        {
+            // TODO: 读取文档属性 XML 文件
+            return true; // 或者根据需要实现
+        }
+
+        [[nodiscard]] std::string partName() const override
+        {
+            return "docProps/"; // 定义路径前缀
+        }
+    };
 }
