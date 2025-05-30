@@ -34,7 +34,6 @@
 #include "TXWorkbook.hpp"      ///< 工作簿类
 
 // ==================== 辅助工具类 ====================
-#include "TXUtils.hpp"         ///< 工具函数
 #include "TXXmlReader.hpp"     ///< XML读取器
 #include "TXXmlWriter.hpp"     ///< XML写入器
 
