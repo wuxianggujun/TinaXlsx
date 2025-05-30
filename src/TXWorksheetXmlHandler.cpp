@@ -12,16 +12,19 @@ namespace TinaXlsx
 {
     bool TXWorksheetXmlHandler::shouldUseInlineString(const std::string& str) const
     {
-        // 策略1: 极短字符串（1-2个字符）使用内联
-        if (str.length() <= 2) return true;
+        // 策略1: 极短字符串（1个字符）使用内联，节省共享字符串池空间
+        if (str.length() <= 1) return true;
     
-        // 策略2: 包含特殊XML字符的字符串使用内联（安全起见）
+        // 策略2: 包含特殊XML字符的字符串使用内联（避免XML转义复杂性）
         if (str.find_first_of("<>&\"'") != std::string::npos) return true;
     
-        // 策略3: 包含换行符或制表符的字符串使用内联
+        // 策略3: 包含控制字符的字符串使用内联（避免XML解析问题）
         if (str.find_first_of("\n\r\t") != std::string::npos) return true;
+        
+        // 策略4: 非常长的字符串（>100字符）使用内联（避免共享字符串池膨胀）
+        if (str.length() > 100) return true;
     
-        // 默认使用共享字符串（这样可以节省文件大小）
+        // 策略5: 2-100字符的普通字符串使用共享字符串（最大化复用效果）
         return false;
     }
 
@@ -59,9 +62,6 @@ namespace TinaXlsx
             } else {
                 // 共享字符串 - 添加到池
                 u32 index = context.sharedStringsPool.add(str);
-                
-                // 确保注册SharedStrings组件
-                const_cast<TXWorkbookContext&>(context).registerComponentFast(ExcelComponent::SharedStrings);
             
                 cellNode.addAttribute("t", "s");
                 cellNode.addChild(XmlNodeBuilder("v").setText(std::to_string(index)));

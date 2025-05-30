@@ -62,11 +62,6 @@ namespace TinaXlsx
                 return false;
             }
 
-            if (std::holds_alternative<std::string>(value))
-            {
-                workbook_->getContext()->registerComponentFast(ExcelComponent::SharedStrings);
-            }
-
             cells_[coord].setValue(value);
             last_error_.clear();
             return true;
