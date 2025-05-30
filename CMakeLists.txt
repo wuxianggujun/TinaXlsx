@@ -118,3 +118,17 @@ if(BUILD_TESTS)
     gtest_discover_tests(${PROJECT_NAME}_test)
 endif()
 
+# 添加调试测试程序
+add_executable(test_shared_strings_debug tests/unit/test_shared_strings_debug.cpp)
+target_link_libraries(test_shared_strings_debug PRIVATE ${PROJECT_NAME})
+
+if(MSVC)
+    target_compile_options(test_shared_strings_debug PRIVATE 
+        /W3 
+        /utf-8
+        /wd4819
+    )
+else()
+    target_compile_options(test_shared_strings_debug PRIVATE -Wall -Wno-unused-parameter)
+endif()
+

@@ -25,7 +25,6 @@ namespace TinaXlsx
 
         // 共享字符串池
         TXSharedStringsPool& sharedStringsPool;
-        mutable std::atomic<bool> stringsDirty{false};
 
         // 构造函数
         TXWorkbookContext(std::vector<std::unique_ptr<TXSheet>>& sheets_ref,
@@ -44,12 +43,6 @@ namespace TinaXlsx
             {
                 componentManager.registerComponent(component);
             }
-        }
-
-        // 标记字符串池需要更新
-        void markStringsDirty() const
-        {
-            stringsDirty.store(true, std::memory_order_release);
         }
     };
 }

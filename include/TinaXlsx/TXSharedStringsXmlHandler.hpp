@@ -46,15 +46,12 @@ namespace TinaXlsx
 
         bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
         {
-            // 仅在字符串池有数据时生成XML
-            if (!context.stringsDirty.load(std::memory_order_acquire)) {
-                return true;  // 跳过空池
-            }
-            
-            // 只从共享字符串池中获取字符串
+            // 获取共享字符串池中的字符串
             const auto& strings = context.sharedStringsPool.getStrings();
-            if (strings.empty()) {
-                return true;  // 空池不生成文件
+            
+            // 如果没有字符串或共享字符串池不是dirty状态，则不生成文件
+            if (strings.empty() || !context.sharedStringsPool.isDirty()) {
+                return true;  // 跳过空池或未修改的池
             }
             
             // 生成 XML

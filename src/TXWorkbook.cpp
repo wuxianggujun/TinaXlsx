@@ -160,20 +160,20 @@ namespace TinaXlsx
             }
         }
 
+        // 保存每个工作表（必须在sharedStrings之前，因为工作表保存时会填充共享字符串池）
+        for (size_t i = 0; i < sheets_.size(); ++i) {
+            TXWorksheetXmlHandler worksheetHandler(i);
+            if (!worksheetHandler.save(zipWriter, *context_)) {
+                last_error_ = worksheetHandler.lastError();
+                return false;
+            }
+        }
+
         // 保存 sharedStrings.xml（如果启用了共享字符串组件）
         if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
             TXSharedStringsXmlHandler sharedStringsHandler;
             if (!sharedStringsHandler.save(zipWriter, *context_)) {
                 last_error_ = sharedStringsHandler.lastError();
-                return false;
-            }
-        }
-
-        // 保存每个工作表
-        for (size_t i = 0; i < sheets_.size(); ++i) {
-            TXWorksheetXmlHandler worksheetHandler(i);
-            if (!worksheetHandler.save(zipWriter, *context_)) {
-                last_error_ = worksheetHandler.lastError();
                 return false;
             }
         }

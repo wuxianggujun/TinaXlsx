@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <cstdio>
+#include <fstream>
 #include "TinaXlsx/TinaXlsx.hpp"
 
 using namespace TinaXlsx;
@@ -138,4 +139,32 @@ TEST_F(CompleteXlsxSimpleTest, CreateXlsxWithMergedCells) {
     FILE* file = fopen("test_mergedcells.xlsx", "rb");
     EXPECT_NE(file, nullptr) << "test_mergedcells.xlsx does not exist";
     if (file) fclose(file);
+}
+
+TEST(TXWorkbookTest, TestSharedStrings) {
+    TXWorkbook workbook;
+    auto sheet = workbook.addSheet("SharedStringsTest");
+    
+    // 添加一些字符串到工作表
+    sheet->setCellValue(row_t(1), column_t(1), std::string("Hello World"));
+    sheet->setCellValue(row_t(1), column_t(2), std::string("Test String"));
+    sheet->setCellValue(row_t(1), column_t(3), std::string("Another Text"));
+    sheet->setCellValue(row_t(2), column_t(1), std::string("Hello World")); // 重复字符串
+    sheet->setCellValue(row_t(2), column_t(2), std::string("Different Text"));
+    
+    // 验证SharedStrings组件已被注册
+    EXPECT_TRUE(workbook.getComponentManager().hasComponent(ExcelComponent::SharedStrings));
+    
+    // 保存文件
+    std::string filename = "test_shared_strings.xlsx";
+    EXPECT_TRUE(workbook.saveToFile(filename));
+    
+    // 验证文件是否包含共享字符串XML
+    // 这里我们检查是否创建了文件，详细的XML内容验证需要额外的工具
+    std::ifstream file(filename, std::ios::binary);
+    EXPECT_TRUE(file.good());
+    file.close();
+    
+    // 清理
+    std::remove(filename.c_str());
 }
