@@ -80,12 +80,12 @@ namespace TinaXlsx
         // Border ID 0 (No border)
         TXBorder no_border; // Uses TXBorder's default constructor
         std::ostringstream border_key_oss;
-        border_key_oss << borderStyleToString(no_border.leftStyle) << "_" << no_border.leftColor.toARGBHexString()
-            << "|" << borderStyleToString(no_border.rightStyle) << "_" << no_border.rightColor.toARGBHexString()
-            << "|" << borderStyleToString(no_border.topStyle) << "_" << no_border.topColor.toARGBHexString()
-            << "|" << borderStyleToString(no_border.bottomStyle) << "_" << no_border.bottomColor.toARGBHexString()
-            << "|" << borderStyleToString(no_border.diagonalStyle) << "_" << no_border.diagonalColor.toARGBHexString()
-            << "u" << no_border.diagonalUp << "d" << no_border.diagonalDown;
+        border_key_oss << "L:" << borderStyleToString(no_border.leftStyle) << "_" << no_border.leftColor.toARGBHexString()
+            << ";R:" << borderStyleToString(no_border.rightStyle) << "_" << no_border.rightColor.toARGBHexString()
+            << ";T:" << borderStyleToString(no_border.topStyle) << "_" << no_border.topColor.toARGBHexString()
+            << ";B:" << borderStyleToString(no_border.bottomStyle) << "_" << no_border.bottomColor.toARGBHexString()
+            << ";D:" << borderStyleToString(no_border.diagonalStyle) << "_" << no_border.diagonalColor.toARGBHexString()
+            << ";u" << no_border.diagonalUp << ";d" << no_border.diagonalDown;
         borders_pool_.push_back(std::make_shared<TXBorder>(no_border));
         border_lookup_[border_key_oss.str()] = 0;
 
