@@ -316,44 +316,6 @@ const std::string& TXMergedCells::getLastError() const {
     return lastError_;
 }
 
-std::string TXMergedCells::toXml() const {
-    std::ostringstream oss;
-    oss << "<mergeCells count=\"" << mergeRegions_.size() << "\">\n";
-    
-    for (const auto& region : mergeRegions_) {
-        oss << "  <mergeCell ref=\"" << region.toString() << "\"/>\n";
-    }
-    
-    oss << "</mergeCells>\n";
-    return oss.str();
-}
-
-bool TXMergedCells::fromXml(const std::string& xmlStr) {
-    lastError_.clear();
-    clear();
-    
-    try {
-        // 简化的XML解析（实际项目中应使用专业的XML解析器）
-        std::regex mergePattern("<mergeCell\\s+ref=\"([^\"]+)\"\\s*/>");
-        std::sregex_iterator iter(xmlStr.begin(), xmlStr.end(), mergePattern);
-        std::sregex_iterator end;
-        
-        while (iter != end) {
-            std::string ref = (*iter)[1].str();
-            MergeRegion region = MergeRegion::fromString(ref);
-            if (region.isValid()) {
-                mergeCells(region.toRange());
-            }
-            ++iter;
-        }
-        
-        return true;
-    } catch (...) {
-        lastError_ = "XML parsing failed";
-        return false;
-    }
-}
-
 // ==================== 静态工具函数实现 ====================
 
 bool TXMergedCells::isOverlapping(const MergeRegion& region1, const MergeRegion& region2) {

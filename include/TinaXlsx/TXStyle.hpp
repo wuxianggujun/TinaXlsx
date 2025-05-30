@@ -399,8 +399,10 @@ public:
     bool operator!=(const TXCellStyle& other) const { return !(*this == other); }
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    TXFont font_;
+    TXAlignment alignment_;
+    TXBorder border_;
+    TXFill fill_;
 };
 
 } // namespace TinaXlsx 

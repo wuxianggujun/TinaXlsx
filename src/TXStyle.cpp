@@ -99,155 +99,150 @@ bool TXFill::operator==(const TXFill& other) const {
 
 // ==================== TXCellStyle 实现 ====================
 
-class TXCellStyle::Impl {
-public:
-    TXFont font_;
-    TXAlignment alignment_;
-    TXBorder border_;
-    TXFill fill_;
-    
-    Impl() {}
-    
-    Impl(const Impl& other) 
-        : font_(other.font_)
-        , alignment_(other.alignment_)
-        , border_(other.border_)
-        , fill_(other.fill_)
-    {}
-    
-    bool operator==(const Impl& other) const {
-        return font_ == other.font_ &&
-               alignment_ == other.alignment_ &&
-               border_ == other.border_ &&
-               fill_ == other.fill_;
-    }
-};
-
-TXCellStyle::TXCellStyle() : pImpl(std::make_unique<Impl>()) {}
+TXCellStyle::TXCellStyle() = default;
 
 TXCellStyle::~TXCellStyle() = default;
 
 TXCellStyle::TXCellStyle(const TXCellStyle& other) 
-    : pImpl(std::make_unique<Impl>(*other.pImpl)) {}
+    : font_(other.font_)
+    , alignment_(other.alignment_)
+    , border_(other.border_)
+    , fill_(other.fill_) {}
 
 TXCellStyle& TXCellStyle::operator=(const TXCellStyle& other) {
     if (this != &other) {
-        pImpl = std::make_unique<Impl>(*other.pImpl);
+        font_ = other.font_;
+        alignment_ = other.alignment_;
+        border_ = other.border_;
+        fill_ = other.fill_;
     }
     return *this;
 }
 
-TXCellStyle::TXCellStyle(TXCellStyle&& other) noexcept : pImpl(std::move(other.pImpl)) {}
+TXCellStyle::TXCellStyle(TXCellStyle&& other) noexcept 
+    : font_(std::move(other.font_))
+    , alignment_(std::move(other.alignment_))
+    , border_(std::move(other.border_))
+    , fill_(std::move(other.fill_)) {}
 
 TXCellStyle& TXCellStyle::operator=(TXCellStyle&& other) noexcept {
     if (this != &other) {
-        pImpl = std::move(other.pImpl);
+        font_ = std::move(other.font_);
+        alignment_ = std::move(other.alignment_);
+        border_ = std::move(other.border_);
+        fill_ = std::move(other.fill_);
     }
     return *this;
 }
 
 TXFont& TXCellStyle::getFont() {
-    return pImpl->font_;
+    return font_;
 }
 
 const TXFont& TXCellStyle::getFont() const {
-    return pImpl->font_;
+    return font_;
 }
 
 TXAlignment& TXCellStyle::getAlignment() {
-    return pImpl->alignment_;
+    return alignment_;
 }
 
 const TXAlignment& TXCellStyle::getAlignment() const {
-    return pImpl->alignment_;
+    return alignment_;
 }
 
 TXBorder& TXCellStyle::getBorder() {
-    return pImpl->border_;
+    return border_;
 }
 
 const TXBorder& TXCellStyle::getBorder() const {
-    return pImpl->border_;
+    return border_;
 }
 
 TXFill& TXCellStyle::getFill() {
-    return pImpl->fill_;
+    return fill_;
 }
 
 const TXFill& TXCellStyle::getFill() const {
-    return pImpl->fill_;
+    return fill_;
 }
 
 TXCellStyle& TXCellStyle::setFont(const TXFont& font) {
-    pImpl->font_ = font;
+    font_ = font;
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setAlignment(const TXAlignment& alignment) {
-    pImpl->alignment_ = alignment;
+    alignment_ = alignment;
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setBorder(const TXBorder& border) {
-    pImpl->border_ = border;
+    border_ = border;
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setFill(const TXFill& fill) {
-    pImpl->fill_ = fill;
+    fill_ = fill;
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setFont(const std::string& name, font_size_t size) {
-    pImpl->font_.setName(name).setSize(size);
+    font_.setName(name).setSize(size);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setFontColor(const TXColor& color) {
-    pImpl->font_.setColor(color);
+    font_.setColor(color);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setFontColor(color_value_t color) {
-    pImpl->font_.setColor(TXColor(color));
+    font_.setColor(TXColor(color));
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setFontStyle(FontStyle style) {
-    pImpl->font_.setStyle(style);
+    font_.setStyle(style);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setHorizontalAlignment(HorizontalAlignment alignment) {
-    pImpl->alignment_.setHorizontal(alignment);
+    alignment_.setHorizontal(alignment);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setVerticalAlignment(VerticalAlignment alignment) {
-    pImpl->alignment_.setVertical(alignment);
+    alignment_.setVertical(alignment);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setBackgroundColor(const TXColor& color) {
-    pImpl->fill_.setSolidFill(color);
+    fill_.setSolidFill(color);
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setBackgroundColor(color_value_t color) {
-    pImpl->fill_.setSolidFill(TXColor(color));
+    fill_.setSolidFill(TXColor(color));
     return *this;
 }
 
 TXCellStyle& TXCellStyle::setAllBorders(BorderStyle style, const TXColor& color) {
-    pImpl->border_.setAllBorders(style, color);
+    border_.setAllBorders(style, color);
     return *this;
 }
 
 void TXCellStyle::reset() {
-    pImpl = std::make_unique<Impl>();
+    font_ = TXFont();
+    alignment_ = TXAlignment();
+    border_ = TXBorder();
+    fill_ = TXFill();
 }
 
 bool TXCellStyle::operator==(const TXCellStyle& other) const {
-    return *pImpl == *other.pImpl;
+    return font_ == other.font_ &&
+           alignment_ == other.alignment_ &&
+           border_ == other.border_ &&
+           fill_ == other.fill_;
 }
 } // namespace TinaXlsx 

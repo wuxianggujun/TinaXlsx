@@ -248,29 +248,6 @@ public:
      */
     const std::string& getLastError() const;
 
-    /**
-     * @brief 导出为Excel XML格式（用于生成worksheet.xml的mergeCells部分）
-     * 
-     * 生成类似以下格式的XML：
-     * <mergeCells count="2">
-     *   <mergeCell ref="A1:C3"/>
-     *   <mergeCell ref="E5:F7"/>
-     * </mergeCells>
-     * 
-     * @return XML字符串，用于写入Excel文件
-     */
-    std::string toXml() const;
-
-    /**
-     * @brief 从Excel XML格式导入（用于解析worksheet.xml的mergeCells部分）
-     * 
-     * 解析Excel文件中的合并单元格信息，支持标准的mergeCells XML格式
-     * 
-     * @param xmlStr 从Excel worksheet.xml文件中提取的mergeCells XML片段
-     * @return 成功返回true，失败返回false
-     */
-    bool fromXml(const std::string& xmlStr);
-
     // ==================== 静态工具函数 ====================
 
     /**

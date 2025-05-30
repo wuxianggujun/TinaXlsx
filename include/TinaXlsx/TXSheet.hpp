@@ -1,19 +1,23 @@
 #pragma once
 
-#include "TXCoordinate.hpp"
-#include "TXRange.hpp"
-#include "TXCell.hpp"
-#include "TXTypes.hpp"
 #include <string>
 #include <vector>
 #include <memory>
 #include <variant>
+#include <unordered_map>
+
+#include "TXCoordinate.hpp"
+#include "TXRange.hpp"
+#include "TXCell.hpp"
+#include "TXTypes.hpp"
+#include "TXMergedCells.hpp"
+#include "TXWorkbook.hpp"
 
 namespace TinaXlsx {
 
 // Forward declarations
 class TXCell;
-    class TXWorkbook;
+class TXWorkbook;
 
 /**
  * @brief Excel工作表类
@@ -28,7 +32,7 @@ public:
     using Range = TXRange;
 
 public:
-    explicit TXSheet(const std::string& name,TXWorkbook* parentWorkbook);
+    explicit TXSheet(const std::string& name, TXWorkbook* parentWorkbook);
     ~TXSheet();
     
     // 禁用拷贝构造和赋值
@@ -472,8 +476,32 @@ public:
     const std::string& getLastError() const;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    // 使用TXCoordinate的哈希函数特化
+    struct CoordinateHash {
+        std::size_t operator()(const TXCoordinate& coord) const {
+            return std::hash<row_t>()(coord.getRow()) ^
+                (std::hash<column_t>()(coord.getCol()) << 1);
+        }
+    };
+    
+    std::string name_;
+    std::unordered_map<Coordinate, TXCell, CoordinateHash> cells_;
+    std::string lastError_;
+    TXMergedCells mergedCells_;
+    TXWorkbook* workbook_ = nullptr;
+    
+    // ==================== 私有辅助方法 ====================
+    
+    /**
+     * @brief 获取单元格（内部实现）
+     */
+    TXCell* getCellInternal(const Coordinate& coord);
+    const TXCell* getCellInternal(const Coordinate& coord) const;
+    
+    /**
+     * @brief 更新已使用范围
+     */
+    void updateUsedRange();
 };
 
 } // namespace TinaXlsx 
