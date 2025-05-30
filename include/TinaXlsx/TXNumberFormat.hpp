@@ -6,6 +6,7 @@
 #include <memory>
 #include <unordered_map>
 #include <variant>
+#include <regex>
 
 namespace TinaXlsx {
 
@@ -66,13 +67,13 @@ public:
     TXNumberFormat();
     explicit TXNumberFormat(FormatType type, const FormatOptions& options = FormatOptions{});
     explicit TXNumberFormat(const std::string& customFormat);
-    ~TXNumberFormat();
+    ~TXNumberFormat() = default;
     
     // 支持拷贝和移动
-    TXNumberFormat(const TXNumberFormat& other);
-    TXNumberFormat& operator=(const TXNumberFormat& other);
-    TXNumberFormat(TXNumberFormat&& other) noexcept;
-    TXNumberFormat& operator=(TXNumberFormat&& other) noexcept;
+    TXNumberFormat(const TXNumberFormat& other) = default;
+    TXNumberFormat& operator=(const TXNumberFormat& other) = default;
+    TXNumberFormat(TXNumberFormat&& other) noexcept = default;
+    TXNumberFormat& operator=(TXNumberFormat&& other) noexcept = default;
 
     // ==================== 格式设置 ====================
 
@@ -308,8 +309,96 @@ public:
     static double valueToNumber(const Value& value);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    FormatType formatType_ = FormatType::General;
+    FormatOptions options_;
+    std::string customFormatString_;
+    
+    // 预编译的格式模式
+    std::regex numberPattern_;
+    std::regex datePattern_;
+    std::regex timePattern_;
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * @brief 更新格式模式
+     */
+    void updatePatterns();
+
+    /**
+     * @brief 格式化值的内部实现
+     */
+    std::string formatValue(const Value& value) const;
+
+    /**
+     * @brief 格式化常规类型
+     */
+    std::string formatGeneral(const Value& value) const;
+
+    /**
+     * @brief 格式化日期时间
+     */
+    std::string formatDateTime(double excelDateTime) const;
+
+    /**
+     * @brief 格式化文本
+     */
+    std::string formatText(const Value& value) const;
+
+    /**
+     * @brief 格式化自定义格式
+     */
+    std::string formatCustom(const Value& value) const;
+
+    /**
+     * @brief 解析值的内部实现
+     */
+    Value parseValue(const std::string& formattedStr) const;
+
+    /**
+     * @brief 解析常规格式
+     */
+    Value parseGeneral(const std::string& str) const;
+
+    /**
+     * @brief 解析数字
+     */
+    Value parseNumber(const std::string& str) const;
+
+    /**
+     * @brief 解析货币
+     */
+    Value parseCurrency(const std::string& str) const;
+
+    /**
+     * @brief 解析百分比
+     */
+    Value parsePercentage(const std::string& str) const;
+
+    /**
+     * @brief 解析日期
+     */
+    Value parseDate(const std::string& str) const;
+
+    /**
+     * @brief 解析时间
+     */
+    Value parseTime(const std::string& str) const;
+
+    /**
+     * @brief 将Excel日期转换为系统时间（内部使用）
+     */
+    static time_t excelDateToSystemTimeInternal(double excelDate);
+
+    /**
+     * @brief 将系统时间转换为Excel日期（内部使用）
+     */
+    static double systemTimeToExcelDateInternal(time_t timeT);
+
+    /**
+     * @brief 解析日期字符串（内部使用）
+     */
+    static double parseDateStringInternal(const std::string& dateStr, const std::string& format);
 };
 
 } // namespace TinaXlsx 

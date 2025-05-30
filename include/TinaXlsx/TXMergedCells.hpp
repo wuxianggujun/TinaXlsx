@@ -8,6 +8,7 @@
 #include <set>
 #include <memory>
 #include <unordered_map>
+#include <regex>
 
 namespace TinaXlsx {
 
@@ -84,13 +85,13 @@ public:
 
 public:
     TXMergedCells();
-    ~TXMergedCells();
+    ~TXMergedCells() = default;
     
     // 禁用拷贝，支持移动
     TXMergedCells(const TXMergedCells&) = delete;
     TXMergedCells& operator=(const TXMergedCells&) = delete;
-    TXMergedCells(TXMergedCells&&) noexcept;
-    TXMergedCells& operator=(TXMergedCells&&) noexcept;
+    TXMergedCells(TXMergedCells&&) noexcept = default;
+    TXMergedCells& operator=(TXMergedCells&&) noexcept = default;
 
     // ==================== 合并操作 ====================
 
@@ -248,14 +249,24 @@ public:
     const std::string& getLastError() const;
 
     /**
-     * @brief 导出为XML格式
-     * @return XML字符串
+     * @brief 导出为Excel XML格式（用于生成worksheet.xml的mergeCells部分）
+     * 
+     * 生成类似以下格式的XML：
+     * <mergeCells count="2">
+     *   <mergeCell ref="A1:C3"/>
+     *   <mergeCell ref="E5:F7"/>
+     * </mergeCells>
+     * 
+     * @return XML字符串，用于写入Excel文件
      */
     std::string toXml() const;
 
     /**
-     * @brief 从XML格式导入
-     * @param xmlStr XML字符串
+     * @brief 从Excel XML格式导入（用于解析worksheet.xml的mergeCells部分）
+     * 
+     * 解析Excel文件中的合并单元格信息，支持标准的mergeCells XML格式
+     * 
+     * @param xmlStr 从Excel worksheet.xml文件中提取的mergeCells XML片段
      * @return 成功返回true，失败返回false
      */
     bool fromXml(const std::string& xmlStr);
@@ -278,15 +289,37 @@ public:
     static bool isValidRegion(const MergeRegion& region);
 
     /**
-     * @brief 规范化区域（确保起始点在左上角）
+     * @brief 规范化区域（确保起始位置在结束位置之前）
      * @param region 区域
      * @return 规范化后的区域
      */
     static MergeRegion normalizeRegion(const MergeRegion& region);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    // 使用集合存储合并区域，保证有序和唯一性
+    std::set<MergeRegion> mergeRegions_;
+    
+    // 用于快速查找包含特定单元格的合并区域
+    std::unordered_map<uint64_t, const MergeRegion*> cellToRegionMap_;
+    
+    std::string lastError_;
+
+    // ==================== 私有辅助方法 ====================
+
+    /**
+     * @brief 生成单元格的唯一键
+     */
+    uint64_t getCellKey(row_t row, column_t col) const;
+    
+    /**
+     * @brief 更新单元格到区域的映射
+     */
+    void updateCellMapping(const MergeRegion& region, const MergeRegion* regionPtr);
+    
+    /**
+     * @brief 内部合并检查（不进行验证）
+     */
+    bool canMergeInternal(const MergeRegion& region) const;
 };
 
 } // namespace TinaXlsx 
