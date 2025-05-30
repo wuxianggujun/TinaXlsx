@@ -3,19 +3,17 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <atomic>
 #include "TinaXlsx/TXTypes.hpp"
 #include "TinaXlsx/TXComponentManager.hpp"
+#include "TinaXlsx/TXStyleManager.hpp"
+#include "TinaXlsx/TXSharedStringsPool.hpp"
 
 namespace TinaXlsx
 {
     struct TXWorkbookContext;
-}
-
-namespace TinaXlsx
-{
     class TXCellStyle;
     class TXSheet;
-    class TXStyleManager;
     class TXXmlHandler;
 
     /**
@@ -63,7 +61,7 @@ namespace TinaXlsx
          * @param sheet 工作表指针
          * @return 成功返回工作表指针，失败返回nullptr
          */
-        TXSheet* addSheet(std::unique_ptr<TXSheet> sheet) const;
+        TXSheet* addSheet(std::unique_ptr<TXSheet> sheet);
 
         /**
          * @brief 获取工作表
@@ -86,8 +84,17 @@ namespace TinaXlsx
          */
         bool removeSheet(const std::string& name);
 
-        u32 registerOrGetStyleFId(const TXCellStyle& style); // 新增
+        /**
+         * @brief 注册或获取样式ID
+         * @param style 单元格样式
+         * @return 样式ID
+         */
+        u32 registerOrGetStyleFId(const TXCellStyle& style);
 
+        /**
+         * @brief 获取工作簿上下文
+         * @return 工作簿上下文指针
+         */
         TXWorkbookContext* getContext();
         
         /**
@@ -131,10 +138,23 @@ namespace TinaXlsx
         bool setActiveSheet(const std::string& name);
 
         /**
+         * @brief 设置活动工作表
+         * @param index 工作表索引
+         * @return 成功返回true，失败返回false
+         */
+        bool setActiveSheet(u64 index);
+
+        /**
+         * @brief 获取活动工作表索引
+         * @return 活动工作表索引
+         */
+        u64 getActiveSheetIndex() const;
+
+        /**
          * @brief 获取最后的错误信息
          * @return 错误信息字符串
          */
-        [[nodiscard]] const std::string& getLastError() const;
+        const std::string& getLastError() const;
 
         /**
          * @brief 清空工作簿
@@ -157,7 +177,7 @@ namespace TinaXlsx
          * @brief 获取组件管理器（常量版本）
          * @return 组件管理器常量引用
          */
-        [[nodiscard]] const ComponentManager& getComponentManager() const;
+        const ComponentManager& getComponentManager() const;
 
         /**
          * @brief 启用智能组件检测（默认启用）
@@ -196,10 +216,26 @@ namespace TinaXlsx
          */
         const TXStyleManager& getStyleManager() const;
 
+        /**
+         * @brief 为保存做准备
+         */
         void prepareForSaving();
 
+        /**
+         * @brief 存储工作表
+         * @param sheet_uptr 工作表智能指针
+         * @return 工作表指针
+         */
+        TXSheet* storeSheet(std::unique_ptr<TXSheet> sheet_uptr);
+
     private:
-        class Impl;
-        std::unique_ptr<Impl> pImpl;
+        std::vector<std::unique_ptr<TXSheet>> sheets_;
+        std::size_t active_sheet_index_;
+        std::string last_error_;
+        ComponentManager component_manager_;
+        bool auto_component_detection_;
+        TXStyleManager style_manager_;
+        TXSharedStringsPool shared_strings_pool_;
+        std::unique_ptr<TXWorkbookContext> context_;
     };
 } // namespace TinaXlsx 

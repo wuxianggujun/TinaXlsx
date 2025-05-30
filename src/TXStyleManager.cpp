@@ -22,6 +22,31 @@ namespace TinaXlsx
 
     TXStyleManager::~TXStyleManager() = default;
 
+    TXStyleManager::TXStyleManager(TXStyleManager&& other) noexcept
+        : fonts_pool_(std::move(other.fonts_pool_))
+        , fills_pool_(std::move(other.fills_pool_))
+        , borders_pool_(std::move(other.borders_pool_))
+        , cell_xfs_pool_(std::move(other.cell_xfs_pool_))
+        , font_lookup_(std::move(other.font_lookup_))
+        , fill_lookup_(std::move(other.fill_lookup_))
+        , border_lookup_(std::move(other.border_lookup_))
+        , cell_xf_lookup_(std::move(other.cell_xf_lookup_)) {
+    }
+
+    TXStyleManager& TXStyleManager::operator=(TXStyleManager&& other) noexcept {
+        if (this != &other) {
+            fonts_pool_ = std::move(other.fonts_pool_);
+            fills_pool_ = std::move(other.fills_pool_);
+            borders_pool_ = std::move(other.borders_pool_);
+            cell_xfs_pool_ = std::move(other.cell_xfs_pool_);
+            font_lookup_ = std::move(other.font_lookup_);
+            fill_lookup_ = std::move(other.fill_lookup_);
+            border_lookup_ = std::move(other.border_lookup_);
+            cell_xf_lookup_ = std::move(other.cell_xf_lookup_);
+        }
+        return *this;
+    }
+
     void TXStyleManager::initializeDefaultStyles()
     {
         // Font ID 0 (Default Font: Calibri, 11pt, Black, Normal)

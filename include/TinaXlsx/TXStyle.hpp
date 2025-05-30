@@ -403,38 +403,4 @@ private:
     std::unique_ptr<Impl> pImpl;
 };
 
-// ==================== 预定义样式 ====================
-namespace Styles {
-    /**
-     * @brief 获取标题样式 (粗体、大字体、居中)
-     * @return 标题样式
-     */
-    TXCellStyle createHeaderStyle();
-    
-    /**
-     * @brief 获取数据样式 (普通字体、左对齐)
-     * @return 数据样式
-     */
-    TXCellStyle createDataStyle();
-    
-    /**
-     * @brief 获取数字样式 (右对齐)
-     * @return 数字样式
-     */
-    TXCellStyle createNumberStyle();
-    
-    /**
-     * @brief 获取强调样式 (粗体、彩色背景)
-     * @param backgroundColor 背景颜色
-     * @return 强调样式
-     */
-    TXCellStyle createHighlightStyle(const TXColor& backgroundColor = ColorConstants::YELLOW);
-    
-    /**
-     * @brief 获取边框表格样式
-     * @return 边框表格样式
-     */
-    TXCellStyle createTableStyle();
-}
-
 } // namespace TinaXlsx 

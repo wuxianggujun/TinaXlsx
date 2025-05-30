@@ -52,7 +52,7 @@ namespace TinaXlsx
             }
             
             // 只从共享字符串池中获取字符串
-            const auto& strings = context.sharedStringsPool.getList();
+            const auto& strings = context.sharedStringsPool.getStrings();
             if (strings.empty()) {
                 return true;  // 空池不生成文件
             }

@@ -23,7 +23,7 @@ public:
     /**
      * @brief 公式值类型
      */
-    using FormulaValue = std::variant<std::monostate, std::string, double, int64_t, bool>;
+    using FormulaValue = cell_value_t;
     
     /**
      * @brief 公式函数类型
@@ -58,6 +58,7 @@ public:
         
         std::string toString() const;
         static CellReference fromString(const std::string& ref);
+        bool isValid() const;
     };
     
     /**
@@ -74,6 +75,7 @@ public:
         static RangeReference fromString(const std::string& range);
         bool contains(const CellReference& cell) const;
         std::vector<CellReference> getAllCells() const;
+        bool isValid() const;
     };
 
 public:
@@ -81,11 +83,13 @@ public:
     explicit TXFormula(const std::string& formula);
     ~TXFormula();
     
-    // 禁用拷贝，支持移动
-    TXFormula(const TXFormula&) = delete;
-    TXFormula& operator=(const TXFormula&) = delete;
-    TXFormula(TXFormula&&) noexcept;
-    TXFormula& operator=(TXFormula&&) noexcept;
+    // 支持拷贝构造和赋值
+    TXFormula(const TXFormula& other);
+    TXFormula& operator=(const TXFormula& other);
+    
+    // 支持移动构造和赋值
+    TXFormula(TXFormula&& other) noexcept;
+    TXFormula& operator=(TXFormula&& other) noexcept;
 
     /**
      * @brief 解析公式
@@ -108,6 +112,12 @@ public:
      * @return 公式字符串
      */
     const std::string& getFormulaString() const;
+
+    /**
+     * @brief 设置公式字符串
+     * @param formula 公式字符串
+     */
+    void setFormulaString(const std::string& formula);
 
     /**
      * @brief 获取最后的错误信息
@@ -140,6 +150,11 @@ public:
      * @param func 函数实现
      */
     void registerFunction(const std::string& name, const FormulaFunction& func);
+
+    /**
+     * @brief 清除自定义函数
+     */
+    void clearCustomFunctions();
 
     // ==================== 内置函数 ====================
 
@@ -215,9 +230,30 @@ public:
      */
     static bool valueToBool(const FormulaValue& value);
 
+    /**
+     * @brief 从字符串创建FormulaValue
+     */
+    static FormulaValue valueFromString(const std::string& str);
+
+    /**
+     * @brief 检查两个值是否相等
+     */
+    static bool valuesEqual(const FormulaValue& a, const FormulaValue& b);
+
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    std::string formulaString_;
+    FormulaError lastError_;
+    std::vector<CellReference> dependencies_;
+    std::unordered_map<std::string, FormulaFunction> customFunctions_;
+    
+    // Helper methods
+    void registerBuiltinFunctions();
+    FormulaValue evaluateExpression(const std::string& expr, const TXSheet* sheet, row_t currentRow, column_t currentCol);
+    std::vector<FormulaValue> parseArguments(const std::string& args, const TXSheet* sheet, row_t currentRow, column_t currentCol);
+    FormulaValue callFunction(const std::string& funcName, const std::vector<FormulaValue>& args);
+    void updateDependencies();
+    std::string replaceReferences(const std::string& expression, const TXSheet* sheet, row_t currentRow, column_t currentCol);
+    FormulaValue evaluateSimpleExpression(const std::string& expr);
 };
 
 } // namespace TinaXlsx 

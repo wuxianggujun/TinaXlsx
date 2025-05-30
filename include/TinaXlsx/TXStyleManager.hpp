@@ -23,6 +23,10 @@ namespace TinaXlsx
         TXStyleManager(const TXStyleManager&) = delete;
         TXStyleManager& operator=(const TXStyleManager&) = delete;
 
+        // 支持移动构造和赋值
+        TXStyleManager(TXStyleManager&& other) noexcept;
+        TXStyleManager& operator=(TXStyleManager&& other) noexcept;
+
         // 注册独立的样式组件并返回其ID (索引)
         u32 registerFont(const TXFont& font);
         u32 registerFill(const TXFill& fill);

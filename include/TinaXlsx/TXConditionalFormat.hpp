@@ -8,6 +8,8 @@
 #include <memory>
 #include <functional>
 
+#include "TXRange.hpp"
+
 namespace TinaXlsx {
 
 /**
@@ -182,8 +184,9 @@ public:
     virtual void applyFormat(TXCellStyle& style, const cell_value_t& value, const std::vector<std::vector<cell_value_t>>& context) const = 0;
 
 protected:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    ConditionalFormatType type_;
+    int priority_;
+    bool stopIfTrue_;
 };
 
 /**
@@ -380,8 +383,8 @@ public:
     static std::unique_ptr<TXIconSetRule> createIconSetRule(IconSetType iconType = IconSetType::ThreeArrows, bool showValue = true);
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    std::vector<std::unique_ptr<TXConditionalFormatRule>> rules_;
+    TXRange range_;
 };
 
 } // namespace TinaXlsx

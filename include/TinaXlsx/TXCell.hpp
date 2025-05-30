@@ -259,14 +259,14 @@ public:
      * @brief 获取主单元格的行列位置
      * @return 主单元格位置，如果不是合并单元格返回{0,0}
      */
-    std::pair<uint32_t, uint32_t> getMasterCellPosition() const;
+    std::pair<int, int> getMasterCellPosition() const;
 
     /**
      * @brief 设置主单元格位置
      * @param row 主单元格行号
      * @param col 主单元格列号
      */
-    void setMasterCellPosition(uint32_t row, uint32_t col);
+    void setMasterCellPosition(int row, int col);
 
     // ==================== 样式方法 ====================
     
@@ -280,13 +280,13 @@ public:
      * @brief 获取单元格样式索引
      * @return 样式索引，如果没有样式返回0
      */
-    uint32_t getStyleIndex() const;
+    u32 getStyleIndex() const;
     
     /**
      * @brief 设置单元格样式索引
      * @param index 样式索引
      */
-    void setStyleIndex(uint32_t index);
+    void setStyleIndex(u32 index);
 
     // ==================== 工具方法 ====================
 
@@ -363,8 +363,22 @@ public:
     bool operator>=(const TXCell& other) const;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    CellValue value_;
+    CellType type_;
+    NumberFormat number_format_;
+    std::string custom_format_;
+    std::string formula_;
+    bool is_merged_;
+    bool is_master_cell_;
+    int master_row_;
+    int master_col_;
+    bool has_style_;
+    u32 style_index_;
+    std::unique_ptr<TXFormula> formula_object_;
+    std::unique_ptr<TXNumberFormat> number_format_object_;
+    
+    // Helper methods
+    void updateType();
 };
 
 } // namespace TinaXlsx 

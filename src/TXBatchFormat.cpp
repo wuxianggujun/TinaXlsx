@@ -109,30 +109,20 @@ void TXBatchFormatApplicator::applySingleCellStyle(TXCell& cell, const TXCellSty
 
 // ==================== TXFormatBatchTask实现 ====================
 
-class TXFormatBatchTask::Impl {
-public:
-    TaskType type_;
-    TXRange targetRange_;
-    FormatApplyOptions options_;
-    TXCellStyle style_;
-    
-    Impl(TaskType type) : type_(type) {}
-};
-
-TXFormatBatchTask::TXFormatBatchTask(TaskType type) : pImpl(std::make_unique<Impl>(type)) {}
+TXFormatBatchTask::TXFormatBatchTask(TaskType type) : type_(type) {}
 
 TXFormatBatchTask::~TXFormatBatchTask() = default;
 
 void TXFormatBatchTask::setTargetRange(const TXRange& range) {
-    pImpl->targetRange_ = range;
+    targetRange_ = range;
 }
 
 void TXFormatBatchTask::setOptions(const FormatApplyOptions& options) {
-    pImpl->options_ = options;
+    options_ = options;
 }
 
 void TXFormatBatchTask::setStyle(const TXCellStyle& style) {
-    pImpl->style_ = style;
+    style_ = style;
 }
 
 void TXFormatBatchTask::setTemplate(const TXStyleTemplate& /*styleTemplate*/) {
@@ -142,7 +132,7 @@ void TXFormatBatchTask::setTemplate(const TXStyleTemplate& /*styleTemplate*/) {
 bool TXFormatBatchTask::execute(TXSheet& sheet) {
     try {
         TXBatchFormatApplicator applicator;
-        applicator.applyStyleToRange(sheet, pImpl->targetRange_, pImpl->style_, pImpl->options_);
+        applicator.applyStyleToRange(sheet, targetRange_, style_, options_);
         return true;
     } catch (...) {
         return false;
@@ -150,30 +140,22 @@ bool TXFormatBatchTask::execute(TXSheet& sheet) {
 }
 
 TXFormatBatchTask::TaskType TXFormatBatchTask::getType() const {
-    return pImpl->type_;
+    return type_;
 }
 
 // ==================== TXBatchFormatTaskManager实现 ====================
 
-class TXBatchFormatTaskManager::Impl {
-public:
-    std::vector<std::unique_ptr<TXFormatBatchTask>> tasks_;
-    size_t currentTaskIndex_;
-    
-    Impl() : currentTaskIndex_(0) {}
-};
-
-TXBatchFormatTaskManager::TXBatchFormatTaskManager() : pImpl(std::make_unique<Impl>()) {}
+TXBatchFormatTaskManager::TXBatchFormatTaskManager() : currentTaskIndex_(0) {}
 
 TXBatchFormatTaskManager::~TXBatchFormatTaskManager() = default;
 
 void TXBatchFormatTaskManager::addTask(std::unique_ptr<TXFormatBatchTask> task) {
-    pImpl->tasks_.push_back(std::move(task));
+    tasks_.push_back(std::move(task));
 }
 
 size_t TXBatchFormatTaskManager::executeAllTasks(TXSheet& sheet) {
     size_t executed = 0;
-    for (auto& task : pImpl->tasks_) {
+    for (auto& task : tasks_) {
         if (task && task->execute(sheet)) {
             executed++;
         }
@@ -182,12 +164,12 @@ size_t TXBatchFormatTaskManager::executeAllTasks(TXSheet& sheet) {
 }
 
 void TXBatchFormatTaskManager::clearTasks() {
-    pImpl->tasks_.clear();
-    pImpl->currentTaskIndex_ = 0;
+    tasks_.clear();
+    currentTaskIndex_ = 0;
 }
 
 size_t TXBatchFormatTaskManager::getTaskCount() const {
-    return pImpl->tasks_.size();
+    return tasks_.size();
 }
 
 } // namespace TinaXlsx

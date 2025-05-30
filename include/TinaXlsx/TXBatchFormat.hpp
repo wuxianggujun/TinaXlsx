@@ -273,7 +273,7 @@ public:
         AutoFormat              ///< 自动格式
     };
     
-    TXFormatBatchTask(TaskType type);
+    explicit TXFormatBatchTask(TaskType type);
     ~TXFormatBatchTask();
     
     /**
@@ -296,7 +296,7 @@ public:
     
     /**
      * @brief 设置模板
-     * @param styleTemplate 模板
+     * @param styleTemplate 样式模板
      */
     void setTemplate(const TXStyleTemplate& styleTemplate);
     
@@ -314,8 +314,10 @@ public:
     TaskType getType() const;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    TaskType type_;
+    TXRange targetRange_;
+    FormatApplyOptions options_;
+    TXCellStyle style_;
 };
 
 /**
@@ -351,8 +353,8 @@ public:
     size_t getTaskCount() const;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl;
+    std::vector<std::unique_ptr<TXFormatBatchTask>> tasks_;
+    size_t currentTaskIndex_;
 };
 
 } // namespace TinaXlsx
