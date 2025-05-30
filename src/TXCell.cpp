@@ -88,7 +88,7 @@ public:
         return value_;
     }
 
-    TXCell::CellType getType() const {
+    [[nodiscard]] CellType getType() const {
         return type_;
     }
 

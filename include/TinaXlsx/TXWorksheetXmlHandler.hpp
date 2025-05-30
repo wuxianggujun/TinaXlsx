@@ -81,7 +81,7 @@ namespace TinaXlsx
                         
                         if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
                             std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
-                            XmlNodeBuilder cellNode = buildCellNode(cell, cellRef);
+                            XmlNodeBuilder cellNode = buildCellNode(cell, cellRef,context);
                             rowNode.addChild(cellNode);
                             hasData = true;
                         }
@@ -127,13 +127,15 @@ namespace TinaXlsx
         }
 
     private:
+        bool shouldUseInlineString(const std::string& str) const;
         /**
          * @brief 构建单个单元格节点
          * @param cell 单元格对象
          * @param cellRef 单元格引用（如A1）
+         * @param context 工作簿上下文
          * @return 单元格节点
          */
-        XmlNodeBuilder buildCellNode(const TXCell* cell, const std::string& cellRef) const;
+        XmlNodeBuilder buildCellNode(const TXCell* cell, const std::string& cellRef,const TXWorkbookContext& context) const;
 
         u64 m_sheetIndex;
     };

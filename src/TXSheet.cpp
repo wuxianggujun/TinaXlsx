@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "TinaXlsx/TXWorkbook.hpp"
+#include "TinaXlsx/TXWorkbookContext.hpp"
 
 namespace TinaXlsx
 {
@@ -59,6 +60,12 @@ namespace TinaXlsx
             {
                 last_error_ = "Invalid cell coordinate";
                 return false;
+            }
+
+            if (std::holds_alternative<std::string>(value))
+            {
+                workbook_->getContext()->registerComponentFast(ExcelComponent::SharedStrings);
+                workbook_->getContext()->markStringsDirty();
             }
 
             cells_[coord].setValue(value);
@@ -381,6 +388,7 @@ namespace TinaXlsx
             return result;
         }
 
+
         const std::string& getLastError() const
         {
             return last_error_;
@@ -410,6 +418,8 @@ namespace TinaXlsx
                 last_error_ = "Failed to add merge region";
                 return false;
             }
+
+            workbook_->getContext()->registerComponentFast(ExcelComponent::MergedCells);
 
             // 设置主单元格和从属单元格
             auto start = range.getStart();
@@ -905,10 +915,11 @@ namespace TinaXlsx
     bool TXSheet::setCellStyle(row_t row, column_t col, const TXCellStyle& style)
     {
         if (!pImpl) return false;
-
         TXWorkbook* workbook = pImpl->getWorkbook();
         if (!workbook) return false;
-        
+
+        workbook->getContext()->registerComponentFast(ExcelComponent::Styles);
+
         u32 style_id = workbook->registerOrGetStyleFId(style);
 
         TXCell* cell = getCell(row, col);

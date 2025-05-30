@@ -2,6 +2,9 @@
 // @file TXWorkbook.cpp - 新架构实现
 //
 
+#include <algorithm>
+#include <regex>
+
 #include "TinaXlsx/TXWorkbook.hpp"
 #include "TinaXlsx/TXSheet.hpp"
 
@@ -9,14 +12,12 @@
 #include "TinaXlsx/TXWorkbookXmlHandler.hpp"
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
 #include "TinaXlsx/TXDocumentPropertiesXmlHandler.hpp"
-
 #include "TinaXlsx/TXContentTypesXmlHandler.hpp"
 #include "TinaXlsx/TXMainRelsXmlHandler.hpp"
 #include "TinaXlsx/TXWorkbookRelsXmlHandler.hpp"
 #include "TinaXlsx/TXSharedStringsXmlHandler.hpp"
 
-#include <algorithm>
-#include <regex>
+#include "TinaXlsx/TXSharedStringsPool.hpp"
 
 namespace TinaXlsx
 {
@@ -27,6 +28,7 @@ namespace TinaXlsx
                  style_manager_pimpl_(std::make_unique<TXStyleManager>())
         {
             component_manager_.registerComponent(ExcelComponent::BasicWorkbook);
+            context_ = std::make_unique<TXWorkbookContext>(sheets_, *style_manager_pimpl_, component_manager_,sharedStringsPool_);
         }
 
         ~Impl() = default;
@@ -43,7 +45,7 @@ namespace TinaXlsx
                 return false;
             }
 
-            TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_};
+            TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_,sharedStringsPool_};
 
             // 加载 workbook.xml（必须首先加载以获取工作表信息）
             TXWorkbookXmlHandler workbookHandler;
@@ -108,17 +110,15 @@ namespace TinaXlsx
                 return false;
             }
 
-            if (auto_component_detection_)
+            // === 第一阶段：准备保存（收集所有字符串）===
+            for (auto& sheet : sheets_)
             {
-                for (const auto& sheet : sheets_)
-                {
-                    component_manager_.autoDetectComponents(sheet.get());
-                }
+                TXWorksheetXmlHandler handler;
+                handler.prepareForSave(*sheet, context); // 收集字符串但不生成XML
             }
-
-
-            TXWorkbookContext context{sheets_, *style_manager_pimpl_, component_manager_};
-
+    
+            
+            
             // 保存 [Content_Types].xml
             TXContentTypesXmlHandler contentTypesHandler;
             if (!contentTypesHandler.save(zipWriter, context))
@@ -440,6 +440,11 @@ namespace TinaXlsx
         {
             return *style_manager_pimpl_;
         }
+        
+        TXWorkbookContext* getContext() const
+        {
+            return context_.get();
+        }
 
     private:
         std::vector<std::unique_ptr<TXSheet>> sheets_;
@@ -448,6 +453,8 @@ namespace TinaXlsx
         ComponentManager component_manager_;
         bool auto_component_detection_;
         std::unique_ptr<TXStyleManager> style_manager_pimpl_;
+        TXSharedStringsPool sharedStringsPool_;
+        std::unique_ptr<TXWorkbookContext> context_;
     };
 
     // TXWorkbook 实现
@@ -534,6 +541,11 @@ namespace TinaXlsx
     u32 TXWorkbook::registerOrGetStyleFId(const TXCellStyle& style)
     {
         return pImpl->getStyleManager()->registerCellStyleXF(style);
+    }
+
+    TXWorkbookContext* TXWorkbook::getContext()
+    {
+        return pImpl->getContext();
     }
 
     bool TXWorkbook::hasSheet(const std::string& name) const

@@ -8,6 +8,11 @@
 
 namespace TinaXlsx
 {
+    struct TXWorkbookContext;
+}
+
+namespace TinaXlsx
+{
     class TXCellStyle;
     class TXSheet;
     class TXStyleManager;
@@ -82,6 +87,8 @@ namespace TinaXlsx
         bool removeSheet(const std::string& name);
 
         u32 registerOrGetStyleFId(const TXCellStyle& style); // 新增
+
+        TXWorkbookContext* getContext();
         
         /**
          * @brief 获取工作表数量
@@ -188,6 +195,8 @@ namespace TinaXlsx
          * @return 样式管理器常量引用
          */
         const TXStyleManager& getStyleManager() const;
+
+        void prepareForSaving();
 
     private:
         class Impl;
