@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXXmlReader.hpp"
-#include "TinaXlsx/TXXmlWriter.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXXmlReader.hpp"
+#include "TXXmlWriter.hpp"
 
 namespace TinaXlsx
 {

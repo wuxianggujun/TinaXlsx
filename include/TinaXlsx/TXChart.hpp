@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "TinaXlsx/TXTypes.hpp"
-#include "TinaXlsx/TXColor.hpp"
-#include "TinaXlsx/TXRange.hpp"
-#include "TinaXlsx/TXStyle.hpp"
+#include "TXTypes.hpp"
+#include "TXColor.hpp"
+#include "TXRange.hpp"
+#include "TXStyle.hpp"
 
 namespace TinaXlsx
 {

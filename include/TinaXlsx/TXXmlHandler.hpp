@@ -6,8 +6,8 @@
 
 #include <string>
 #include <memory>
-#include "TinaXlsx/TXZipArchive.hpp"
-#include "TinaXlsx/TXWorkbookContext.hpp"
+#include "TXZipArchive.hpp"
+#include "TXWorkbookContext.hpp"
 
 namespace TinaXlsx
 {

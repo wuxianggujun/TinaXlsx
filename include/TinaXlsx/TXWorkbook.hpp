@@ -4,10 +4,10 @@
 #include <vector>
 #include <memory>
 #include <atomic>
-#include "TinaXlsx/TXTypes.hpp"
-#include "TinaXlsx/TXComponentManager.hpp"
-#include "TinaXlsx/TXStyleManager.hpp"
-#include "TinaXlsx/TXSharedStringsPool.hpp"
+#include "TXTypes.hpp"
+#include "TXComponentManager.hpp"
+#include "TXStyleManager.hpp"
+#include "TXSharedStringsPool.hpp"
 
 namespace TinaXlsx
 {

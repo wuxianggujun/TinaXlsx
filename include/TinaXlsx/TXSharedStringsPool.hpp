@@ -6,7 +6,7 @@
 
 #include <unordered_map>
 #include <vector>
-#include "TinaXlsx/TXTypes.hpp"
+#include "TXTypes.hpp"
 
 namespace TinaXlsx
 {

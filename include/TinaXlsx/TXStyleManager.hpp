@@ -1,9 +1,9 @@
 #pragma once
 
-#include "TinaXlsx/TXStyle.hpp" // 确保 TXFont, TXFill, TXBorder, TXCellStyle, FontStyle 等都在这里
-#include "TinaXlsx/TXXmlWriter.hpp" // 用于生成XML
-#include "TinaXlsx/TXColor.hpp"   // 确保 TXColor 被包含
-#include "TinaXlsx/TXTypes.hpp"   // 确保 u32 等类型被包含
+#include "TXStyle.hpp" // 确保 TXFont, TXFill, TXBorder, TXCellStyle, FontStyle 等都在这里
+#include "TXXmlWriter.hpp" // 用于生成XML
+#include "TXColor.hpp"   // 确保 TXColor 被包含
+#include "TXTypes.hpp"   // 确保 u32 等类型被包含
 
 #include <vector>
 #include <string>

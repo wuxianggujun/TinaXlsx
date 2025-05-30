@@ -4,10 +4,10 @@
 
 // StylesXmlHandler.hpp
 #pragma once
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXXmlReader.hpp"
-#include "TinaXlsx/TXXmlWriter.hpp"
-#include "TinaXlsx/TXStyleManager.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXXmlReader.hpp"
+#include "TXXmlWriter.hpp"
+#include "TXStyleManager.hpp"
 
 namespace TinaXlsx {
     class StylesXmlHandler : public TXXmlHandler {

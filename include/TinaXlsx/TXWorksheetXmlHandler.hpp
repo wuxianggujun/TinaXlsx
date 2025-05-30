@@ -4,13 +4,13 @@
 
 #pragma once
 
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXXmlReader.hpp"
-#include "TinaXlsx/TXXmlWriter.hpp"
-#include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXCell.hpp"
-#include "TinaXlsx/TXRange.hpp"
-#include "TinaXlsx/TXTypes.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXXmlReader.hpp"
+#include "TXXmlWriter.hpp"
+#include "TXSheet.hpp"
+#include "TXCell.hpp"
+#include "TXRange.hpp"
+#include "TXTypes.hpp"
 
 namespace TinaXlsx
 {

@@ -5,10 +5,10 @@
 #pragma once
 
 #include "TXSharedStringsPool.hpp"
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXXmlReader.hpp"
-#include "TinaXlsx/TXXmlWriter.hpp"
-#include "TinaXlsx/TXComponentManager.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXXmlReader.hpp"
+#include "TXXmlWriter.hpp"
+#include "TXComponentManager.hpp"
 
 namespace TinaXlsx
 {

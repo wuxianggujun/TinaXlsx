@@ -6,10 +6,10 @@
 
 #include <vector>
 #include <memory>
-#include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXStyleManager.hpp"
-#include "TinaXlsx/TXComponentManager.hpp"
-#include "TinaXlsx/TXSharedStringsPool.hpp"
+#include "TXSheet.hpp"
+#include "TXStyleManager.hpp"
+#include "TXComponentManager.hpp"
+#include "TXSharedStringsPool.hpp"
 
 namespace TinaXlsx
 {

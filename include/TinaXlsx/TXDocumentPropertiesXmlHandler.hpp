@@ -3,10 +3,10 @@
 //
 
 #pragma once
-#include "TinaXlsx/TXXmlHandler.hpp"
-#include "TinaXlsx/TXZipArchive.hpp"
-#include "TinaXlsx/TXWorkbookContext.hpp"
-#include "TinaXlsx/TXComponentManager.hpp"
+#include "TXXmlHandler.hpp"
+#include "TXZipArchive.hpp"
+#include "TXWorkbookContext.hpp"
+#include "TXComponentManager.hpp"
 
 namespace TinaXlsx
 {
