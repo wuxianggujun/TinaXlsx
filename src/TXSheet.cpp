@@ -8,6 +8,10 @@
 #include <regex>
 #include <algorithm>
 #include <utility>
+#include <set>
+#include <unordered_set>
+#include <cmath>
+#include <functional>
 
 namespace TinaXlsx
 {
@@ -16,6 +20,13 @@ namespace TinaXlsx
     TXSheet::TXSheet(const std::string& name, TXWorkbook* parentWorkbook)
         : name_(name), workbook_(parentWorkbook)
     {
+        // 初始化公式计算选项为默认值
+        formulaOptions_.autoCalculate = true;
+        formulaOptions_.iterativeCalculation = false;
+        formulaOptions_.maxIterations = 100;
+        formulaOptions_.maxChange = 0.001;
+        formulaOptions_.precisionAsDisplayed = false;
+        formulaOptions_.use1904DateSystem = false;
     }
 
     TXSheet::~TXSheet() = default;
@@ -26,6 +37,11 @@ namespace TinaXlsx
           , lastError_(std::move(other.lastError_))
           , mergedCells_(std::move(other.mergedCells_))
           , workbook_(other.workbook_)
+          , columnWidths_(std::move(other.columnWidths_))
+          , rowHeights_(std::move(other.rowHeights_))
+          , sheetProtection_(std::move(other.sheetProtection_))
+          , formulaOptions_(std::move(other.formulaOptions_))
+          , namedRanges_(std::move(other.namedRanges_))
     {
         other.workbook_ = nullptr;
     }
@@ -39,6 +55,11 @@ namespace TinaXlsx
             lastError_ = std::move(other.lastError_);
             mergedCells_ = std::move(other.mergedCells_);
             workbook_ = other.workbook_;
+            columnWidths_ = std::move(other.columnWidths_);
+            rowHeights_ = std::move(other.rowHeights_);
+            sheetProtection_ = std::move(other.sheetProtection_);
+            formulaOptions_ = std::move(other.formulaOptions_);
+            namedRanges_ = std::move(other.namedRanges_);
             other.workbook_ = nullptr;
         }
         return *this;
@@ -926,4 +947,405 @@ namespace TinaXlsx
         // 从 TXStyleManager 获取完整样式对象
         return workbook_->getStyleManager().getStyleObjectFromXfIndex(styleIndex);
     }
+
+    // ==================== 列宽和行高操作实现 ====================
+
+    bool TXSheet::setColumnWidth(column_t col, double width)
+    {
+        if (col.index() <= 0 || width < 0.0 || width > 255.0) {
+            lastError_ = "Invalid column or width value";
+            return false;
+        }
+        
+        if (isOperationBlocked("formatColumns")) {
+            lastError_ = "Operation blocked by sheet protection";
+            return false;
+        }
+        
+        columnWidths_[col.index()] = width;
+        return true;
+    }
+
+    double TXSheet::getColumnWidth(column_t col) const
+    {
+        auto it = columnWidths_.find(col.index());
+        return (it != columnWidths_.end()) ? it->second : 8.43; // Excel默认列宽
+    }
+
+    bool TXSheet::setRowHeight(row_t row, double height)
+    {
+        if (row.index() <= 0 || height < 0.0 || height > 409.0) {
+            lastError_ = "Invalid row or height value";
+            return false;
+        }
+        
+        if (isOperationBlocked("formatRows")) {
+            lastError_ = "Operation blocked by sheet protection";
+            return false;
+        }
+        
+        rowHeights_[row.index()] = height;
+        return true;
+    }
+
+    double TXSheet::getRowHeight(row_t row) const
+    {
+        auto it = rowHeights_.find(row.index());
+        return (it != rowHeights_.end()) ? it->second : 15.0; // Excel默认行高
+    }
+
+    double TXSheet::autoFitColumnWidth(column_t col, double minWidth, double maxWidth)
+    {
+        if (col.index() <= 0) {
+            return getColumnWidth(col);
+        }
+        
+        double maxContentWidth = minWidth;
+        
+        // 遍历该列的所有单元格，计算最大内容宽度
+        for (const auto& [coord, cell] : cells_) {
+            if (coord.getCol() == col) {
+                std::string displayText = cell.getFormattedValue();
+                if (!displayText.empty()) {
+                    double textWidth = calculateTextWidth(displayText);
+                    maxContentWidth = std::max(maxContentWidth, textWidth);
+                }
+            }
+        }
+        
+        // 限制在最小和最大宽度之间
+        double finalWidth = std::min(std::max(maxContentWidth, minWidth), maxWidth);
+        setColumnWidth(col, finalWidth);
+        
+        return finalWidth;
+    }
+
+    double TXSheet::autoFitRowHeight(row_t row, double minHeight, double maxHeight)
+    {
+        if (row.index() <= 0) {
+            return getRowHeight(row);
+        }
+        
+        double maxContentHeight = minHeight;
+        
+        // 遍历该行的所有单元格，计算最大内容高度
+        for (const auto& [coord, cell] : cells_) {
+            if (coord.getRow() == row) {
+                std::string displayText = cell.getFormattedValue();
+                if (!displayText.empty()) {
+                    double columnWidth = getColumnWidth(coord.getCol());
+                    double textHeight = calculateTextHeight(displayText, 11.0, columnWidth);
+                    maxContentHeight = std::max(maxContentHeight, textHeight);
+                }
+            }
+        }
+        
+        // 限制在最小和最大高度之间
+        double finalHeight = std::min(std::max(maxContentHeight, minHeight), maxHeight);
+        setRowHeight(row, finalHeight);
+        
+        return finalHeight;
+    }
+
+    std::size_t TXSheet::autoFitAllColumnWidths(double minWidth, double maxWidth)
+    {
+        std::set<column_t> usedColumns;
+        
+        // 收集所有使用的列
+        for (const auto& [coord, cell] : cells_) {
+            usedColumns.insert(coord.getCol());
+        }
+        
+        std::size_t count = 0;
+        for (column_t col : usedColumns) {
+            autoFitColumnWidth(col, minWidth, maxWidth);
+            ++count;
+        }
+        
+        return count;
+    }
+
+    std::size_t TXSheet::autoFitAllRowHeights(double minHeight, double maxHeight)
+    {
+        std::set<row_t> usedRows;
+        
+        // 收集所有使用的行
+        for (const auto& [coord, cell] : cells_) {
+            usedRows.insert(coord.getRow());
+        }
+        
+        std::size_t count = 0;
+        for (row_t row : usedRows) {
+            autoFitRowHeight(row, minHeight, maxHeight);
+            ++count;
+        }
+        
+        return count;
+    }
+
+    // ==================== 工作表保护功能实现 ====================
+
+    bool TXSheet::protectSheet(const std::string& password, const SheetProtection& protection)
+    {
+        sheetProtection_ = protection;
+        sheetProtection_.isProtected = true;
+        
+        if (!password.empty()) {
+            sheetProtection_.password = generatePasswordHash(password);
+        }
+        
+        return true;
+    }
+
+    bool TXSheet::unprotectSheet(const std::string& password)
+    {
+        if (!sheetProtection_.isProtected) {
+            return true; // 已经未保护
+        }
+        
+        if (!sheetProtection_.password.empty()) {
+            if (!verifyPassword(password, sheetProtection_.password)) {
+                lastError_ = "Invalid password";
+                return false;
+            }
+        }
+        
+        sheetProtection_.isProtected = false;
+        sheetProtection_.password.clear();
+        
+        return true;
+    }
+
+    bool TXSheet::isSheetProtected() const
+    {
+        return sheetProtection_.isProtected;
+    }
+
+    const TXSheet::SheetProtection& TXSheet::getSheetProtection() const
+    {
+        return sheetProtection_;
+    }
+
+    bool TXSheet::setCellLocked(row_t row, column_t col, bool locked)
+    {
+        TXCell* cell = getCell(row, col);
+        if (!cell) {
+            // 创建新单元格
+            setCellValue(row, col, cell_value_t{});
+            cell = getCell(row, col);
+        }
+        
+        if (cell) {
+            cell->setLocked(locked);
+            return true;
+        }
+        
+        return false;
+    }
+
+    bool TXSheet::isCellLocked(row_t row, column_t col) const
+    {
+        const TXCell* cell = getCell(row, col);
+        return cell ? cell->isLocked() : true; // 默认锁定
+    }
+
+    std::size_t TXSheet::setRangeLocked(const Range& range, bool locked)
+    {
+        std::size_t count = 0;
+        
+        for (row_t r(range.getStart().getRow().index()); r.index() <= range.getEnd().getRow().index(); ++r) {
+            for (column_t c(range.getStart().getCol().index()); c.index() <= range.getEnd().getCol().index(); ++c) {
+                if (setCellLocked(r, c, locked)) {
+                    ++count;
+                }
+            }
+        }
+        
+        return count;
+    }
+
+    // ==================== 增强公式支持实现 ====================
+
+    void TXSheet::setFormulaCalculationOptions(const FormulaCalculationOptions& options)
+    {
+        formulaOptions_ = options;
+    }
+
+    const TXSheet::FormulaCalculationOptions& TXSheet::getFormulaCalculationOptions() const
+    {
+        return formulaOptions_;
+    }
+
+    bool TXSheet::addNamedRange(const std::string& name, const Range& range, const std::string& comment)
+    {
+        if (name.empty() || !range.isValid()) {
+            lastError_ = "Invalid name or range";
+            return false;
+        }
+        
+        namedRanges_[name] = range;
+        return true;
+    }
+
+    bool TXSheet::removeNamedRange(const std::string& name)
+    {
+        auto it = namedRanges_.find(name);
+        if (it != namedRanges_.end()) {
+            namedRanges_.erase(it);
+            return true;
+        }
+        return false;
+    }
+
+    TXSheet::Range TXSheet::getNamedRange(const std::string& name) const
+    {
+        auto it = namedRanges_.find(name);
+        return (it != namedRanges_.end()) ? it->second : Range();
+    }
+
+    std::unordered_map<std::string, TXSheet::Range> TXSheet::getAllNamedRanges() const
+    {
+        return namedRanges_;
+    }
+
+    bool TXSheet::detectCircularReferences() const
+    {
+        // 简化的循环引用检测
+        std::unordered_set<Coordinate, CoordinateHash> visiting;
+        std::unordered_set<Coordinate, CoordinateHash> visited;
+        
+        for (const auto& [coord, cell] : cells_) {
+            if (cell.hasFormula() && visited.find(coord) == visited.end()) {
+                if (detectCircularReferencesHelper(coord, visiting, visited)) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+
+    std::unordered_map<TXSheet::Coordinate, std::vector<TXSheet::Coordinate>, TXSheet::CoordinateHash> 
+    TXSheet::getFormulaDependencies() const
+    {
+        std::unordered_map<Coordinate, std::vector<Coordinate>, CoordinateHash> dependencies;
+        
+        for (const auto& [coord, cell] : cells_) {
+            if (cell.hasFormula()) {
+                // 解析公式中的单元格引用
+                std::vector<Coordinate> refs = parseFormulaReferences(cell.getFormula());
+                dependencies[coord] = refs;
+            }
+        }
+        
+        return dependencies;
+    }
+
+    // ==================== 私有辅助方法实现 ====================
+
+    double TXSheet::calculateTextWidth(const std::string& text, double fontSize, const std::string& fontName) const
+    {
+        // 简化的文本宽度计算
+        // 实际实现应该考虑字体度量
+        double charWidth = fontSize * 0.6; // 近似值
+        return text.length() * charWidth / 7.0; // 转换为Excel字符单位
+    }
+
+    double TXSheet::calculateTextHeight(const std::string& text, double fontSize, double columnWidth) const
+    {
+        // 简化的文本高度计算
+        double lineHeight = fontSize * 1.2; // 行高通常是字体大小的1.2倍
+        
+        // 计算换行数
+        double textWidth = calculateTextWidth(text, fontSize);
+        double excelColumnWidth = columnWidth * 7.0; // 转换为像素近似值
+        int lines = static_cast<int>(std::ceil(textWidth / excelColumnWidth));
+        
+        return std::max(1, lines) * lineHeight;
+    }
+
+    std::string TXSheet::generatePasswordHash(const std::string& password) const
+    {
+        // 简化的哈希实现（实际应使用MD5或更安全的算法）
+        std::hash<std::string> hasher;
+        return std::to_string(hasher(password));
+    }
+
+    bool TXSheet::verifyPassword(const std::string& password, const std::string& hash) const
+    {
+        return generatePasswordHash(password) == hash;
+    }
+
+    bool TXSheet::isOperationBlocked(const std::string& operation) const
+    {
+        if (!sheetProtection_.isProtected) {
+            return false;
+        }
+        
+        if (operation == "formatCells") return !sheetProtection_.formatCells;
+        if (operation == "formatColumns") return !sheetProtection_.formatColumns;
+        if (operation == "formatRows") return !sheetProtection_.formatRows;
+        if (operation == "insertColumns") return !sheetProtection_.insertColumns;
+        if (operation == "insertRows") return !sheetProtection_.insertRows;
+        if (operation == "deleteColumns") return !sheetProtection_.deleteColumns;
+        if (operation == "deleteRows") return !sheetProtection_.deleteRows;
+        if (operation == "sort") return !sheetProtection_.sort;
+        if (operation == "autoFilter") return !sheetProtection_.autoFilter;
+        
+        return false; // 默认允许
+    }
+
+    bool TXSheet::detectCircularReferencesHelper(const Coordinate& coord, 
+                                                std::unordered_set<Coordinate, CoordinateHash>& visiting,
+                                                std::unordered_set<Coordinate, CoordinateHash>& visited) const
+    {
+        if (visiting.find(coord) != visiting.end()) {
+            return true; // 发现循环
+        }
+        
+        if (visited.find(coord) != visited.end()) {
+            return false; // 已经访问过
+        }
+        
+        visiting.insert(coord);
+        
+        const TXCell* cell = getCell(coord);
+        if (cell && cell->hasFormula()) {
+            std::vector<Coordinate> refs = parseFormulaReferences(cell->getFormula());
+            for (const Coordinate& ref : refs) {
+                if (detectCircularReferencesHelper(ref, visiting, visited)) {
+                    return true;
+                }
+            }
+        }
+        
+        visiting.erase(coord);
+        visited.insert(coord);
+        
+        return false;
+    }
+
+    std::vector<TXCoordinate> TXSheet::parseFormulaReferences(const std::string& formula) const
+    {
+        std::vector<Coordinate> references;
+        
+        // 简化的公式引用解析
+        // 实际实现应该使用更复杂的解析器
+        std::regex cellRefRegex(R"([A-Z]+[0-9]+)");
+        std::sregex_iterator iter(formula.begin(), formula.end(), cellRefRegex);
+        std::sregex_iterator end;
+        
+        for (; iter != end; ++iter) {
+            std::string ref = iter->str();
+            try {
+                Coordinate coord = Coordinate::fromAddress(ref);
+                references.push_back(coord);
+            } catch (...) {
+                // 忽略无效引用
+            }
+        }
+        
+        return references;
+    }
+
 } // namespace TinaXlsx 

@@ -256,6 +256,26 @@ namespace TinaXlsx
          */
         [[nodiscard]] bool isValueEqual(const TXCell& other) const;
 
+        // ==================== 保护功能 ====================
+        
+        /**
+         * @brief 设置单元格锁定状态
+         * @param locked 是否锁定
+         */
+        void setLocked(bool locked);
+        
+        /**
+         * @brief 检查单元格是否锁定
+         * @return 锁定返回true，否则返回false
+         */
+        [[nodiscard]] bool isLocked() const;
+        
+        /**
+         * @brief 检查单元格是否有公式
+         * @return 有公式返回true，否则返回false
+         */
+        [[nodiscard]] bool hasFormula() const;
+
 
         // ==================== 类型转换操作符 ====================
         explicit operator std::string() const { return getFormattedValue(); }
@@ -298,6 +318,9 @@ namespace TinaXlsx
         // 样式相关状态
         bool has_style_ = false;                       ///<单元格是否有显式样式
         u32 style_index_ = 0;                          ///< 应用于此单元格的样式索引 (来自样式管理器)
+        
+        // 保护相关状态
+        bool is_locked_ = true;                        ///< 单元格是否锁定（默认锁定）
 
         /**
          * @brief 根据value_和formula_object_的内容更新type_成员。

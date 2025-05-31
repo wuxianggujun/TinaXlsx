@@ -89,31 +89,22 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 if(BUILD_TESTS)
     enable_testing()
 
+    # 配置 GoogleTest
     set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
     set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
     add_subdirectory(third_party/googletest)
-
-    file(GLOB_RECURSE TEST_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/tests/*.cpp)
-
-    add_executable(${PROJECT_NAME}_test ${TEST_SOURCES})
-
-    target_link_libraries(${PROJECT_NAME}_test
-            PRIVATE
-            ${PROJECT_NAME}
-            gtest_main
+    
+    # 包含 CTest 模块
+    include(CTest)
+    
+    # 添加单元测试子目录
+    add_subdirectory(tests/unit)
+    
+    # 创建一个运行所有测试的目标
+    add_custom_target(run_all_tests
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
+        COMMENT "Running all tests"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
-
-    # 为测试添加更宽松的编译选项
-    if(MSVC)
-        target_compile_options(${PROJECT_NAME}_test PRIVATE 
-            /W3 
-            /utf-8  # 设置源和执行字符集为UTF-8
-            /wd4819  # 禁用C4819编码警告
-        )
-    else()
-        target_compile_options(${PROJECT_NAME}_test PRIVATE -Wall -Wno-unused-parameter)
-    endif()
-
-    include(GoogleTest)
-    gtest_discover_tests(${PROJECT_NAME}_test)
+    
 endif()

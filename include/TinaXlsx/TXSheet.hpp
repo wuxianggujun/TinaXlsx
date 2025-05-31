@@ -439,6 +439,228 @@ public:
      */
     std::size_t setBatchNumberFormats(const std::vector<std::pair<Coordinate, TXCellStyle::NumberFormatDefinition>>& formats);
 
+    // ==================== 列宽和行高操作 ====================
+    
+    /**
+     * @brief 设置列宽
+     * @param col 列号（1开始）
+     * @param width 宽度（字符单位）
+     * @return 成功返回true，失败返回false
+     */
+    bool setColumnWidth(column_t col, double width);
+    
+    /**
+     * @brief 获取列宽
+     * @param col 列号（1开始）
+     * @return 列宽（字符单位），默认宽度为8.43
+     */
+    double getColumnWidth(column_t col) const;
+    
+    /**
+     * @brief 设置行高
+     * @param row 行号（1开始）
+     * @param height 高度（磅数）
+     * @return 成功返回true，失败返回false
+     */
+    bool setRowHeight(row_t row, double height);
+    
+    /**
+     * @brief 获取行高
+     * @param row 行号（1开始）
+     * @return 行高（磅数），默认高度为15.0
+     */
+    double getRowHeight(row_t row) const;
+    
+    /**
+     * @brief 自动调整列宽以适应内容
+     * @param col 列号（1开始）
+     * @param minWidth 最小宽度（字符单位）
+     * @param maxWidth 最大宽度（字符单位）
+     * @return 调整后的列宽
+     */
+    double autoFitColumnWidth(column_t col, double minWidth = 1.0, double maxWidth = 255.0);
+    
+    /**
+     * @brief 自动调整行高以适应内容
+     * @param row 行号（1开始）
+     * @param minHeight 最小高度（磅数）
+     * @param maxHeight 最大高度（磅数）
+     * @return 调整后的行高
+     */
+    double autoFitRowHeight(row_t row, double minHeight = 12.0, double maxHeight = 409.0);
+    
+    /**
+     * @brief 自动调整所有列宽
+     * @param minWidth 最小宽度
+     * @param maxWidth 最大宽度
+     * @return 调整的列数
+     */
+    std::size_t autoFitAllColumnWidths(double minWidth = 1.0, double maxWidth = 255.0);
+    
+    /**
+     * @brief 自动调整所有行高
+     * @param minHeight 最小高度
+     * @param maxHeight 最大高度
+     * @return 调整的行数
+     */
+    std::size_t autoFitAllRowHeights(double minHeight = 12.0, double maxHeight = 409.0);
+
+    // ==================== 工作表保护功能 ====================
+    
+    /**
+     * @brief 工作表保护选项
+     */
+    struct SheetProtection {
+        bool isProtected = false;                    ///< 是否受保护
+        std::string password;                        ///< 保护密码（MD5哈希）
+        bool selectLockedCells = true;               ///< 允许选择锁定的单元格
+        bool selectUnlockedCells = true;             ///< 允许选择未锁定的单元格
+        bool formatCells = false;                    ///< 允许格式化单元格
+        bool formatColumns = false;                  ///< 允许格式化列
+        bool formatRows = false;                     ///< 允许格式化行
+        bool insertColumns = false;                  ///< 允许插入列
+        bool insertRows = false;                     ///< 允许插入行
+        bool deleteColumns = false;                  ///< 允许删除列
+        bool deleteRows = false;                     ///< 允许删除行
+        bool insertHyperlinks = false;               ///< 允许插入超链接
+        bool sort = false;                           ///< 允许排序
+        bool autoFilter = false;                     ///< 允许自动筛选
+        bool pivotTables = false;                    ///< 允许数据透视表操作
+        bool objects = false;                        ///< 允许编辑对象
+        bool scenarios = false;                      ///< 允许编辑方案
+    };
+    
+    /**
+     * @brief 保护工作表
+     * @param password 保护密码（空字符串表示无密码）
+     * @param protection 保护选项
+     * @return 成功返回true，失败返回false
+     */
+    bool protectSheet(const std::string& password = "", const SheetProtection& protection = SheetProtection{});
+    
+    /**
+     * @brief 取消工作表保护
+     * @param password 解除保护的密码
+     * @return 成功返回true，失败返回false
+     */
+    bool unprotectSheet(const std::string& password = "");
+    
+    /**
+     * @brief 检查工作表是否受保护
+     * @return 受保护返回true，否则返回false
+     */
+    bool isSheetProtected() const;
+    
+    /**
+     * @brief 获取工作表保护设置
+     * @return 保护设置
+     */
+    const SheetProtection& getSheetProtection() const;
+    
+    /**
+     * @brief 设置单元格锁定状态
+     * @param row 行号
+     * @param col 列号
+     * @param locked 是否锁定
+     * @return 成功返回true，失败返回false
+     */
+    bool setCellLocked(row_t row, column_t col, bool locked);
+    
+    /**
+     * @brief 检查单元格是否锁定
+     * @param row 行号
+     * @param col 列号
+     * @return 锁定返回true，否则返回false
+     */
+    bool isCellLocked(row_t row, column_t col) const;
+    
+    /**
+     * @brief 设置范围内单元格的锁定状态
+     * @param range 范围
+     * @param locked 是否锁定
+     * @return 成功设置的单元格数量
+     */
+    std::size_t setRangeLocked(const Range& range, bool locked);
+
+    // ==================== 增强公式支持 ====================
+    
+    /**
+     * @brief 设置公式计算引擎选项
+     */
+    struct FormulaCalculationOptions {
+        bool autoCalculate = true;                   ///< 自动计算
+        bool iterativeCalculation = false;           ///< 迭代计算
+        int maxIterations = 100;                     ///< 最大迭代次数
+        double maxChange = 0.001;                    ///< 最大变化值
+        bool precisionAsDisplayed = false;           ///< 以显示精度计算
+        bool use1904DateSystem = false;              ///< 使用1904日期系统
+    };
+    
+    /**
+     * @brief 设置公式计算选项
+     * @param options 计算选项
+     */
+    void setFormulaCalculationOptions(const FormulaCalculationOptions& options);
+    
+    /**
+     * @brief 获取公式计算选项
+     * @return 计算选项
+     */
+    const FormulaCalculationOptions& getFormulaCalculationOptions() const;
+    
+    /**
+     * @brief 添加命名范围
+     * @param name 名称
+     * @param range 范围
+     * @param comment 注释
+     * @return 成功返回true，失败返回false
+     */
+    bool addNamedRange(const std::string& name, const Range& range, const std::string& comment = "");
+    
+    /**
+     * @brief 删除命名范围
+     * @param name 名称
+     * @return 成功返回true，失败返回false
+     */
+    bool removeNamedRange(const std::string& name);
+    
+    /**
+     * @brief 获取命名范围
+     * @param name 名称
+     * @return 范围，如果不存在返回无效范围
+     */
+    Range getNamedRange(const std::string& name) const;
+    
+    /**
+     * @brief 获取所有命名范围
+     * @return 名称到范围的映射
+     */
+    std::unordered_map<std::string, Range> getAllNamedRanges() const;
+    
+    /**
+     * @brief 检测循环引用
+     * @return 发现循环引用返回true，否则返回false
+     */
+    bool detectCircularReferences() const;
+    
+    // ==================== 哈希函数 ====================
+    
+    /**
+     * @brief 坐标哈希函数
+     */
+    struct CoordinateHash {
+        std::size_t operator()(const TXCoordinate& coord) const {
+            return std::hash<row_t>()(coord.getRow()) ^
+                (std::hash<column_t>()(coord.getCol()) << 1);
+        }
+    };
+    
+    /**
+     * @brief 获取公式依赖关系图
+     * @return 单元格坐标到其依赖的单元格列表的映射
+     */
+    std::unordered_map<Coordinate, std::vector<Coordinate>, CoordinateHash> getFormulaDependencies() const;
+
     // ==================== 便捷方法 ====================
 
     /**
@@ -491,19 +713,24 @@ public:
 
 
 private:
-    // 使用TXCoordinate的哈希函数特化
-    struct CoordinateHash {
-        std::size_t operator()(const TXCoordinate& coord) const {
-            return std::hash<row_t>()(coord.getRow()) ^
-                (std::hash<column_t>()(coord.getCol()) << 1);
-        }
-    };
-
     std::string name_;
     std::unordered_map<Coordinate, TXCell, CoordinateHash> cells_;
     std::string lastError_;
     TXMergedCells mergedCells_;
     TXWorkbook* workbook_ = nullptr;
+    
+    // 列宽和行高存储
+    std::unordered_map<column_t::index_t, double> columnWidths_;
+    std::unordered_map<row_t::index_t, double> rowHeights_;
+    
+    // 工作表保护
+    SheetProtection sheetProtection_;
+    
+    // 公式计算选项
+    FormulaCalculationOptions formulaOptions_;
+    
+    // 命名范围
+    std::unordered_map<std::string, Range> namedRanges_;
     
     // ==================== 私有辅助方法 ====================
     
@@ -532,6 +759,64 @@ private:
      * @brief 更新已使用范围
      */
     void updateUsedRange();
+    
+    /**
+     * @brief 计算文本内容的显示宽度
+     * @param text 文本内容
+     * @param fontSize 字体大小
+     * @param fontName 字体名称
+     * @return 显示宽度（字符单位）
+     */
+    double calculateTextWidth(const std::string& text, double fontSize = 11.0, const std::string& fontName = "Calibri") const;
+    
+    /**
+     * @brief 计算文本内容的显示高度
+     * @param text 文本内容
+     * @param fontSize 字体大小
+     * @param columnWidth 列宽（用于自动换行计算）
+     * @return 显示高度（磅数）
+     */
+    double calculateTextHeight(const std::string& text, double fontSize = 11.0, double columnWidth = 8.43) const;
+    
+    /**
+     * @brief 生成密码哈希
+     * @param password 原始密码
+     * @return MD5哈希值
+     */
+    std::string generatePasswordHash(const std::string& password) const;
+    
+    /**
+     * @brief 验证密码
+     * @param password 输入密码
+     * @param hash 存储的哈希值
+     * @return 验证成功返回true，否则返回false
+     */
+    bool verifyPassword(const std::string& password, const std::string& hash) const;
+    
+    /**
+     * @brief 检查操作是否被保护设置阻止
+     * @param operation 操作类型
+     * @return 被阻止返回true，否则返回false
+     */
+    bool isOperationBlocked(const std::string& operation) const;
+    
+    /**
+     * @brief 循环引用检测辅助方法
+     * @param coord 当前检查的坐标
+     * @param visiting 正在访问的坐标集合
+     * @param visited 已访问的坐标集合
+     * @return 发现循环引用返回true，否则返回false
+     */
+    bool detectCircularReferencesHelper(const Coordinate& coord, 
+                                       std::unordered_set<Coordinate, CoordinateHash>& visiting,
+                                       std::unordered_set<Coordinate, CoordinateHash>& visited) const;
+    
+    /**
+     * @brief 解析公式中的单元格引用
+     * @param formula 公式字符串
+     * @return 引用的单元格坐标列表
+     */
+    std::vector<Coordinate> parseFormulaReferences(const std::string& formula) const;
 };
 
 } // namespace TinaXlsx 

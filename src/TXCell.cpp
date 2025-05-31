@@ -18,7 +18,8 @@ namespace TinaXlsx
           master_row_idx_(0),
           master_col_idx_(0),
           has_style_(false),
-          style_index_(0)
+          style_index_(0),
+          is_locked_(true) // 默认锁定
     {
         // 默认单元格使用“常规”格式，可以通过创建一个默认的TXNumberFormat对象来实现
         // 或者让getFormattedValue在number_format_object_为nullptr时有特定行为
@@ -35,7 +36,8 @@ namespace TinaXlsx
           master_row_idx_(0),
           master_col_idx_(0),
           has_style_(false),
-          style_index_(0)
+          style_index_(0),
+          is_locked_(true) // 默认锁定
     {
         updateType(); // 类型会根据值自动更新
     }
@@ -51,7 +53,8 @@ namespace TinaXlsx
           master_row_idx_(other.master_row_idx_),
           master_col_idx_(other.master_col_idx_),
           has_style_(other.has_style_),
-          style_index_(other.style_index_)
+          style_index_(other.style_index_),
+          is_locked_(other.is_locked_)
     {
         if (other.formula_object_) {
             formula_object_ = std::make_unique<TXFormula>(*other.formula_object_);
@@ -88,6 +91,7 @@ namespace TinaXlsx
             master_col_idx_ = other.master_col_idx_;
             has_style_ = other.has_style_;
             style_index_ = other.style_index_;
+            is_locked_ = other.is_locked_;
         }
         return *this;
     }
@@ -103,7 +107,8 @@ namespace TinaXlsx
           master_row_idx_(other.master_row_idx_),
           master_col_idx_(other.master_col_idx_),
           has_style_(other.has_style_),
-          style_index_(other.style_index_)
+          style_index_(other.style_index_),
+          is_locked_(other.is_locked_)
     {
         // 将源对象置于有效的空状态
         other.type_ = CellType::Empty;
@@ -131,6 +136,7 @@ namespace TinaXlsx
             master_col_idx_ = other.master_col_idx_;
             has_style_ = other.has_style_;
             style_index_ = other.style_index_;
+            is_locked_ = other.is_locked_;
 
             other.type_ = CellType::Empty;
             other.value_ = std::monostate{};
@@ -529,6 +535,20 @@ namespace TinaXlsx
             }
             // CellType::Error 需要显式设置，不会通过 updateType 自动检测
         }, value_);
+    }
+
+    // ==================== 保护功能实现 ====================
+
+    void TXCell::setLocked(bool locked) {
+        is_locked_ = locked;
+    }
+
+    bool TXCell::isLocked() const {
+        return is_locked_;
+    }
+
+    bool TXCell::hasFormula() const {
+        return formula_object_ != nullptr;
     }
 
 } // namespace TinaXlsx
