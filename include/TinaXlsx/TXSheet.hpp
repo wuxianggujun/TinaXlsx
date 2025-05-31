@@ -507,6 +507,14 @@ private:
     const TXCell* getCellInternal(const Coordinate& coord) const;
     
     /**
+     * @brief 应用数字格式到单元格（内部辅助方法）
+     * @param cell 目标单元格
+     * @param numFmtId 数字格式ID
+     * @return 成功返回true，失败返回false
+     */
+    bool applyCellNumberFormat(TXCell* cell, u32 numFmtId);
+    
+    /**
      * @brief 更新已使用范围
      */
     void updateUsedRange();
