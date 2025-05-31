@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TXStyle.hpp" // 确保 TXFont, TXFill, TXBorder, TXCellStyle, FontStyle 等都在这里
+#include "TXNumberFormat.hpp" // 添加数字格式头文件
 #include "TXXmlWriter.hpp" // 用于生成XML
 #include "TXColor.hpp"   // 确保 TXColor 被包含
 #include "TXTypes.hpp"   // 确保 u32 等类型被包含
@@ -32,6 +33,28 @@ namespace TinaXlsx
         u32 registerFill(const TXFill& fill);
         u32 registerBorder(const TXBorder& border);
         // u32 registerNumberFormat(const std::string& formatCode, u32 id); // 自定义数字格式可以有ID
+
+        /**
+         * @brief 注册数字格式
+         * @param formatType 数字格式类型
+         * @param formatString 自定义格式字符串（对于Custom类型）
+         * @param decimalPlaces 小数位数
+         * @param useThousandSeparator 是否使用千位分隔符
+         * @param currencySymbol 货币符号
+         * @return 数字格式ID
+         */
+        u32 registerNumberFormat(TXNumberFormat::FormatType formatType, 
+                                const std::string& formatString = "",
+                                int decimalPlaces = 2,
+                                bool useThousandSeparator = false,
+                                const std::string& currencySymbol = "$");
+
+        /**
+         * @brief 通过 TXNumberFormat 对象注册数字格式
+         * @param numberFormat TXNumberFormat对象
+         * @return 数字格式ID
+         */
+        u32 registerNumberFormat(const TXNumberFormat& numberFormat);
 
         /**
          * @brief 注册一个完整的单元格样式 (XF record)
@@ -114,11 +137,39 @@ namespace TinaXlsx
             }
         };
 
+        // 数字格式结构
+        struct NumberFormat
+        {
+            u32 numFmtId_;
+            TXNumberFormat::FormatType formatType_;
+            std::string formatString_;
+            int decimalPlaces_;
+            bool useThousandSeparator_;
+            std::string currencySymbol_;
+
+            NumberFormat(u32 id, TXNumberFormat::FormatType type, const std::string& formatStr = "",
+                        int decimals = 2, bool useThousands = false, const std::string& currency = "$")
+                : numFmtId_(id), formatType_(type), formatString_(formatStr), 
+                  decimalPlaces_(decimals), useThousandSeparator_(useThousands), currencySymbol_(currency) {}
+
+            std::string generateKey() const
+            {
+                std::ostringstream oss;
+                oss << "type:" << static_cast<int>(formatType_) 
+                    << ";str:" << formatString_
+                    << ";dec:" << decimalPlaces_
+                    << ";thou:" << useThousandSeparator_
+                    << ";curr:" << currencySymbol_;
+                return oss.str();
+            }
+        };
+
         // 存储池
         std::vector<std::shared_ptr<TXFont>> fonts_pool_;
         std::vector<std::shared_ptr<TXFill>> fills_pool_;
         std::vector<std::shared_ptr<TXBorder>> borders_pool_;
         // std::vector<YourNumberFormatStruct> num_fmts_pool_; // 如果管理自定义数字格式
+        std::vector<NumberFormat> num_fmts_pool_; // 数字格式池
 
         std::vector<CellXF> cell_xfs_pool_; // 存储 <cellXfs> 的 <xf> 元素数据
 
@@ -127,6 +178,7 @@ namespace TinaXlsx
         std::unordered_map<std::string, u32> fill_lookup_;
         std::unordered_map<std::string, u32> border_lookup_;
         // std::unordered_map<std::string, u32> num_fmt_lookup_;
+        std::unordered_map<std::string, u32> num_fmt_lookup_; // 数字格式查找表
         std::unordered_map<std::string, u32> cell_xf_lookup_;
 
         void initializeDefaultStyles();

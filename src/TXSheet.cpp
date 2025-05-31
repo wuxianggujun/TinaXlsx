@@ -662,14 +662,44 @@ namespace TinaXlsx
     bool TXSheet::setCellNumberFormat(row_t row, column_t col,
                                       TXNumberFormat::FormatType formatType, int decimalPlaces)
     {
-        // 修正参数类型
         TXCell* cell = getCell(row, col);
-        if (!cell)
+        if (!cell || !workbook_)
         {
             return false;
         }
 
-        cell->setPredefinedFormat(formatType, decimalPlaces);
+        // 确保样式组件已注册
+        if (auto* context = workbook_->getContext())
+        {
+            context->registerComponentFast(ExcelComponent::Styles);
+        }
+
+        bool useThousandSeparator = true;
+
+        // 1. 更新单元格内部的数字格式对象
+        cell->setPredefinedFormat(formatType, decimalPlaces, useThousandSeparator);
+
+        // 2. 在样式管理器中注册数字格式
+        auto& styleManager = workbook_->getStyleManager();
+        u32 numFmtId = styleManager.registerNumberFormat(formatType, "", decimalPlaces, useThousandSeparator);
+
+        // 3. 创建一个包含此数字格式的样式
+        TXCellStyle cellStyle; // 使用默认样式，只改变数字格式
+        
+        // 4. 注册或获取这个样式的XF记录，指定numFmtId
+        u32 styleIndex = styleManager.registerCellStyleXF(
+            cellStyle, 
+            numFmtId,       // 数字格式ID
+            true,           // applyFont
+            true,           // applyFill  
+            true,           // applyBorder
+            true,           // applyAlignment
+            true            // applyNumberFormat - 关键！
+        );
+
+        // 5. 设置单元格的样式索引
+        cell->setStyleIndex(styleIndex);
+
         return true;
     }
 
@@ -678,12 +708,44 @@ namespace TinaXlsx
                                       const std::string& formatString)
     {
         TXCell* cell = getCell(row, col);
-        if (!cell)
+        if (!cell || !workbook_)
         {
             return false;
         }
 
+        // 确保样式组件已注册
+        if (auto* context = workbook_->getContext())
+        {
+            context->registerComponentFast(ExcelComponent::Styles);
+        }
+
+        // 1. 更新单元格内部的数字格式对象
         cell->setCustomFormat(formatString);
+
+        // 2. 在样式管理器中注册自定义数字格式
+        auto& styleManager = workbook_->getStyleManager();
+        u32 numFmtId = styleManager.registerNumberFormat(
+            TXNumberFormat::FormatType::Custom, 
+            formatString
+        );
+
+        // 3. 创建一个包含此数字格式的样式
+        TXCellStyle cellStyle; // 使用默认样式，只改变数字格式
+        
+        // 4. 注册或获取这个样式的XF记录，指定numFmtId
+        u32 styleIndex = styleManager.registerCellStyleXF(
+            cellStyle, 
+            numFmtId,       // 数字格式ID
+            true,           // applyFont
+            true,           // applyFill  
+            true,           // applyBorder
+            true,           // applyAlignment
+            true            // applyNumberFormat - 关键！
+        );
+
+        // 5. 设置单元格的样式索引
+        cell->setStyleIndex(styleIndex);
+
         return true;
     }
     

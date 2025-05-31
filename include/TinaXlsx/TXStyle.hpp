@@ -6,6 +6,14 @@
 #include <string>
 #include <memory>
 
+#include "TXNumberFormat.hpp"
+#include "TXNumberFormat.hpp"
+
+namespace TinaXlsx
+{
+    class TXNumberFormat;
+}
+
 namespace TinaXlsx {
 
 /**
@@ -169,13 +177,23 @@ struct TXFill {
     bool operator==(const TXFill& other) const;
     bool operator!=(const TXFill& other) const { return !(*this == other); }
 };
-
+    
 /**
  * @brief 单元格样式类 - 整合各种样式组件
  * 
  * 现在使用独立的TXFont类而不是内联结构体
  */
 class TXCellStyle {
+
+public:
+    // --- 新增: 数字格式定义结构体 ---
+    struct NumberFormatDefinition
+    {
+        TXNumberFormat::FormatType types_ = TXNumberFormat::FormatType::General;
+        
+    };
+
+    
 public:
     // ==================== 构造函数 ====================
     
