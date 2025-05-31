@@ -40,11 +40,7 @@ TEST_F(CellFormattingTest, NumberFormatting) {
 
     EXPECT_FALSE(formatted1.empty());
     EXPECT_FALSE(formatted2.empty());
-
-    // 实际的格式化输出依赖于 TXNumberFormat::formatNumber 的实现
-    // 例如，对于1234.567，2位小数和千位分隔符（如果默认启用）可能是 "1,234.57"
-    // 对于-9876.543，可能是 "-9,876.54"
-    // 这里仅检查非空，具体输出取决于 TXNumberFormat 的实现细节
+    
 
     // 保存验证
     EXPECT_TRUE(workbook->saveToFile("test_formatting_number.xlsx"));
