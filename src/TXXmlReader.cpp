@@ -35,7 +35,7 @@ TXXmlReader& TXXmlReader::operator=(TXXmlReader&& other) noexcept {
 TXResult<void> TXXmlReader::readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath) {
     auto xmlData = zipReader.read(xmlPath);
     if (xmlData.isError()) {
-        return Err<void>(TXErrorCode::XML_PARSE_ERROR, "Failed to read XML from ZIP: " + xmlData.error().getMessage());
+        return Err<void>(TXErrorCode::XmlParseError, "Failed to read XML from ZIP: " + xmlData.error().getMessage());
     }
     
     const std::vector<uint8_t>& fileBytes = xmlData.value();
@@ -51,7 +51,7 @@ TXResult<void> TXXmlReader::parseFromString(const std::string& xmlContent) {
         oss << "XML parse error: " << parseResult.description() 
             << " at offset " << parseResult.offset;
         isValid_ = false;
-        return Err<void>(TXErrorCode::XML_PARSE_ERROR, oss.str());
+        return Err<void>(TXErrorCode::XmlParseError, oss.str());
     }
 
     isValid_ = true;
@@ -60,7 +60,7 @@ TXResult<void> TXXmlReader::parseFromString(const std::string& xmlContent) {
 
 TXResult<std::vector<XmlNodeInfo>> TXXmlReader::findNodes(const std::string& xpath) const {
     if (!isValid_) {
-        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XmlInvalidState, "XML document is not valid");
     }
 
     try {
@@ -71,18 +71,18 @@ TXResult<std::vector<XmlNodeInfo>> TXXmlReader::findNodes(const std::string& xpa
         }
         return Ok(std::move(results));
     } catch (const pugi::xpath_exception& e) {
-        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XmlXpathError, "XPath error: " + std::string(e.what()));
     }
 }
 
 TXResult<XmlNodeInfo> TXXmlReader::getRootNode() const {
     if (!isValid_) {
-        return Err<XmlNodeInfo>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+        return Err<XmlNodeInfo>(TXErrorCode::XmlInvalidState, "XML document is not valid");
     }
 
     auto root = doc_->document_element();
     if (!root) {
-        return Err<XmlNodeInfo>(TXErrorCode::XML_NO_ROOT, "No root element found");
+        return Err<XmlNodeInfo>(TXErrorCode::XmlNoRoot, "No root element found");
     }
     
     return Ok(convertNode(root));
@@ -90,45 +90,45 @@ TXResult<XmlNodeInfo> TXXmlReader::getRootNode() const {
 
 TXResult<std::string> TXXmlReader::getNodeText(const std::string& xpath) const {
     if (!isValid_) {
-        return Err<std::string>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+        return Err<std::string>(TXErrorCode::XmlInvalidState, "XML document is not valid");
     }
 
     try {
         auto node = doc_->select_node(xpath.c_str()).node();
         if (!node) {
-            return Err<std::string>(TXErrorCode::XML_NODE_NOT_FOUND, "Node not found: " + xpath);
+            return Err<std::string>(TXErrorCode::XmlNodeNotFound, "Node not found: " + xpath);
         }
         return Ok(std::string(node.text().as_string()));
     } catch (const pugi::xpath_exception& e) {
-        return Err<std::string>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+        return Err<std::string>(TXErrorCode::XmlXpathError, "XPath error: " + std::string(e.what()));
     }
 }
 
 TXResult<std::string> TXXmlReader::getNodeAttribute(const std::string& xpath, const std::string& attributeName) const {
     if (!isValid_) {
-        return Err<std::string>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+        return Err<std::string>(TXErrorCode::XmlInvalidState, "XML document is not valid");
     }
 
     try {
         auto node = doc_->select_node(xpath.c_str()).node();
         if (!node) {
-            return Err<std::string>(TXErrorCode::XML_NODE_NOT_FOUND, "Node not found: " + xpath);
+            return Err<std::string>(TXErrorCode::XmlNodeNotFound, "Node not found: " + xpath);
         }
         
         auto attr = node.attribute(attributeName.c_str());
         if (!attr) {
-            return Err<std::string>(TXErrorCode::XML_ATTRIBUTE_NOT_FOUND, "Attribute not found: " + attributeName);
+            return Err<std::string>(TXErrorCode::XmlAttributeNotFound, "Attribute not found: " + attributeName);
         }
         
         return Ok(std::string(attr.as_string()));
     } catch (const pugi::xpath_exception& e) {
-        return Err<std::string>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+        return Err<std::string>(TXErrorCode::XmlXpathError, "XPath error: " + std::string(e.what()));
     }
 }
 
 TXResult<std::vector<std::string>> TXXmlReader::getAllNodeTexts(const std::string& xpath) const {
     if (!isValid_) {
-        return Err<std::vector<std::string>>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+        return Err<std::vector<std::string>>(TXErrorCode::XmlInvalidState, "XML document is not valid");
     }
 
     try {
@@ -139,7 +139,7 @@ TXResult<std::vector<std::string>> TXXmlReader::getAllNodeTexts(const std::strin
         }
         return Ok(std::move(results));
     } catch (const pugi::xpath_exception& e) {
-        return Err<std::vector<std::string>>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+        return Err<std::vector<std::string>>(TXErrorCode::XmlXpathError, "XPath error: " + std::string(e.what()));
     }
 }
 

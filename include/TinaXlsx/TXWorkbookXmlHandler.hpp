@@ -13,13 +13,12 @@ namespace TinaXlsx
     class TXWorkbookXmlHandler : public TXXmlHandler
     {
     public:
-        bool load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
+        TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
             auto xmlData = zipReader.read(partName());
             if (xmlData.isError())
             {
-                m_lastError = "Failed to read " + std::string(partName());
-                return false;
+                return Err<void>(xmlData.error().getCode(), "Failed to read " + std::string(partName()));
             }
             const std::vector<uint8_t>& fileBytes = xmlData.value(); // Get the actual std::vector<uint8_t>
 
@@ -28,16 +27,14 @@ namespace TinaXlsx
             auto parseResult = reader.parseFromString(xmlContent);
             if (parseResult.isError())
             {
-                m_lastError = "Failed to parse workbook.xml: " + parseResult.error().getMessage();
-                return false;
+                return Err<void>(parseResult.error().getCode(), "Failed to parse workbook.xml: " + parseResult.error().getMessage());
             }
             
             // 解析 sheets 节点，填充 context.sheets
             auto sheetNodesResult = reader.findNodes("//sheets/sheet");
             if (sheetNodesResult.isError())
             {
-                m_lastError = "Failed to find sheet nodes: " + sheetNodesResult.error().getMessage();
-                return false;
+                return Err<void>(sheetNodesResult.error().getCode(), "Failed to find sheet nodes: " + sheetNodesResult.error().getMessage());
             }
             
             for (const auto& sheetNode : sheetNodesResult.value())
@@ -53,10 +50,10 @@ namespace TinaXlsx
                 }
             }
 
-            return true;
+            return Ok();
         }
 
-        bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
+        TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
         {
             XmlNodeBuilder workbook("workbook");
             workbook.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
@@ -78,25 +75,22 @@ namespace TinaXlsx
             auto setRootResult = xmlWriter.setRootNode(workbook);
             if (setRootResult.isError())
             {
-                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
-                return false;
+                return Err<void>(setRootResult.error().getCode(), "Failed to set root node: " + setRootResult.error().getMessage());
             }
             
             auto xmlContentResult = xmlWriter.generateXmlString();
             if (xmlContentResult.isError())
             {
-                m_lastError = "Failed to generate XML: " + xmlContentResult.error().getMessage();
-                return false;
+                return Err<void>(xmlContentResult.error().getCode(), "Failed to generate XML: " + xmlContentResult.error().getMessage());
             }
             
             std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
             auto writeResult = zipWriter.write(std::string(partName()), xmlData);
             if (writeResult.isError())
             {
-                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
-                return false;
+                return Err<void>(writeResult.error().getCode(), "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage());
             }
-            return true;
+            return Ok();
         }
 
 

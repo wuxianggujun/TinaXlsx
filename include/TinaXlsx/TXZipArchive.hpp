@@ -368,6 +368,15 @@ namespace TinaXlsx
                                           int16_t level = 6 /* MZ_DEFAULT_COMPRESSION */)
         {
             close(); // 关闭任何先前打开的归档
+            
+            // 如果不是追加模式且文件存在，先删除它以确保完全重写
+            if (!append && mz_os_file_exists(file.c_str()) == MZ_OK) {
+                if (mz_os_unlink(file.c_str()) != MZ_OK) {
+                    return Err(TX_ERROR_CREATE(TXErrorCode::ZipCreateFailed,
+                                               "Failed to delete existing file: " + file));
+                }
+            }
+            
             writer_ = WriterHandle(); // 调用 unique_mz_handle 构造函数, 内部调用 mz_zip_writer_create
             if (!writer_)
             {
@@ -377,7 +386,12 @@ namespace TinaXlsx
             }
 
             mz_zip_writer_set_compress_level(writer_.get(), level);
-            // mz_zip_writer_set_zip_cd(writer_.get(), 1); // 如果需要显式ZIP64支持 (minizip-ng 通常会自动处理)
+            
+            // 设置覆盖回调以确保正确的覆盖行为
+            if (!append) {
+                mz_zip_writer_set_overwrite_cb(writer_.get(), nullptr, 
+                    [](void*, void*, const char*) -> int32_t { return MZ_OK; });
+            }
 
             // append 参数：MZ_OPEN_MODE_CREATE (0) 表示创建/截断，MZ_OPEN_MODE_APPEND 表示追加
             int32_t open_mode = append ? MZ_OPEN_MODE_APPEND : MZ_OPEN_MODE_CREATE;

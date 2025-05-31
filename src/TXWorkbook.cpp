@@ -76,16 +76,18 @@ namespace TinaXlsx
 
         // 加载 workbook.xml（必须首先加载以获取工作表信息）
         TXWorkbookXmlHandler workbookHandler;
-        if (!workbookHandler.load(zipReader, *context_)) {
-            last_error_ = workbookHandler.lastError();
+        auto workbookLoadResult = workbookHandler.load(zipReader, *context_);
+        if (workbookLoadResult.isError()) {
+            last_error_ = "Workbook load failed: " + workbookLoadResult.error().getMessage();
             return false;
         }
 
         // 加载 styles.xml（如果存在）
         if (component_manager_.hasComponent(ExcelComponent::Styles)) {
             StylesXmlHandler stylesHandler;
-            if (!stylesHandler.load(zipReader, *context_)) {
-                last_error_ = stylesHandler.lastError();
+            auto stylesLoadResult = stylesHandler.load(zipReader, *context_);
+            if (stylesLoadResult.isError()) {
+                last_error_ = "Styles load failed: " + stylesLoadResult.error().getMessage();
                 return false;
             }
         }
@@ -93,8 +95,9 @@ namespace TinaXlsx
         // 加载 sharedStrings.xml（如果存在）
         if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
             TXSharedStringsXmlHandler sharedStringsHandler;
-            if (!sharedStringsHandler.load(zipReader, *context_)) {
-                last_error_ = sharedStringsHandler.lastError();
+            auto sharedStringsLoadResult = sharedStringsHandler.load(zipReader, *context_);
+            if (sharedStringsLoadResult.isError()) {
+                last_error_ = "Shared strings load failed: " + sharedStringsLoadResult.error().getMessage();
                 return false;
             }
         }
@@ -102,8 +105,9 @@ namespace TinaXlsx
         // 加载每个工作表
         for (size_t i = 0; i < sheets_.size(); ++i) {
             TXWorksheetXmlHandler worksheetHandler(i);
-            if (!worksheetHandler.load(zipReader, *context_)) {
-                last_error_ = worksheetHandler.lastError();
+            auto worksheetLoadResult = worksheetHandler.load(zipReader, *context_);
+            if (worksheetLoadResult.isError()) {
+                last_error_ = "Worksheet " + std::to_string(i) + " load failed: " + worksheetLoadResult.error().getMessage();
                 return false;
             }
         }
@@ -111,8 +115,9 @@ namespace TinaXlsx
         // 加载其他组件（如文档属性）
         if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
             TXDocumentPropertiesXmlHandler docPropsHandler;
-            if (!docPropsHandler.load(zipReader, *context_)) {
-                last_error_ = docPropsHandler.lastError();
+            auto docPropsLoadResult = docPropsHandler.load(zipReader, *context_);
+            if (docPropsLoadResult.isError()) {
+                last_error_ = "Document properties load failed: " + docPropsLoadResult.error().getMessage();
                 return false;
             }
         }
@@ -129,36 +134,41 @@ namespace TinaXlsx
         
         // 保存 [Content_Types].xml
         TXContentTypesXmlHandler contentTypesHandler;
-        if (!contentTypesHandler.save(zipWriter, *context_)) {
-            last_error_ = contentTypesHandler.lastError();
+        auto contentTypesResult = contentTypesHandler.save(zipWriter, *context_);
+        if (contentTypesResult.isError()) {
+            last_error_ = "Content types save failed: " + contentTypesResult.error().getMessage();
             return false;
         }
 
         TXMainRelsXmlHandler mainRelsHandler;
-        if (!mainRelsHandler.save(zipWriter, *context_)) {
-            last_error_ = mainRelsHandler.lastError();
+        auto mainRelsResult = mainRelsHandler.save(zipWriter, *context_);
+        if (mainRelsResult.isError()) {
+            last_error_ = "Main rels save failed: " + mainRelsResult.error().getMessage();
             return false;
         }
 
         // 保存 workbook.xml
         TXWorkbookXmlHandler workbookHandler;
-        if (!workbookHandler.save(zipWriter, *context_)) {
-            last_error_ = workbookHandler.lastError();
+        auto workbookResult = workbookHandler.save(zipWriter, *context_);
+        if (workbookResult.isError()) {
+            last_error_ = "Workbook save failed: " + workbookResult.error().getMessage();
             return false;
         }
 
         // 保存 workbook.xml.rels
         TXWorkbookRelsXmlHandler workbookRelsHandler;
-        if (!workbookRelsHandler.save(zipWriter, *context_)) {
-            last_error_ = workbookRelsHandler.lastError();
+        auto workbookRelsResult = workbookRelsHandler.save(zipWriter, *context_);
+        if (workbookRelsResult.isError()) {
+            last_error_ = "Workbook rels save failed: " + workbookRelsResult.error().getMessage();
             return false;
         }
 
         // 保存 styles.xml（如果启用了样式组件）
         if (component_manager_.hasComponent(ExcelComponent::Styles)) {
             StylesXmlHandler stylesHandler;
-            if (!stylesHandler.save(zipWriter, *context_)) {
-                last_error_ = stylesHandler.lastError();
+            auto stylesResult = stylesHandler.save(zipWriter, *context_);
+            if (stylesResult.isError()) {
+                last_error_ = "Styles save failed: " + stylesResult.error().getMessage();
                 return false;
             }
         }
@@ -166,8 +176,9 @@ namespace TinaXlsx
         // 保存每个工作表（必须在sharedStrings之前，因为工作表保存时会填充共享字符串池）
         for (size_t i = 0; i < sheets_.size(); ++i) {
             TXWorksheetXmlHandler worksheetHandler(i);
-            if (!worksheetHandler.save(zipWriter, *context_)) {
-                last_error_ = worksheetHandler.lastError();
+            auto worksheetResult = worksheetHandler.save(zipWriter, *context_);
+            if (worksheetResult.isError()) {
+                last_error_ = "Worksheet " + std::to_string(i) + " save failed: " + worksheetResult.error().getMessage();
                 return false;
             }
         }
@@ -175,8 +186,9 @@ namespace TinaXlsx
         // 保存 sharedStrings.xml（如果启用了共享字符串组件）
         if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
             TXSharedStringsXmlHandler sharedStringsHandler;
-            if (!sharedStringsHandler.save(zipWriter, *context_)) {
-                last_error_ = sharedStringsHandler.lastError();
+            auto sharedStringsResult = sharedStringsHandler.save(zipWriter, *context_);
+            if (sharedStringsResult.isError()) {
+                last_error_ = "Shared strings save failed: " + sharedStringsResult.error().getMessage();
                 return false;
             }
         }
@@ -184,8 +196,9 @@ namespace TinaXlsx
         // 保存文档属性
         if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
             TXDocumentPropertiesXmlHandler docPropsHandler;
-            if (!docPropsHandler.save(zipWriter, *context_)) {
-                last_error_ = docPropsHandler.lastError();
+            auto docPropsResult = docPropsHandler.save(zipWriter, *context_);
+            if (docPropsResult.isError()) {
+                last_error_ = "Document properties save failed: " + docPropsResult.error().getMessage();
                 return false;
             }
         }

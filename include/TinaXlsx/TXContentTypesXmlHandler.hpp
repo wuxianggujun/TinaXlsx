@@ -13,12 +13,12 @@ namespace TinaXlsx
     class TXContentTypesXmlHandler : public TXXmlHandler
     {
         public:
-        bool load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
+        TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
-            return true;
+            return Ok();
         }
 
-        bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
+        TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
         {
             XmlNodeBuilder types("Types");
 
@@ -71,24 +71,21 @@ namespace TinaXlsx
             TXXmlWriter writer;
             auto setRootResult = writer.setRootNode(types);
             if (setRootResult.isError()) {
-                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
-                return false;
+                return Err<void>(setRootResult.error().getCode(), "Failed to set root node: " + setRootResult.error().getMessage());
             }
             
             auto xmlContentResult = writer.generateXmlString();
             if (xmlContentResult.isError()) {
-                m_lastError = "Failed to generate XML: " + xmlContentResult.error().getMessage();
-                return false;
+                return Err<void>(xmlContentResult.error().getCode(), "Failed to generate XML: " + xmlContentResult.error().getMessage());
             }
             
             std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
             auto writeResult = zipWriter.write(std::string(partName()), xmlData);
             if (writeResult.isError()) {
-                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
-                return false;
+                return Err<void>(writeResult.error().getCode(), "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage());
             }
 
-            return true;
+            return Ok();
         }
 
         std::string partName() const override

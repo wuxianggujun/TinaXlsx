@@ -71,15 +71,12 @@ namespace TinaXlsx
         XmlParseError = 600, // XML解析错误
         XmlGenerationError = 601, // XML生成错误
         InvalidXmlStructure = 602, // 无效XML结构
-        XML_PARSE_ERROR = 603, // XML解析错误
-        XML_INVALID_STATE = 604, // XML对象无效状态
-        XML_XPATH_ERROR = 605, // XPath错误
-        XML_NO_ROOT = 606, // 没有根节点
-        XML_NODE_NOT_FOUND = 607, // 节点未找到
-        XML_ATTRIBUTE_NOT_FOUND = 608, // 属性未找到
-        XML_CREATE_ERROR = 609, // XML创建错误
-        XML_GENERATE_ERROR = 610, // XML生成错误
-        ZIP_WRITE_ERROR = 611, // ZIP写入错误
+        XmlInvalidState = 603, // XML对象无效状态
+        XmlXpathError = 604, // XPath错误
+        XmlNoRoot = 605, // 没有根节点
+        XmlNodeNotFound = 606, // 节点未找到
+        XmlAttributeNotFound = 607, // 属性未找到
+        XmlCreateError = 608, // XML创建错误
 
         // ZIP处理错误 (700-799)
         ZipCreateFailed = 700, // ZIP创建失败
@@ -90,6 +87,7 @@ namespace TinaXlsx
         ZipWriteEntryFailed = 705, // 写入ZIP条目数据失败
         ZipEntryNotFound = 706, // 在ZIP中未找到指定条目 (不同于文件系统中的 FileNotFound)
         ZipInvalidState = 707, // ZIP对象处于无效状态执行操作 (例如未打开时读取)
+        ZipWriteError = 708, // ZIP写入错误
     };
 
     /**

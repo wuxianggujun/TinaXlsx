@@ -8,6 +8,7 @@
 #include <memory>
 #include "TXZipArchive.hpp"
 #include "TXWorkbookContext.hpp"
+#include "TXResult.hpp"
 
 namespace TinaXlsx
 {
@@ -16,9 +17,9 @@ namespace TinaXlsx
     public:
         virtual ~TXXmlHandler() = default;
 
-        virtual bool load(TXZipArchiveReader& zipReader,TXWorkbookContext& context) = 0;
+        virtual TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) = 0;
 
-        virtual bool save(TXZipArchiveWriter& zipWriter,const TXWorkbookContext& context)  = 0;
+        virtual TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) = 0;
 
         [[nodiscard]] virtual std::string partName() const = 0;
 

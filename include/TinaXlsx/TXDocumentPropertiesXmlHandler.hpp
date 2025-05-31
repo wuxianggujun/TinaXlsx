@@ -13,7 +13,7 @@ namespace TinaXlsx
     class TXDocumentPropertiesXmlHandler : public TXXmlHandler
     {
     public:
-        bool save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
+        TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
         {
             // 生成 core.xml
             XmlNodeBuilder coreProps("cp:coreProperties");
@@ -35,22 +35,19 @@ namespace TinaXlsx
             TXXmlWriter coreWriter;
             auto setCoreRootResult = coreWriter.setRootNode(coreProps);
             if (setCoreRootResult.isError()) {
-                m_lastError = "Failed to set core root node: " + setCoreRootResult.error().getMessage();
-                return false;
+                return Err<void>(setCoreRootResult.error().getCode(), "Failed to set core root node: " + setCoreRootResult.error().getMessage());
             }
             
             auto coreContentResult = coreWriter.generateXmlString();
             if (coreContentResult.isError()) {
-                m_lastError = "Failed to generate core XML string: " + coreContentResult.error().getMessage();
-                return false;
+                return Err<void>(coreContentResult.error().getCode(), "Failed to generate core XML string: " + coreContentResult.error().getMessage());
             }
             
             std::vector<uint8_t> coreData(coreContentResult.value().begin(), coreContentResult.value().end());
             auto writeCoreResult = zipWriter.write("docProps/core.xml", coreData);
             if (writeCoreResult.isError())
             {
-                m_lastError = "Failed to write docProps/core.xml: " + writeCoreResult.error().getMessage();
-                return false;
+                return Err<void>(writeCoreResult.error().getCode(), "Failed to write docProps/core.xml: " + writeCoreResult.error().getMessage());
             }
 
             // 生成 app.xml
@@ -67,32 +64,29 @@ namespace TinaXlsx
             TXXmlWriter appWriter;
             auto setAppRootResult = appWriter.setRootNode(appProps);
             if (setAppRootResult.isError()) {
-                m_lastError = "Failed to set app root node: " + setAppRootResult.error().getMessage();
-                return false;
+                return Err<void>(setAppRootResult.error().getCode(), "Failed to set app root node: " + setAppRootResult.error().getMessage());
             }
             
             auto appContentResult = appWriter.generateXmlString();
             if (appContentResult.isError()) {
-                m_lastError = "Failed to generate app XML string: " + appContentResult.error().getMessage();
-                return false;
+                return Err<void>(appContentResult.error().getCode(), "Failed to generate app XML string: " + appContentResult.error().getMessage());
             }
             
             std::vector<uint8_t> appData(appContentResult.value().begin(), appContentResult.value().end());
             auto writeAppResult = zipWriter.write("docProps/app.xml", appData);
             if (writeAppResult.isError())
             {
-                m_lastError = "Failed to write docProps/app.xml: " + writeAppResult.error().getMessage();
-                return false;
+                return Err<void>(writeAppResult.error().getCode(), "Failed to write docProps/app.xml: " + writeAppResult.error().getMessage());
             }
 
-            return true;
+            return Ok();
         }
 
         // 如果不需要读取，可以简单实现
-        bool load(TXZipArchiveReader&, TXWorkbookContext&) override
+        TXResult<void> load(TXZipArchiveReader&, TXWorkbookContext&) override
         {
             // TODO: 读取文档属性 XML 文件
-            return true; // 或者根据需要实现
+            return Ok(); // 或者根据需要实现
         }
 
         [[nodiscard]] std::string partName() const override

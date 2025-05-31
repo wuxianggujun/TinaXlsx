@@ -80,7 +80,7 @@ namespace TinaXlsx
         doc_->reset();
         auto root = doc_->append_child(rootNodeName.c_str());
         if (!root) {
-            return Err<void>(TXErrorCode::XML_CREATE_ERROR, "Failed to create root node: " + rootNodeName);
+            return Err<void>(TXErrorCode::XmlCreateError, "Failed to create root node: " + rootNodeName);
         }
         isValid_ = true;
         return Ok();
@@ -90,13 +90,13 @@ namespace TinaXlsx
     {
         if (!isValid_)
         {
-            return Err<void>(TXErrorCode::XML_INVALID_STATE, "Document not initialized");
+            return Err<void>(TXErrorCode::XmlInvalidState, "Document not initialized");
         }
 
         auto root = doc_->document_element();
         if (!root)
         {
-            return Err<void>(TXErrorCode::XML_NO_ROOT, "No root element found");
+            return Err<void>(TXErrorCode::XmlNoRoot, "No root element found");
         }
 
         buildNode(root, node);
@@ -106,12 +106,12 @@ namespace TinaXlsx
     TXResult<std::string> TXXmlWriter::generateXmlString() const
     {
         if (!isValid_) {
-            return Err<std::string>(TXErrorCode::XML_INVALID_STATE, "Document is not valid");
+            return Err<std::string>(TXErrorCode::XmlInvalidState, "Document is not valid");
         }
         
         std::string result = generateString();
         if (result.empty()) {
-            return Err<std::string>(TXErrorCode::XML_GENERATE_ERROR, "Failed to generate XML content");
+            return Err<std::string>(TXErrorCode::XmlGenerationError, "Failed to generate XML content");
         }
         
         return Ok(std::move(result));
@@ -129,7 +129,7 @@ namespace TinaXlsx
 
         if (writeResult.isError())
         {
-            return Err<void>(TXErrorCode::ZIP_WRITE_ERROR, "Failed to write to ZIP: " + writeResult.error().getMessage());
+            return Err<void>(TXErrorCode::ZipWriteError, "Failed to write to ZIP: " + writeResult.error().getMessage());
         }
 
         return Ok();
@@ -144,7 +144,7 @@ namespace TinaXlsx
 
         if (writeResult.isError())
         {
-            return Err<void>(TXErrorCode::ZIP_WRITE_ERROR, "Failed to write to ZIP: " + writeResult.error().getMessage());
+            return Err<void>(TXErrorCode::ZipWriteError, "Failed to write to ZIP: " + writeResult.error().getMessage());
         }
         
         return Ok();
@@ -165,7 +165,7 @@ namespace TinaXlsx
     {
         if (!isValid_)
         {
-            return Err<DocumentStats>(TXErrorCode::XML_INVALID_STATE, "Document is not valid");
+            return Err<DocumentStats>(TXErrorCode::XmlInvalidState, "Document is not valid");
         }
 
         return Ok(calculateStats(doc_->document_element()));
