@@ -146,7 +146,11 @@ namespace TinaXlsx
             {TXErrorCode::ZipCreateFailed, "ZipCreateFailed"},
             {TXErrorCode::ZipOpenFailed, "ZipOpenFailed"},
             {TXErrorCode::ZipExtractFailed, "ZipExtractFailed"},
-            {TXErrorCode::ZipCompressionFailed, "ZipCompressionFailed"}
+            {TXErrorCode::ZipCompressionFailed, "ZipCompressionFailed"},
+            {TXErrorCode::ZipReadEntryFailed, "ZipReadEntryFailed"},
+            {TXErrorCode::ZipWriteEntryFailed, "ZipWriteEntryFailed"},
+            {TXErrorCode::ZipEntryNotFound, "ZipEntryNotFound"},
+            {TXErrorCode::ZipInvalidState, "ZipInvalidState"}
         };
 
         auto it = code_names.find(code);
@@ -224,7 +228,11 @@ namespace TinaXlsx
             {TXErrorCode::ZipCreateFailed, "Failed to create the ZIP archive file."},
             {TXErrorCode::ZipOpenFailed, "Failed to open the ZIP archive file."},
             {TXErrorCode::ZipExtractFailed, "Failed to extract data from the ZIP archive file."},
-            {TXErrorCode::ZipCompressionFailed, "ZIP compression or decompression operation failed."}
+            {TXErrorCode::ZipCompressionFailed, "ZIP compression or decompression operation failed."},
+            {TXErrorCode::ZipReadEntryFailed, "Failed to read an entry from the ZIP archive file."},
+            {TXErrorCode::ZipWriteEntryFailed, "Failed to write an entry to the ZIP archive file."},
+            {TXErrorCode::ZipEntryNotFound, "The specified entry was not found in the ZIP archive file."},
+            {TXErrorCode::ZipInvalidState, "The ZIP archive file is in an invalid state."},
         };
 
         const auto it = default_messages.find(code);

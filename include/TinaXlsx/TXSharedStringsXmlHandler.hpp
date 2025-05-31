@@ -17,14 +17,14 @@ namespace TinaXlsx
     public:
         bool load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
-            auto xmlData = zipReader.read(std::string(partName()));
-            if (xmlData.empty())
+            auto xmlData = zipReader.read(partName());
+            if (xmlData.isError())
             {
-                m_lastError = "Failed to read " + std::string(partName());
+                m_lastError = "Failed to read " + partName();
                 return false;
             }
-
-            std::string xmlContent(xmlData.begin(), xmlData.end());
+            
+            std::string xmlContent(xmlData.value().begin(), xmlData.value().end());
             TXXmlReader reader;
             if (!reader.parseFromString(xmlContent))
             {

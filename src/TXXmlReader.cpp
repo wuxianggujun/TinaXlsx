@@ -78,13 +78,14 @@ TXXmlReader& TXXmlReader::operator=(TXXmlReader&& other) noexcept {
 
 bool TXXmlReader::readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath) {
     auto xmlData = zipReader.read(xmlPath);
-    if (xmlData.empty()) {
-        pImpl_->lastError_ = "Failed to read XML from ZIP: " + zipReader.lastError();
+    if (xmlData.isError()) {
+        pImpl_->lastError_ = "Failed to read XML from ZIP:";
         pImpl_->isValid_ = false;
         return false;
     }
+    const std::vector<uint8_t>& fileBytes = xmlData.value(); // Get the actual std::vector<uint8_t>
 
-    std::string xmlContent(xmlData.begin(), xmlData.end());
+    std::string xmlContent(fileBytes.begin(), fileBytes.end());
     return parseFromString(xmlContent);
 }
 

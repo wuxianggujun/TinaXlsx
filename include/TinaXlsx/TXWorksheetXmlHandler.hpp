@@ -23,14 +23,15 @@ namespace TinaXlsx
 
         bool load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
-            auto xmlData = zipReader.read(std::string(partName()));
-            if (xmlData.empty())
+            auto xmlData = zipReader.read(partName());
+            if (xmlData.isError())
             {
-                m_lastError = "Failed to read " + std::string(partName());
+                m_lastError = "Failed to read " + partName();
                 return false;
             }
+            const std::vector<uint8_t>& fileBytes = xmlData.value(); // Get the actual std::vector<uint8_t>
 
-            std::string xmlContent(xmlData.begin(), xmlData.end());
+            std::string xmlContent(fileBytes.begin(), fileBytes.end());
             TXXmlReader reader;
             if (!reader.parseFromString(xmlContent))
             {

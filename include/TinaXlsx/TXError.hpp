@@ -76,7 +76,11 @@ namespace TinaXlsx
         ZipCreateFailed = 700, // ZIP创建失败
         ZipOpenFailed = 701, // ZIP打开失败
         ZipExtractFailed = 702, // ZIP解压失败
-        ZipCompressionFailed = 703 // ZIP压缩失败
+        ZipCompressionFailed = 703, // ZIP压缩失败
+        ZipReadEntryFailed = 704, // 读取ZIP条目数据失败
+        ZipWriteEntryFailed = 705, // 写入ZIP条目数据失败
+        ZipEntryNotFound = 706, // 在ZIP中未找到指定条目 (不同于文件系统中的 FileNotFound)
+        ZipInvalidState = 707, // ZIP对象处于无效状态执行操作 (例如未打开时读取)
     };
 
     /**

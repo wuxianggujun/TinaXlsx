@@ -13,15 +13,22 @@ namespace TinaXlsx {
     class StylesXmlHandler : public TXXmlHandler {
     public:
         bool load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override {
-            auto xmlData = zipReader.read(std::string(partName()));
-            if (xmlData.empty()) {
-                m_lastError = "Failed to read " + std::string(partName());
+            auto xmlDataResult = zipReader.read(std::string(partName())); // Returns TXResult<std::vector<uint8_t>>
+            if (xmlDataResult.isError()) {
+                m_lastError = "Failed to read " + std::string(partName()) + " from zip: " + xmlDataResult.error().getMessage();
                 return false;
             }
-            std::string xmlContent(xmlData.begin(), xmlData.end());
+            const std::vector<uint8_t>& fileBytes = xmlDataResult.value(); // Get the actual std::vector<uint8_t>
+
+            if (fileBytes.empty()) {
+                m_lastError = std::string(partName()) + " is empty (no content).";
+                return false;
+            }
+            
+            std::string xmlContent(fileBytes.begin(), fileBytes.end());
             TXXmlReader reader;
             if (!reader.parseFromString(xmlContent)) {
-                m_lastError = "Failed to parse styles.xml: " + reader.getLastError();
+                m_lastError = "Failed to parse " + std::string(partName()) + ": " + reader.getLastError();
                 return false;
             }
             

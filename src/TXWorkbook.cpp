@@ -70,7 +70,7 @@ namespace TinaXlsx
 
         TXZipArchiveReader zipReader;
         if (!zipReader.open(filename)) {
-            last_error_ = "Failed to open XLSX file: " + zipReader.lastError();
+            last_error_ = "Failed to open XLSX file.";
             return false;
         }
 
