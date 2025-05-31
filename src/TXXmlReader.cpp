@@ -10,187 +10,182 @@
 
 namespace TinaXlsx {
 
-// TXXmlReader::Impl 实现
-class TXXmlReader::Impl {
-public:
-    pugi::xml_document doc_;
-    XmlParseOptions options_;
-    std::string lastError_;
-    bool isValid_ = false;
-
-    // 将 pugi::xml_node 转换为 XmlNodeInfo
-    XmlNodeInfo convertNode(const pugi::xml_node& node) const {
-        XmlNodeInfo info;
-        info.name = node.name();
-        info.value = node.text().as_string();
-
-        // 转换属性
-        for (const auto& attr : node.attributes()) {
-            info.attributes[attr.name()] = attr.value();
-        }
-
-        // 转换子节点
-        for (const auto& child : node.children()) {
-            if (child.type() == pugi::node_element) {
-                info.children.push_back(convertNode(child));
-            }
-        }
-
-        return info;
-    }
-
-    // 设置解析选项
-    unsigned int getParseFlags() const {
-        unsigned int flags = pugi::parse_default;
-        
-        if (!options_.preserve_whitespace) {
-            flags |= pugi::parse_trim_pcdata;
-        }
-        if (!options_.merge_pcdata) {
-            flags &= ~pugi::parse_merge_pcdata;
-        }
-        if (options_.trim_pcdata) {
-            flags |= pugi::parse_trim_pcdata;
-        }
-        
-        return flags;
-    }
-};
-
-TXXmlReader::TXXmlReader() : pImpl_(std::make_unique<Impl>()) {}
+TXXmlReader::TXXmlReader() : doc_(std::make_unique<pugi::xml_document>()) {}
 
 TXXmlReader::TXXmlReader(const XmlParseOptions& options) 
-    : pImpl_(std::make_unique<Impl>()) {
-    pImpl_->options_ = options;
-}
+    : doc_(std::make_unique<pugi::xml_document>()), options_(options) {}
 
 TXXmlReader::~TXXmlReader() = default;
 
 TXXmlReader::TXXmlReader(TXXmlReader&& other) noexcept 
-    : pImpl_(std::move(other.pImpl_)) {}
+    : doc_(std::move(other.doc_)), options_(other.options_), isValid_(other.isValid_) {
+    other.isValid_ = false;
+}
 
 TXXmlReader& TXXmlReader::operator=(TXXmlReader&& other) noexcept {
     if (this != &other) {
-        pImpl_ = std::move(other.pImpl_);
+        doc_ = std::move(other.doc_);
+        options_ = other.options_;
+        isValid_ = other.isValid_;
+        other.isValid_ = false;
     }
     return *this;
 }
 
-bool TXXmlReader::readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath) {
+TXResult<void> TXXmlReader::readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath) {
     auto xmlData = zipReader.read(xmlPath);
     if (xmlData.isError()) {
-        pImpl_->lastError_ = "Failed to read XML from ZIP:";
-        pImpl_->isValid_ = false;
-        return false;
+        return Err<void>(TXErrorCode::XML_PARSE_ERROR, "Failed to read XML from ZIP: " + xmlData.error().getMessage());
     }
-    const std::vector<uint8_t>& fileBytes = xmlData.value(); // Get the actual std::vector<uint8_t>
-
+    
+    const std::vector<uint8_t>& fileBytes = xmlData.value();
     std::string xmlContent(fileBytes.begin(), fileBytes.end());
     return parseFromString(xmlContent);
 }
 
-bool TXXmlReader::parseFromString(const std::string& xmlContent) {
-    auto parseResult = pImpl_->doc_.load_string(xmlContent.c_str(), pImpl_->getParseFlags());
+TXResult<void> TXXmlReader::parseFromString(const std::string& xmlContent) {
+    auto parseResult = doc_->load_string(xmlContent.c_str(), getParseFlags());
     
     if (!parseResult) {
         std::ostringstream oss;
         oss << "XML parse error: " << parseResult.description() 
             << " at offset " << parseResult.offset;
-        pImpl_->lastError_ = oss.str();
-        pImpl_->isValid_ = false;
-        return false;
+        isValid_ = false;
+        return Err<void>(TXErrorCode::XML_PARSE_ERROR, oss.str());
     }
 
-    pImpl_->isValid_ = true;
-    pImpl_->lastError_.clear();
-    return true;
+    isValid_ = true;
+    return Ok();
 }
 
-std::vector<XmlNodeInfo> TXXmlReader::findNodes(const std::string& xpath) const {
-    std::vector<XmlNodeInfo> results;
-    
-    if (!pImpl_->isValid_) {
-        return results;
+TXResult<std::vector<XmlNodeInfo>> TXXmlReader::findNodes(const std::string& xpath) const {
+    if (!isValid_) {
+        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
     }
 
     try {
-        auto nodeSet = pImpl_->doc_.select_nodes(xpath.c_str());
+        std::vector<XmlNodeInfo> results;
+        auto nodeSet = doc_->select_nodes(xpath.c_str());
         for (const auto& nodeWrapper : nodeSet) {
-            results.push_back(pImpl_->convertNode(nodeWrapper.node()));
+            results.push_back(convertNode(nodeWrapper.node()));
         }
+        return Ok(std::move(results));
     } catch (const pugi::xpath_exception& e) {
-        pImpl_->lastError_ = "XPath error: " + std::string(e.what());
-    }
-
-    return results;
-}
-
-XmlNodeInfo TXXmlReader::getRootNode() const {
-    if (!pImpl_->isValid_) {
-        return {};
-    }
-
-    auto root = pImpl_->doc_.document_element();
-    return pImpl_->convertNode(root);
-}
-
-std::string TXXmlReader::getNodeText(const std::string& xpath) const {
-    if (!pImpl_->isValid_) {
-        return "";
-    }
-
-    try {
-        auto node = pImpl_->doc_.select_node(xpath.c_str()).node();
-        return node.text().as_string();
-    } catch (const pugi::xpath_exception&) {
-        return "";
+        return Err<std::vector<XmlNodeInfo>>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
     }
 }
 
-std::string TXXmlReader::getNodeAttribute(const std::string& xpath, const std::string& attributeName) const {
-    if (!pImpl_->isValid_) {
-        return "";
+TXResult<XmlNodeInfo> TXXmlReader::getRootNode() const {
+    if (!isValid_) {
+        return Err<XmlNodeInfo>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
     }
 
-    try {
-        auto node = pImpl_->doc_.select_node(xpath.c_str()).node();
-        return node.attribute(attributeName.c_str()).as_string();
-    } catch (const pugi::xpath_exception&) {
-        return "";
+    auto root = doc_->document_element();
+    if (!root) {
+        return Err<XmlNodeInfo>(TXErrorCode::XML_NO_ROOT, "No root element found");
     }
-}
-
-std::vector<std::string> TXXmlReader::getAllNodeTexts(const std::string& xpath) const {
-    std::vector<std::string> results;
     
-    if (!pImpl_->isValid_) {
-        return results;
+    return Ok(convertNode(root));
+}
+
+TXResult<std::string> TXXmlReader::getNodeText(const std::string& xpath) const {
+    if (!isValid_) {
+        return Err<std::string>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
     }
 
     try {
-        auto nodeSet = pImpl_->doc_.select_nodes(xpath.c_str());
+        auto node = doc_->select_node(xpath.c_str()).node();
+        if (!node) {
+            return Err<std::string>(TXErrorCode::XML_NODE_NOT_FOUND, "Node not found: " + xpath);
+        }
+        return Ok(std::string(node.text().as_string()));
+    } catch (const pugi::xpath_exception& e) {
+        return Err<std::string>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+    }
+}
+
+TXResult<std::string> TXXmlReader::getNodeAttribute(const std::string& xpath, const std::string& attributeName) const {
+    if (!isValid_) {
+        return Err<std::string>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+    }
+
+    try {
+        auto node = doc_->select_node(xpath.c_str()).node();
+        if (!node) {
+            return Err<std::string>(TXErrorCode::XML_NODE_NOT_FOUND, "Node not found: " + xpath);
+        }
+        
+        auto attr = node.attribute(attributeName.c_str());
+        if (!attr) {
+            return Err<std::string>(TXErrorCode::XML_ATTRIBUTE_NOT_FOUND, "Attribute not found: " + attributeName);
+        }
+        
+        return Ok(std::string(attr.as_string()));
+    } catch (const pugi::xpath_exception& e) {
+        return Err<std::string>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
+    }
+}
+
+TXResult<std::vector<std::string>> TXXmlReader::getAllNodeTexts(const std::string& xpath) const {
+    if (!isValid_) {
+        return Err<std::vector<std::string>>(TXErrorCode::XML_INVALID_STATE, "XML document is not valid");
+    }
+
+    try {
+        std::vector<std::string> results;
+        auto nodeSet = doc_->select_nodes(xpath.c_str());
         for (const auto& nodeWrapper : nodeSet) {
             results.push_back(nodeWrapper.node().text().as_string());
         }
-    } catch (const pugi::xpath_exception&) {
-        // Ignore XPath errors for this method
+        return Ok(std::move(results));
+    } catch (const pugi::xpath_exception& e) {
+        return Err<std::vector<std::string>>(TXErrorCode::XML_XPATH_ERROR, "XPath error: " + std::string(e.what()));
     }
-
-    return results;
 }
 
 bool TXXmlReader::isValid() const {
-    return pImpl_->isValid_;
-}
-
-const std::string& TXXmlReader::getLastError() const {
-    return pImpl_->lastError_;
+    return isValid_;
 }
 
 void TXXmlReader::reset() {
-    pImpl_->doc_.reset();
-    pImpl_->isValid_ = false;
-    pImpl_->lastError_.clear();
+    doc_->reset();
+    isValid_ = false;
+}
+
+XmlNodeInfo TXXmlReader::convertNode(const pugi::xml_node& node) const {
+    XmlNodeInfo info;
+    info.name = node.name();
+    info.value = node.text().as_string();
+
+    // 转换属性
+    for (const auto& attr : node.attributes()) {
+        info.attributes[attr.name()] = attr.value();
+    }
+
+    // 转换子节点
+    for (const auto& child : node.children()) {
+        if (child.type() == pugi::node_element) {
+            info.children.push_back(convertNode(child));
+        }
+    }
+
+    return info;
+}
+
+unsigned int TXXmlReader::getParseFlags() const {
+    unsigned int flags = pugi::parse_default;
+    
+    if (!options_.preserve_whitespace) {
+        flags |= pugi::parse_trim_pcdata;
+    }
+    if (!options_.merge_pcdata) {
+        flags &= ~pugi::parse_merge_pcdata;
+    }
+    if (options_.trim_pcdata) {
+        flags |= pugi::parse_trim_pcdata;
+    }
+    
+    return flags;
 }
 
 } // namespace TinaXlsx

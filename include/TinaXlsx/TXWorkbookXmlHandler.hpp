@@ -25,19 +25,32 @@ namespace TinaXlsx
 
             std::string xmlContent(fileBytes.begin(), fileBytes.end());
             TXXmlReader reader;
-            if (!reader.parseFromString(xmlContent))
+            auto parseResult = reader.parseFromString(xmlContent);
+            if (parseResult.isError())
             {
-                m_lastError = "Failed to parse workbook.xml: " + reader.getLastError();
+                m_lastError = "Failed to parse workbook.xml: " + parseResult.error().getMessage();
                 return false;
             }
+            
             // 解析 sheets 节点，填充 context.sheets
-            auto sheetNodes = reader.findNodes("//sheets/sheet");
-            for (const auto& sheetNode : sheetNodes)
+            auto sheetNodesResult = reader.findNodes("//sheets/sheet");
+            if (sheetNodesResult.isError())
             {
-                std::string name = sheetNode.attributes.at("name");
-                std::string sheetId = sheetNode.attributes.at("sheetId");
-                auto sheet = std::make_unique<TXSheet>(name, nullptr);
-                context.sheets.push_back(std::move(sheet));
+                m_lastError = "Failed to find sheet nodes: " + sheetNodesResult.error().getMessage();
+                return false;
+            }
+            
+            for (const auto& sheetNode : sheetNodesResult.value())
+            {
+                auto nameIter = sheetNode.attributes.find("name");
+                auto sheetIdIter = sheetNode.attributes.find("sheetId");
+                if (nameIter != sheetNode.attributes.end() && sheetIdIter != sheetNode.attributes.end())
+                {
+                    std::string name = nameIter->second;
+                    std::string sheetId = sheetIdIter->second;
+                    auto sheet = std::make_unique<TXSheet>(name, nullptr);
+                    context.sheets.push_back(std::move(sheet));
+                }
             }
 
             return true;
@@ -62,12 +75,25 @@ namespace TinaXlsx
             workbook.addChild(sheetNode);
 
             TXXmlWriter xmlWriter;
-            xmlWriter.setRootNode(workbook);
-            std::string xmlContent = xmlWriter.generateXmlString();
-            std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
-            if (!zipWriter.write(std::string(partName()), xmlData))
+            auto setRootResult = xmlWriter.setRootNode(workbook);
+            if (setRootResult.isError())
             {
-                m_lastError = "Failed to write " + std::string(partName());
+                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto xmlContentResult = xmlWriter.generateXmlString();
+            if (xmlContentResult.isError())
+            {
+                m_lastError = "Failed to generate XML: " + xmlContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
+            auto writeResult = zipWriter.write(std::string(partName()), xmlData);
+            if (writeResult.isError())
+            {
+                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
                 return false;
             }
             return true;

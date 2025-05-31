@@ -9,6 +9,13 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include "TXResult.hpp"
+
+// 前向声明
+namespace pugi {
+class xml_document;
+class xml_node;
+}
 
 namespace TinaXlsx {
 
@@ -94,57 +101,54 @@ public:
     /**
      * @brief 设置根节点
      * @param rootNode 根节点构建器
+     * @return TXResult<void> 操作结果
      */
-    void setRootNode(const XmlNodeBuilder& rootNode);
+    TXResult<void> setRootNode(const XmlNodeBuilder& rootNode);
 
     /**
      * @brief 创建空白文档
      * @param rootNodeName 根节点名称
+     * @return TXResult<void> 操作结果
      */
-    void createDocument(const std::string& rootNodeName);
+    TXResult<void> createDocument(const std::string& rootNodeName);
 
     /**
      * @brief 添加根级节点
      * @param node 要添加的节点
+     * @return TXResult<void> 操作结果
      */
-    void addRootChild(const XmlNodeBuilder& node);
+    TXResult<void> addRootChild(const XmlNodeBuilder& node);
 
     /**
      * @brief 生成 XML 字符串
-     * @return 格式化的 XML 字符串
+     * @return TXResult<std::string> 格式化的 XML 字符串
      */
-    std::string generateXmlString() const;
+    TXResult<std::string> generateXmlString() const;
 
     /**
      * @brief 写入到 ZIP 文件
      * @param zipWriter ZIP 写入器引用
      * @param xmlPath XML 文件在 ZIP 中的路径
-     * @return 是否成功写入
+     * @return TXResult<void> 操作结果
      */
-    bool writeToZip(TXZipArchiveWriter& zipWriter, const std::string& xmlPath) const;
+    TXResult<void> writeToZip(TXZipArchiveWriter& zipWriter, const std::string& xmlPath) const;
 
     /**
      * @brief 直接从字符串写入到 ZIP
      * @param zipWriter ZIP 写入器引用
      * @param xmlPath XML 文件在 ZIP 中的路径
      * @param xmlContent XML 内容字符串
-     * @return 是否成功写入
+     * @return TXResult<void> 操作结果
      */
-    static bool writeStringToZip(TXZipArchiveWriter& zipWriter, 
-                                 const std::string& xmlPath, 
-                                 const std::string& xmlContent);
+    static TXResult<void> writeStringToZip(TXZipArchiveWriter& zipWriter, 
+                                          const std::string& xmlPath, 
+                                          const std::string& xmlContent);
 
     /**
      * @brief 检查写入器是否有效
      * @return true 如果写入器状态正常
      */
     bool isValid() const;
-
-    /**
-     * @brief 获取错误信息
-     * @return 最后一次操作的错误信息
-     */
-    const std::string& getLastError() const;
 
     /**
      * @brief 重置写入器状态
@@ -160,11 +164,21 @@ public:
         size_t textLength = 0;
     };
     
-    DocumentStats getStats() const;
+    TXResult<DocumentStats> getStats() const;
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl_;
+    std::unique_ptr<pugi::xml_document> doc_;
+    XmlWriteOptions options_;
+    bool isValid_ = false;
+
+    // 递归构建 XML 节点
+    void buildNode(pugi::xml_node& parent, const XmlNodeBuilder& builder);
+    
+    // 生成格式化的 XML 字符串
+    std::string generateString() const;
+
+    // 统计文档信息
+    DocumentStats calculateStats(const pugi::xml_node& node) const;
 };
 
 } // namespace TinaXlsx

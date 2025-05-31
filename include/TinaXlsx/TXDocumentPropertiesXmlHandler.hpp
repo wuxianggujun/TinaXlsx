@@ -33,12 +33,23 @@ namespace TinaXlsx
                                .setText("2025-05-29T00:00:00Z"));
 
             TXXmlWriter coreWriter;
-            coreWriter.setRootNode(coreProps);
-            std::string coreContent = coreWriter.generateXmlString();
-            std::vector<uint8_t> coreData(coreContent.begin(), coreContent.end());
-            if (!zipWriter.write("docProps/core.xml", coreData))
+            auto setCoreRootResult = coreWriter.setRootNode(coreProps);
+            if (setCoreRootResult.isError()) {
+                m_lastError = "Failed to set core root node: " + setCoreRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto coreContentResult = coreWriter.generateXmlString();
+            if (coreContentResult.isError()) {
+                m_lastError = "Failed to generate core XML string: " + coreContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> coreData(coreContentResult.value().begin(), coreContentResult.value().end());
+            auto writeCoreResult = zipWriter.write("docProps/core.xml", coreData);
+            if (writeCoreResult.isError())
             {
-                m_lastError = "Failed to write docProps/core.xml";
+                m_lastError = "Failed to write docProps/core.xml: " + writeCoreResult.error().getMessage();
                 return false;
             }
 
@@ -54,12 +65,23 @@ namespace TinaXlsx
             appProps.addChild(XmlNodeBuilder("AppVersion").setText("16.0300"));
 
             TXXmlWriter appWriter;
-            appWriter.setRootNode(appProps);
-            std::string appContent = appWriter.generateXmlString();
-            std::vector<uint8_t> appData(appContent.begin(), appContent.end());
-            if (!zipWriter.write("docProps/app.xml", appData))
+            auto setAppRootResult = appWriter.setRootNode(appProps);
+            if (setAppRootResult.isError()) {
+                m_lastError = "Failed to set app root node: " + setAppRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto appContentResult = appWriter.generateXmlString();
+            if (appContentResult.isError()) {
+                m_lastError = "Failed to generate app XML string: " + appContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> appData(appContentResult.value().begin(), appContentResult.value().end());
+            auto writeAppResult = zipWriter.write("docProps/app.xml", appData);
+            if (writeAppResult.isError())
             {
-                m_lastError = "Failed to write docProps/app.xml";
+                m_lastError = "Failed to write docProps/app.xml: " + writeAppResult.error().getMessage();
                 return false;
             }
 

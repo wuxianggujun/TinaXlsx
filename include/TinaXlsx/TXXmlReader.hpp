@@ -9,6 +9,13 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include "TXResult.hpp"
+
+// 前向声明
+namespace pugi {
+class xml_document;
+class xml_node;
+}
 
 namespace TinaXlsx {
 
@@ -56,51 +63,51 @@ public:
      * @brief 从 ZIP 中读取 XML 文件
      * @param zipReader ZIP 读取器引用
      * @param xmlPath XML 文件在 ZIP 中的路径
-     * @return 是否成功读取
+     * @return TXResult<void> 操作结果
      */
-    bool readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath);
+    TXResult<void> readFromZip(TXZipArchiveReader& zipReader, const std::string& xmlPath);
 
     /**
      * @brief 从字符串解析 XML
      * @param xmlContent XML 内容字符串
-     * @return 是否解析成功
+     * @return TXResult<void> 解析结果
      */
-    bool parseFromString(const std::string& xmlContent);
+    TXResult<void> parseFromString(const std::string& xmlContent);
 
     /**
      * @brief 查找节点
      * @param xpath XPath 表达式
-     * @return 匹配的节点列表
+     * @return TXResult<std::vector<XmlNodeInfo>> 匹配的节点列表
      */
-    std::vector<XmlNodeInfo> findNodes(const std::string& xpath) const;
+    TXResult<std::vector<XmlNodeInfo>> findNodes(const std::string& xpath) const;
 
     /**
      * @brief 获取根节点
-     * @return 根节点信息
+     * @return TXResult<XmlNodeInfo> 根节点信息
      */
-    XmlNodeInfo getRootNode() const;
+    TXResult<XmlNodeInfo> getRootNode() const;
 
     /**
      * @brief 获取节点文本内容
      * @param xpath XPath 表达式
-     * @return 节点文本，如果不存在返回空字符串
+     * @return TXResult<std::string> 节点文本
      */
-    std::string getNodeText(const std::string& xpath) const;
+    TXResult<std::string> getNodeText(const std::string& xpath) const;
 
     /**
      * @brief 获取节点属性值
      * @param xpath XPath 表达式
      * @param attributeName 属性名
-     * @return 属性值，如果不存在返回空字符串
+     * @return TXResult<std::string> 属性值
      */
-    std::string getNodeAttribute(const std::string& xpath, const std::string& attributeName) const;
+    TXResult<std::string> getNodeAttribute(const std::string& xpath, const std::string& attributeName) const;
 
     /**
      * @brief 获取所有匹配节点的文本内容
      * @param xpath XPath 表达式
-     * @return 所有匹配节点的文本列表
+     * @return TXResult<std::vector<std::string>> 所有匹配节点的文本列表
      */
-    std::vector<std::string> getAllNodeTexts(const std::string& xpath) const;
+    TXResult<std::vector<std::string>> getAllNodeTexts(const std::string& xpath) const;
 
     /**
      * @brief 检查 XML 是否有效
@@ -109,19 +116,20 @@ public:
     bool isValid() const;
 
     /**
-     * @brief 获取错误信息
-     * @return 最后一次操作的错误信息
-     */
-    const std::string& getLastError() const;
-
-    /**
      * @brief 重置读取器状态
      */
     void reset();
 
 private:
-    class Impl;
-    std::unique_ptr<Impl> pImpl_;
+    std::unique_ptr<pugi::xml_document> doc_;
+    XmlParseOptions options_;
+    bool isValid_ = false;
+
+    // 将 pugi::xml_node 转换为 XmlNodeInfo
+    XmlNodeInfo convertNode(const pugi::xml_node& node) const;
+    
+    // 获取解析标志
+    unsigned int getParseFlags() const;
 };
 
 } // namespace TinaXlsx

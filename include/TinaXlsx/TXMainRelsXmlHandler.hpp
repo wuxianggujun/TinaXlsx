@@ -50,12 +50,23 @@ namespace TinaXlsx
             }
 
             TXXmlWriter writer;
-            writer.setRootNode(relationships);
-            std::string xmlContent = writer.generateXmlString();
-            std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
-            if (!zipWriter.write(std::string(partName()), xmlData))
+            auto setRootResult = writer.setRootNode(relationships);
+            if (setRootResult.isError()) {
+                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto xmlContentResult = writer.generateXmlString();
+            if (xmlContentResult.isError()) {
+                m_lastError = "Failed to generate XML: " + xmlContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
+            auto writeResult = zipWriter.write(std::string(partName()), xmlData);
+            if (writeResult.isError())
             {
-                m_lastError = "Failed to write " + std::string(partName());
+                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
                 return false;
             }
             return true;

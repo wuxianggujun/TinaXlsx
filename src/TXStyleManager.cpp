@@ -6,7 +6,6 @@
 #include "TinaXlsx/TXStyle.hpp"     //
 #include "TinaXlsx/TXColor.hpp"     //
 #include "TinaXlsx/TXTypes.hpp"     //
-#include "TinaXlsx/TXXmlWriter.hpp" //
 
 #include <sstream>
 #include <algorithm> // For std::to_string on some compilers if not in <string>

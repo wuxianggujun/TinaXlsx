@@ -27,14 +27,19 @@ namespace TinaXlsx {
             
             std::string xmlContent(fileBytes.begin(), fileBytes.end());
             TXXmlReader reader;
-            if (!reader.parseFromString(xmlContent)) {
-                m_lastError = "Failed to parse " + std::string(partName()) + ": " + reader.getLastError();
+            auto parseResult = reader.parseFromString(xmlContent);
+            if (parseResult.isError()) {
+                m_lastError = "Failed to parse " + std::string(partName()) + ": " + parseResult.error().getMessage();
                 return false;
             }
             
             // TODO: 解析 cellXfs 节点，填充 context.styleManager
             // 解析样式（示例，需根据 TXStyleManager 实现）
-            auto xfNodes = reader.findNodes("//cellXfs/xf");
+            auto xfNodesResult = reader.findNodes("//cellXfs/xf");
+            if (xfNodesResult.isError()) {
+                m_lastError = "Failed to find cellXfs nodes: " + xfNodesResult.error().getMessage();
+                return false;
+            }
             // 目前暂时返回true，等待后续实现样式加载逻辑
             return true;
         }
@@ -44,11 +49,22 @@ namespace TinaXlsx {
             XmlNodeBuilder styleSheet = context.styleManager.createStylesXmlNode();
 
             TXXmlWriter writer;
-            writer.setRootNode(styleSheet);
-            std::string xmlContent = writer.generateXmlString();
-            std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
-            if (!zipWriter.write(std::string(partName()), xmlData)) {
-                m_lastError = "Failed to write " + std::string(partName());
+            auto setRootResult = writer.setRootNode(styleSheet);
+            if (setRootResult.isError()) {
+                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto xmlContentResult = writer.generateXmlString();
+            if (xmlContentResult.isError()) {
+                m_lastError = "Failed to generate XML string: " + xmlContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
+            auto writeResult = zipWriter.write(std::string(partName()), xmlData);
+            if (writeResult.isError()) {
+                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
                 return false;
             }
             return true;

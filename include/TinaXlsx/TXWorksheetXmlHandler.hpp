@@ -33,18 +33,30 @@ namespace TinaXlsx
 
             std::string xmlContent(fileBytes.begin(), fileBytes.end());
             TXXmlReader reader;
-            if (!reader.parseFromString(xmlContent))
+            auto parseResult = reader.parseFromString(xmlContent);
+            if (parseResult.isError())
             {
-                m_lastError = "Failed to parse worksheet.xml: " + reader.getLastError();
+                m_lastError = "Failed to parse worksheet.xml: " + parseResult.error().getMessage();
                 return false;
             }
+            
             // 解析 sheetData 节点，填充 context.sheets[sheetIndex_]
-            auto cellNodes = reader.findNodes("//sheetData/row/c");
-            for (const auto& cellNode : cellNodes)
+            auto cellNodesResult = reader.findNodes("//sheetData/row/c");
+            if (cellNodesResult.isError())
             {
-                std::string ref = cellNode.attributes.at("r");
-                std::string value = cellNode.value;
-                context.sheets[m_sheetIndex]->setCellValue(ref, value);
+                m_lastError = "Failed to find cell nodes: " + cellNodesResult.error().getMessage();
+                return false;
+            }
+            
+            for (const auto& cellNode : cellNodesResult.value())
+            {
+                auto refIter = cellNode.attributes.find("r");
+                if (refIter != cellNode.attributes.end())
+                {
+                    std::string ref = refIter->second;
+                    std::string value = cellNode.value;
+                    context.sheets[m_sheetIndex]->setCellValue(ref, value);
+                }
             }
             return true;
         }
@@ -113,11 +125,24 @@ namespace TinaXlsx
             }
 
             TXXmlWriter writer;
-            writer.setRootNode(worksheet);
-            std::string xmlContent = writer.generateXmlString();
-            std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
-            if (!zipWriter.write(std::string(partName()), xmlData)) {
-                m_lastError = "Failed to write " + std::string(partName());
+            auto setRootResult = writer.setRootNode(worksheet);
+            if (setRootResult.isError())
+            {
+                m_lastError = "Failed to set root node: " + setRootResult.error().getMessage();
+                return false;
+            }
+            
+            auto xmlContentResult = writer.generateXmlString();
+            if (xmlContentResult.isError())
+            {
+                m_lastError = "Failed to generate XML: " + xmlContentResult.error().getMessage();
+                return false;
+            }
+            
+            std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
+            auto writeResult = zipWriter.write(std::string(partName()), xmlData);
+            if (writeResult.isError()) {
+                m_lastError = "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage();
                 return false;
             }
             return true;
