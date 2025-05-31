@@ -8,7 +8,7 @@
 
 #include "TXCoordinate.hpp"
 #include "TXRange.hpp"
-#include "TXCell.hpp"
+#include "TXCell.hpp" 
 #include "TXTypes.hpp"
 #include "TXMergedCells.hpp"
 #include "TXWorkbook.hpp"
@@ -16,12 +16,13 @@
 namespace TinaXlsx {
 
 // Forward declarations
-class TXCell;
+// class TXCell; // TXCell.hpp 已包含
 class TXWorkbook;
+class TXCellStyle; // Forward declaration for TXCellStyle if its full definition is not needed here
 
 /**
  * @brief Excel工作表类
- * 
+ *
  * 表示Excel中的一个Sheet，负责管理Sheet内的数据操作
  */
 class TXSheet {
@@ -355,12 +356,12 @@ public:
      * @brief 设置单元格数字格式
      * @param row 行号
      * @param col 列号
-     * @param formatType 格式类型
+     * @param formatType 格式类型 (修正此处)
      * @param decimalPlaces 小数位数
      * @return 成功返回true，失败返回false
      */
-    bool setCellNumberFormat(row_t row, column_t col, 
-                           TXCell::NumberFormat formatType, int decimalPlaces = 2);
+    bool setCellNumberFormat(row_t row, column_t col,
+                           TXNumberFormat::FormatType formatType, int decimalPlaces = 2); // TXCell::NumberFormat -> TXNumberFormat::FormatType
 
     /**
      * @brief 设置单元格自定义格式
@@ -369,7 +370,7 @@ public:
      * @param formatString 格式字符串
      * @return 成功返回true，失败返回false
      */
-    bool setCellCustomFormat(row_t row, column_t col, 
+    bool setCellCustomFormat(row_t row, column_t col,
                            const std::string& formatString);
 
     /**
@@ -379,7 +380,7 @@ public:
      * @param decimalPlaces 小数位数
      * @return 成功设置的单元格数量
      */
-    std::size_t setRangeNumberFormat(const Range& range, TXCell::NumberFormat formatType, 
+    std::size_t setRangeNumberFormat(const Range& range, TXNumberFormat::FormatType formatType, // TXCell::NumberFormat -> TXNumberFormat::FormatType
                                    int decimalPlaces = 2);
 
     /**
@@ -395,7 +396,7 @@ public:
      * @param formats 坐标到格式的映射
      * @return 成功设置的格式数量
      */
-    std::size_t setCellFormats(const std::vector<std::pair<Coordinate, TXCell::NumberFormat>>& formats);
+    std::size_t setCellFormats(const std::vector<std::pair<Coordinate, TXNumberFormat::FormatType>>& formats); // TXCell::NumberFormat -> TXNumberFormat::FormatType
 
     // ==================== 样式操作 ====================
     
@@ -406,30 +407,30 @@ public:
      * @param style 单元格样式
      * @return 成功返回true，失败返回false
      */
-    bool setCellStyle(row_t row, column_t col, const class TXCellStyle& style);
-    
+    bool setCellStyle(row_t row, column_t col, const TXCellStyle& style);
+
     /**
      * @brief 设置单元格样式（使用A1格式）
      * @param address 单元格地址，如"A1"
      * @param style 单元格样式
      * @return 成功返回true，失败返回false
      */
-    bool setCellStyle(const std::string& address, const class TXCellStyle& style);
-    
+    bool setCellStyle(const std::string& address, const TXCellStyle& style);
+
     /**
      * @brief 设置范围内单元格的样式
      * @param range 范围
      * @param style 单元格样式
      * @return 成功设置的单元格数量
      */
-    std::size_t setRangeStyle(const Range& range, const class TXCellStyle& style);
-    
+    std::size_t setRangeStyle(const Range& range, const TXCellStyle& style);
+
     /**
      * @brief 批量设置样式（高性能版本）
      * @param styles 坐标到样式的映射
      * @return 成功设置的样式数量
      */
-    std::size_t setCellStyles(const std::vector<std::pair<Coordinate, class TXCellStyle>>& styles);
+    std::size_t setCellStyles(const std::vector<std::pair<Coordinate, TXCellStyle>>& styles);
 
     // ==================== 便捷方法 ====================
 
@@ -475,6 +476,13 @@ public:
      */
     const std::string& getLastError() const;
 
+    /**
+    * @brief 获取父工作簿对象
+    * @return TXWorkbook 指针
+    */
+    TXWorkbook* getWorkbook() const { return workbook_; }
+
+
 private:
     // 使用TXCoordinate的哈希函数特化
     struct CoordinateHash {
@@ -483,7 +491,7 @@ private:
                 (std::hash<column_t>()(coord.getCol()) << 1);
         }
     };
-    
+
     std::string name_;
     std::unordered_map<Coordinate, TXCell, CoordinateHash> cells_;
     std::string lastError_;

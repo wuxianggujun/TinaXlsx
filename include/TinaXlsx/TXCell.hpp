@@ -1,384 +1,308 @@
 #pragma once
 
 #include "TXTypes.hpp"
+#include "TXFormula.hpp"
+#include "TXNumberFormat.hpp"
 #include <string>
 #include <variant>
 #include <memory>
 #include <utility>
 
-namespace TinaXlsx {
-
-// Forward declarations
-class TXFormula;
-class TXNumberFormat;
-class TXSheet;
-
-/**
- * @brief Excel单元格类
- * 
- * 单元格数据的抽象，提供读写单个单元格的能力，包括公式、格式化和合并功能
- */
-class TXCell {
-public:
-    // ==================== 类型别名 ====================
-    using CellValue = cell_value_t;
+namespace TinaXlsx
+{
+    // 前向声明
+    class TXSheet; // TXCell::evaluateFormula 需要 TXSheet
 
     /**
-     * @brief 单元格类型枚举
+     * @brief Excel单元格类
+     *
+     * 单元格数据的抽象，提供读写单个单元格的能力，包括公式、格式化和合并功能。
      */
-    enum class CellType {
-        Empty,      ///< 空单元格
-        String,     ///< 字符串
-        Number,     ///< 数字
-        Integer,    ///< 整数
-        Boolean,    ///< 布尔值
-        Formula,    ///< 公式
-        Error       ///< 错误值
+    class TXCell
+    {
+    public:
+        // ==================== 类型别名 ====================
+        using CellValue = cell_value_t; // cell_value_t 来自 TXTypes.hpp
+
+        /**
+         * @brief 单元格类型枚举
+         */
+        enum class CellType
+        {
+            Empty, ///< 空单元格
+            String, ///< 字符串
+            Number, ///< 数字
+            Integer, ///< 整数
+            Boolean, ///< 布尔值
+            Formula, ///< 公式
+            Error ///< 错误值
+        };
+
+    public:
+        TXCell();
+        explicit TXCell(const CellValue& value);
+        ~TXCell();
+
+        // 支持拷贝构造和赋值
+        TXCell(const TXCell& other);
+        TXCell& operator=(const TXCell& other);
+
+        // 支持移动构造和赋值
+        TXCell(TXCell&& other) noexcept;
+        TXCell& operator=(TXCell&& other) noexcept;
+
+        /**
+         * @brief 获取单元格的原始值 (std::variant)
+         * @return 单元格的原始值 (CellValue)
+         */
+        [[nodiscard]] const CellValue& getValue() const;
+
+        /**
+         * @brief 设置单元格的原始值 (std::variant)
+         * @param value 要设置的单元格值 (CellValue)
+         */
+        void setValue(const CellValue& value);
+
+        /**
+         * @brief 获取单元格的当前类型
+         * @return 单元格类型 (CellType)
+         */
+        [[nodiscard]] CellType getType() const;
+
+        /**
+         * @brief 检查单元格是否为空 (值为std::monostate且无公式)
+         * @return 如果单元格为空则返回true，否则返回false
+         */
+        [[nodiscard]] bool isEmpty() const;
+
+        /**
+         * @brief 获取单元格的字符串值
+         * @return 如果值为字符串则返回该字符串，否则尝试转换为字符串或返回空字符串。
+         * 对于公式单元格，这通常返回公式的缓存结果（如果已计算）或值的字符串形式。
+         */
+        [[nodiscard]] std::string getStringValue() const;
+
+        /**
+         * @brief 获取单元格的数字值 (double)
+         * @return 如果值为数字或可转换为数字，则返回该数字，否则返回0.0。
+         */
+        [[nodiscard]] double getNumberValue() const;
+
+        /**
+         * @brief 获取单元格的整数值 (int64_t)
+         * @return 如果值为整数或可转换为整数，则返回该整数，否则返回0。
+         */
+        [[nodiscard]] int64_t getIntegerValue() const;
+
+        /**
+         * @brief 获取单元格的布尔值
+         * @return 如果值为布尔型，则返回该布尔值，否则返回false。
+         */
+        [[nodiscard]] bool getBooleanValue() const;
+
+        /**
+         * @brief 将单元格值设置为字符串
+         * @param value 字符串值
+         */
+        void setStringValue(const std::string& value);
+
+        /**
+         * @brief 将单元格值设置为数字 (double)
+         * @param value 数字值
+         */
+        void setNumberValue(double value);
+
+        /**
+         * @brief 将单元格值设置为整数 (int64_t)
+         * @param value 整数值
+         */
+        void setIntegerValue(int64_t value);
+
+        /**
+         * @brief 将单元格值设置为布尔型
+         * @param value 布尔值
+         */
+        void setBooleanValue(bool value);
+
+        // ==================== 公式功能 ====================
+
+        /**
+         * @brief 获取单元格的公式字符串 (不包含等号)
+         * @return 如果单元格包含公式，则返回公式字符串；否则返回空字符串。
+         */
+        [[nodiscard]] std::string getFormula() const;
+
+        /**
+         * @brief 设置单元格的公式
+         * @param formula_str 公式字符串 (不包含等号)。如果为空字符串，则清除公式。
+         */
+        void setFormula(const std::string& formula_str);
+
+        /**
+         * @brief 检查单元格是否包含公式
+         * @return 如果单元格是一个公式单元格，则返回true，否则返回false。
+         */
+        [[nodiscard]] bool isFormula() const;
+
+        /**
+         * @brief 获取单元格的TXFormula对象 (只读)
+         * @return 如果存在公式对象，则返回其常量指针；否则返回nullptr。
+         */
+        [[nodiscard]] const TXFormula* getFormulaObject() const;
+
+        /**
+         * @brief 设置单元格的TXFormula对象
+         * @param formula_ptr 指向TXFormula对象的unique_ptr。所有权将转移。
+         */
+        void setFormulaObject(std::unique_ptr<TXFormula> formula_ptr);
+
+        /**
+         * @brief 计算单元格公式的值 (如果它是公式单元格)
+         * @param sheet 当前单元格所在的工作表指针 (用于解析单元格引用)。
+         * @param currentRow 当前单元格的行号。
+         * @param currentCol 当前单元格的列号。
+         * @return 计算得到的CellValue。如果不是公式或计算失败，可能返回monostate或错误字符串。
+         * @note 此方法可能会修改单元格内部缓存的公式结果(如果适用)，但通常TXCell的value_用于存储。
+         */
+        CellValue evaluateFormula(const TXSheet* sheet, row_t currentRow, column_t currentCol);
+
+
+        // ==================== 数字格式化功能 ====================
+        /**
+         * @brief 设置单元格的自定义数字格式。
+         * @param format_string 自定义格式字符串 (例如 "0.00%", "#,##0", "yyyy-mm-dd")。
+         */
+        void setCustomFormat(const std::string& format_string);
+
+        /**
+         * @brief 获取单元格的数字格式化对象 (只读)。
+         * @return 如果设置了格式化对象，则返回其常量指针；否则返回nullptr。
+         */
+        [[nodiscard]] const TXNumberFormat* getNumberFormatObject() const;
+
+        /**
+         * @brief 设置单元格的数字格式化对象。
+         * @param number_format_ptr 指向TXNumberFormat对象的unique_ptr。所有权将转移。
+         */
+        void setNumberFormatObject(std::unique_ptr<TXNumberFormat> number_format_ptr);
+
+        /**
+         * @brief 获取单元格格式化后的显示值。
+         * @return 根据单元格的数字格式规则格式化后的字符串值。
+         */
+        [[nodiscard]] std::string getFormattedValue() const;
+
+        /**
+         * @brief 设置单元格的预定义数字格式。
+         * @param type 预定义的格式类型 (来自 TXNumberFormat::FormatType)。
+         * @param decimalPlaces 小数位数 (如果适用)。
+         * @param useThousandSeparator 是否使用千位分隔符 (如果适用)。
+         */
+        void setPredefinedFormat(TXNumberFormat::FormatType type, int decimalPlaces = 2, bool useThousandSeparator = true);
+
+
+        // ==================== 合并单元格功能 ====================
+        [[nodiscard]] bool isMerged() const;
+        void setMerged(bool merged);
+        [[nodiscard]] bool isMasterCell() const;
+        void setMasterCell(bool master);
+        [[nodiscard]] std::pair<row_t::index_t, column_t::index_t> getMasterCellPosition() const; // 返回原始索引类型
+        void setMasterCellPosition(row_t::index_t row_idx, column_t::index_t col_idx);
+
+
+        // ==================== 样式方法 ====================
+        [[nodiscard]] bool hasStyle() const;
+        [[nodiscard]] u32 getStyleIndex() const; // u32 来自 TXTypes.hpp
+        void setStyleIndex(u32 index);
+
+
+        // ==================== 工具方法 ====================
+        /**
+         * @brief 清空单元格内容、公式、格式和样式信息。
+         */
+        void clear();
+
+        /**
+         * @brief 将单元格内容转换为通用字符串表示 (通常等同于getFormattedValue或getStringValue)。
+         * @return 单元格内容的字符串表示。
+         */
+        [[nodiscard]] std::string toString() const;
+
+        /**
+         * @brief 从字符串解析并设置单元格值。
+         * @param str 要解析的字符串。
+         * @param auto_detect_type 是否尝试自动检测类型 (例如，数字、布尔值)。
+         * 如果为false，则直接设置为字符串类型。
+         * @return 如果解析和设置成功，则返回true。
+         */
+        bool fromString(const std::string& str, bool auto_detect_type = true);
+
+        /**
+         * @brief 创建并返回当前单元格的深拷贝。
+         * @return 指向新创建的TXCell副本的unique_ptr。
+         */
+        [[nodiscard]] std::unique_ptr<TXCell> clone() const;
+
+        /**
+         * @brief 将当前单元格的格式信息 (数字格式、样式索引) 复制到目标单元格。
+         * @param target 要将格式复制到的目标TXCell对象。
+         */
+        void copyFormatTo(TXCell& target) const;
+
+        /**
+         * @brief 比较当前单元格的值是否与另一个单元格的值相等 (忽略格式和样式)。
+         * @param other 要比较的另一个TXCell对象。
+         * @return 如果值相等，则返回true。
+         */
+        [[nodiscard]] bool isValueEqual(const TXCell& other) const;
+
+
+        // ==================== 类型转换操作符 ====================
+        explicit operator std::string() const { return getFormattedValue(); }
+        explicit operator double() const { return getNumberValue(); }
+        explicit operator int64_t() const { return getIntegerValue(); }
+        explicit operator bool() const { return getBooleanValue(); }
+
+
+        // ==================== 赋值操作符 ====================
+        TXCell& operator=(const std::string& value_str);
+        TXCell& operator=(const char* value_cstr);
+        TXCell& operator=(double value_dbl);
+        TXCell& operator=(int64_t value_i64);
+        TXCell& operator=(int value_int); // 转换为int64_t
+        TXCell& operator=(bool value_bool);
+
+
+        // ==================== 比较操作符 (基于值) ====================
+        bool operator==(const TXCell& other) const;
+        bool operator!=(const TXCell& other) const;
+        // 注意: <, <=, >, >= 的比较对于std::variant可能没有直观意义，除非定义了自定义比较逻辑
+        // 这里提供的比较将依赖于 std::variant 的默认比较行为，它会比较 index() 和具体类型的值
+        bool operator<(const TXCell& other) const;
+        bool operator<=(const TXCell& other) const;
+        bool operator>(const TXCell& other) const;
+        bool operator>=(const TXCell& other) const;
+
+    private:
+        CellValue value_;                              ///< 存储单元格的实际数据 (std::variant)
+        CellType type_;                                ///< 单元格的当前类型
+        std::unique_ptr<TXFormula> formula_object_;    ///< 指向公式对象的智能指针 (如果单元格是公式)
+        std::unique_ptr<TXNumberFormat> number_format_object_; ///< 指向数字格式化对象的智能指针
+
+        // 合并单元格相关状态
+        bool is_merged_ = false;                       ///< 是否是合并单元格的一部分
+        bool is_master_cell_ = false;                  ///< 是否是合并区域的左上角主单元格
+        row_t::index_t master_row_idx_ = 0;            ///< 主单元格的行索引 (如果is_merged_且非is_master_cell_)
+        column_t::index_t master_col_idx_ = 0;         ///< 主单元格的列索引
+
+        // 样式相关状态
+        bool has_style_ = false;                       ///<单元格是否有显式样式
+        u32 style_index_ = 0;                          ///< 应用于此单元格的样式索引 (来自样式管理器)
+
+        /**
+         * @brief 根据value_和formula_object_的内容更新type_成员。
+         */
+        void updateType();
     };
 
-    /**
-     * @brief 数字格式类型（兼容性保留，建议使用TXNumberFormat）
-     */
-    enum class NumberFormat {
-        General,        ///< 常规
-        Number,         ///< 数字
-        Currency,       ///< 货币
-        Percentage,     ///< 百分比
-        Date,           ///< 日期
-        Time,           ///< 时间
-        DateTime,       ///< 日期时间
-        Scientific,     ///< 科学计数法
-        Text           ///< 文本
-    };
-
-public:
-    TXCell();
-    explicit TXCell(const CellValue& value);
-    ~TXCell();
-
-    // 支持拷贝构造和赋值
-    TXCell(const TXCell& other);
-    TXCell& operator=(const TXCell& other);
-
-    // 支持移动构造和赋值
-    TXCell(TXCell&& other) noexcept;
-    TXCell& operator=(TXCell&& other) noexcept;
-
-    /**
-     * @brief 获取单元格值
-     * @return 单元格值
-     */
-    const CellValue& getValue() const;
-
-    /**
-     * @brief 设置单元格值
-     * @param value 单元格值
-     */
-    void setValue(const CellValue& value);
-
-    /**
-     * @brief 获取单元格类型
-     * @return 单元格类型
-     */
-    CellType getType() const;
-
-    /**
-     * @brief 检查单元格是否为空
-     * @return 为空返回true，否则返回false
-     */
-    bool isEmpty() const;
-
-    /**
-     * @brief 获取字符串值
-     * @return 字符串值，如果类型不匹配返回空字符串
-     */
-    std::string getStringValue() const;
-
-    /**
-     * @brief 获取数字值
-     * @return 数字值，如果类型不匹配返回0.0
-     */
-    double getNumberValue() const;
-
-    /**
-     * @brief 获取整数值
-     * @return 整数值，如果类型不匹配返回0
-     */
-    int64_t getIntegerValue() const;
-
-    /**
-     * @brief 获取布尔值
-     * @return 布尔值，如果类型不匹配返回false
-     */
-    bool getBooleanValue() const;
-
-    /**
-     * @brief 设置字符串值
-     * @param value 字符串值
-     */
-    void setStringValue(const std::string& value);
-
-    /**
-     * @brief 设置数字值
-     * @param value 数字值
-     */
-    void setNumberValue(double value);
-
-    /**
-     * @brief 设置整数值
-     * @param value 整数值
-     */
-    void setIntegerValue(int64_t value);
-
-    /**
-     * @brief 设置布尔值
-     * @param value 布尔值
-     */
-    void setBooleanValue(bool value);
-
-    // ==================== 公式功能 ====================
-
-    /**
-     * @brief 获取公式
-     * @return 公式字符串，如果不是公式返回空字符串
-     */
-    std::string getFormula() const;
-
-    /**
-     * @brief 设置公式
-     * @param formula 公式字符串（不包含等号）
-     */
-    void setFormula(const std::string& formula);
-
-    /**
-     * @brief 检查是否为公式
-     * @return 是公式返回true，否则返回false
-     */
-    bool isFormula() const;
-
-    /**
-     * @brief 获取公式对象
-     * @return 公式对象指针，如果不是公式返回nullptr
-     */
-    const TXFormula* getFormulaObject() const;
-
-    /**
-     * @brief 设置公式对象
-     * @param formula 公式对象
-     */
-    void setFormulaObject(std::unique_ptr<TXFormula> formula);
-
-    /**
-     * @brief 计算公式结果
-     * @param sheet 当前工作表
-     * @param currentRow 当前行号
-     * @param currentCol 当前列号
-     * @return 计算结果
-     */
-    CellValue evaluateFormula(const class TXSheet* sheet, uint32_t currentRow, uint32_t currentCol);
-
-    // ==================== 数字格式化功能 ====================
-
-    /**
-     * @brief 获取数字格式（兼容性）
-     * @return 数字格式类型
-     */
-    NumberFormat getNumberFormat() const;
-
-    /**
-     * @brief 设置数字格式（兼容性）
-     * @param format 数字格式类型
-     */
-    void setNumberFormat(NumberFormat format);
-
-    /**
-     * @brief 获取自定义格式字符串
-     * @return 自定义格式字符串
-     */
-    std::string getCustomFormat() const;
-
-    /**
-     * @brief 设置自定义格式
-     * @param format_string 格式字符串
-     */
-    void setCustomFormat(const std::string& format_string);
-
-    /**
-     * @brief 获取数字格式化对象
-     * @return 格式化对象指针
-     */
-    const TXNumberFormat* getNumberFormatObject() const;
-
-    /**
-     * @brief 设置数字格式化对象
-     * @param numberFormat 格式化对象
-     */
-    void setNumberFormatObject(std::unique_ptr<TXNumberFormat> numberFormat);
-
-    /**
-     * @brief 获取格式化后的显示值
-     * @return 格式化后的字符串
-     */
-    std::string getFormattedValue() const;
-
-    /**
-     * @brief 设置预定义格式
-     * @param type 格式类型
-     * @param decimalPlaces 小数位数
-     * @param useThousandSeparator 是否使用千位分隔符
-     */
-    void setPredefinedFormat(NumberFormat type, int decimalPlaces = 2, bool useThousandSeparator = true);
-
-    // ==================== 合并单元格功能 ====================
-
-    /**
-     * @brief 检查是否为合并单元格的一部分
-     * @return 是合并单元格返回true，否则返回false
-     */
-    bool isMerged() const;
-
-    /**
-     * @brief 设置合并状态
-     * @param merged 是否为合并单元格
-     */
-    void setMerged(bool merged);
-
-    /**
-     * @brief 检查是否为合并区域的主单元格（左上角）
-     * @return 是主单元格返回true，否则返回false
-     */
-    bool isMasterCell() const;
-
-    /**
-     * @brief 设置为主单元格
-     * @param master 是否为主单元格
-     */
-    void setMasterCell(bool master);
-
-    /**
-     * @brief 获取主单元格的行列位置
-     * @return 主单元格位置，如果不是合并单元格返回{0,0}
-     */
-    std::pair<int, int> getMasterCellPosition() const;
-
-    /**
-     * @brief 设置主单元格位置
-     * @param row 主单元格行号
-     * @param col 主单元格列号
-     */
-    void setMasterCellPosition(int row, int col);
-
-    // ==================== 样式方法 ====================
-    
-    /**
-     * @brief 检查单元格是否有样式
-     * @return 有样式返回true，否则返回false
-     */
-    bool hasStyle() const;
-    
-    /**
-     * @brief 获取单元格样式索引
-     * @return 样式索引，如果没有样式返回0
-     */
-    u32 getStyleIndex() const;
-    
-    /**
-     * @brief 设置单元格样式索引
-     * @param index 样式索引
-     */
-    void setStyleIndex(u32 index);
-
-    // ==================== 工具方法 ====================
-
-    /**
-     * @brief 清空单元格
-     */
-    void clear();
-
-    /**
-     * @brief 转换为字符串表示
-     * @return 字符串表示
-     */
-    std::string toString() const;
-
-    /**
-     * @brief 从字符串解析值
-     * @param str 字符串
-     * @param auto_detect_type 是否自动检测类型
-     * @return 成功返回true，失败返回false
-     */
-    bool fromString(const std::string& str, bool auto_detect_type = true);
-
-    /**
-     * @brief 克隆单元格
-     * @return 新的单元格副本
-     */
-    std::unique_ptr<TXCell> clone() const;
-
-    /**
-     * @brief 复制格式到另一个单元格
-     * @param target 目标单元格
-     */
-    void copyFormatTo(TXCell& target) const;
-
-    /**
-     * @brief 比较单元格值（忽略格式）
-     * @param other 另一个单元格
-     * @return 值相等返回true，否则返回false
-     */
-    bool isValueEqual(const TXCell& other) const;
-
-    // ==================== 类型转换操作符 ====================
-
-    /**
-     * @brief 类型转换操作符
-     */
-    operator std::string() const { return getFormattedValue(); }
-    operator double() const { return getNumberValue(); }
-    operator int64_t() const { return getIntegerValue(); }
-    operator bool() const { return getBooleanValue(); }
-
-    // ==================== 赋值操作符 ====================
-
-    /**
-     * @brief 赋值操作符
-     */
-    TXCell& operator=(const std::string& value);
-    TXCell& operator=(const char* value);
-    TXCell& operator=(double value);
-    TXCell& operator=(int64_t value);
-    TXCell& operator=(int value);
-    TXCell& operator=(bool value);
-
-    // ==================== 比较操作符 ====================
-
-    /**
-     * @brief 比较操作符
-     */
-    bool operator==(const TXCell& other) const;
-    bool operator!=(const TXCell& other) const;
-    bool operator<(const TXCell& other) const;
-    bool operator<=(const TXCell& other) const;
-    bool operator>(const TXCell& other) const;
-    bool operator>=(const TXCell& other) const;
-
-private:
-    CellValue value_;
-    CellType type_;
-    NumberFormat number_format_;
-    std::string custom_format_;
-    std::string formula_;
-    bool is_merged_;
-    bool is_master_cell_;
-    int master_row_;
-    int master_col_;
-    bool has_style_;
-    u32 style_index_;
-    std::unique_ptr<TXFormula> formula_object_;
-    std::unique_ptr<TXNumberFormat> number_format_object_;
-    
-    // Helper methods
-    void updateType();
-};
-
-} // namespace TinaXlsx 
+} // namespace TinaXlsx

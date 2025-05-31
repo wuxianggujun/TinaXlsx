@@ -217,7 +217,7 @@ TEST_F(WorkbookAPITest, ComplexTableCreation) {
     
     // 设置货币格式
     TXRange salaryRange(TXCoordinate(row_t(2), column_t(4)), TXCoordinate(row_t(5), column_t(6)));
-    sheet->setRangeNumberFormat(salaryRange, TXCell::NumberFormat::Currency, 2);
+    sheet->setRangeNumberFormat(salaryRange, TXNumberFormat::FormatType::Currency, 2);
     
     // 合并标题行中的某些单元格作为示例
     sheet->setCellValue("G1", std::string("备注信息"));
