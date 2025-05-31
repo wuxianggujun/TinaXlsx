@@ -618,6 +618,12 @@ namespace TinaXlsx
     // ==================== 新的数字格式注册方法 ====================
     
     u32 TXStyleManager::registerNumberFormat(const TXCellStyle::NumberFormatDefinition& definition) {
+        // 验证格式定义
+        if (!definition.isValid()) {
+            // 如果格式定义无效，返回常规格式
+            return 0;
+        }
+        
         // 如果是常规格式，直接返回0
         if (definition.isGeneral()) {
             return 0;
@@ -695,6 +701,177 @@ namespace TinaXlsx
         u32 index = static_cast<u32>(cell_xfs_pool_.size() - 1);
         cell_xf_lookup_[key] = index;
         return index;
+    }
+
+    // ==================== 反向样式构造方法 ====================
+    
+    TXCellStyle TXStyleManager::getStyleObjectFromXfIndex(u32 xfIndex) const {
+        // 检查索引有效性
+        if (xfIndex >= cell_xfs_pool_.size()) {
+            return TXCellStyle(); // 返回默认样式
+        }
+        
+        // 检查缓存
+        auto cache_it = style_cache_.find(xfIndex);
+        if (cache_it != style_cache_.end()) {
+            return cache_it->second;
+        }
+        
+        const auto& xf = cell_xfs_pool_[xfIndex];
+        TXCellStyle style;
+        
+        // 重构字体
+        if (xf.font_id_ < fonts_pool_.size()) {
+            style.setFont(*fonts_pool_[xf.font_id_]);
+        }
+        
+        // 重构填充
+        if (xf.fill_id_ < fills_pool_.size()) {
+            style.setFill(*fills_pool_[xf.fill_id_]);
+        }
+        
+        // 重构边框
+        if (xf.border_id_ < borders_pool_.size()) {
+            style.setBorder(*borders_pool_[xf.border_id_]);
+        }
+        
+        // 重构对齐
+        style.setAlignment(xf.alignment_);
+        
+        // 重构数字格式
+        TXCellStyle::NumberFormatDefinition numFmtDef;
+        if (xf.num_fmt_id_ == 0) {
+            // 常规格式
+            numFmtDef = TXCellStyle::NumberFormatDefinition();
+        } else {
+            // 尝试从内置格式中找到
+            bool found = false;
+            for (const auto& pair : S_BUILTIN_NUMBER_FORMATS) {
+                if (pair.second == xf.num_fmt_id_) {
+                    // 找到内置格式，尝试解析
+                    const std::string& formatCode = pair.first;
+                    numFmtDef = parseFormatCodeToDefinition(formatCode);
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                // 查找自定义格式
+                for (const auto& entry : num_fmts_pool_new_) {
+                    if (entry.id_ == xf.num_fmt_id_) {
+                        numFmtDef = parseFormatCodeToDefinition(entry.formatCode_);
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!found) {
+                // 如果都找不到，使用常规格式
+                numFmtDef = TXCellStyle::NumberFormatDefinition();
+            }
+        }
+        
+        style.setNumberFormatDefinition(numFmtDef);
+        
+        // 缓存结果
+        style_cache_[xfIndex] = style;
+        
+        return style;
+    }
+
+    TXCellStyle::NumberFormatDefinition TXStyleManager::parseFormatCodeToDefinition(const std::string& formatCode) const {
+        // 简化的格式代码解析器
+        if (formatCode == "General") {
+            return TXCellStyle::NumberFormatDefinition(); // 常规格式
+        }
+        
+        // 检查是否为百分比格式
+        if (formatCode.find('%') != std::string::npos) {
+            int decimalPlaces = 0;
+            size_t dotPos = formatCode.find('.');
+            if (dotPos != std::string::npos) {
+                size_t percentPos = formatCode.find('%', dotPos);
+                if (percentPos != std::string::npos) {
+                    decimalPlaces = static_cast<int>(percentPos - dotPos - 1);
+                }
+            }
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Percentage, decimalPlaces);
+        }
+        
+        // 检查是否为货币格式
+        if (formatCode.find('$') != std::string::npos || formatCode.find('¥') != std::string::npos ||
+            formatCode.find('€') != std::string::npos || formatCode.find('£') != std::string::npos) {
+            int decimalPlaces = 0;
+            bool useThousandSeparator = formatCode.find("#,##0") != std::string::npos;
+            
+            size_t dotPos = formatCode.find('.');
+            if (dotPos != std::string::npos) {
+                // 计算小数位数
+                size_t pos = dotPos + 1;
+                while (pos < formatCode.length() && formatCode[pos] == '0') {
+                    decimalPlaces++;
+                    pos++;
+                }
+            }
+            
+            std::string currencySymbol = "$";
+            if (formatCode.find('¥') != std::string::npos) currencySymbol = "¥";
+            else if (formatCode.find('€') != std::string::npos) currencySymbol = "€";
+            else if (formatCode.find('£') != std::string::npos) currencySymbol = "£";
+            
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Currency, 
+                                                     decimalPlaces, useThousandSeparator, currencySymbol);
+        }
+        
+        // 检查是否为科学计数法
+        if (formatCode.find("E+") != std::string::npos || formatCode.find("e+") != std::string::npos) {
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Scientific, 2);
+        }
+        
+        // 检查是否为日期格式
+        if (formatCode.find("yyyy") != std::string::npos || formatCode.find("mm") != std::string::npos ||
+            formatCode.find("dd") != std::string::npos || formatCode.find("yy") != std::string::npos) {
+            if (formatCode.find("hh") != std::string::npos || formatCode.find("ss") != std::string::npos) {
+                return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::DateTime, 0);
+            } else {
+                return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Date, 0);
+            }
+        }
+        
+        // 检查是否为时间格式
+        if (formatCode.find("hh") != std::string::npos || formatCode.find("mm") != std::string::npos ||
+            formatCode.find("ss") != std::string::npos) {
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Time, 0);
+        }
+        
+        // 检查是否为文本格式
+        if (formatCode == "@") {
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Text, 0);
+        }
+        
+        // 检查是否为数字格式
+        if (formatCode.find('#') != std::string::npos || formatCode.find('0') != std::string::npos) {
+            int decimalPlaces = 0;
+            bool useThousandSeparator = formatCode.find("#,##0") != std::string::npos;
+            
+            size_t dotPos = formatCode.find('.');
+            if (dotPos != std::string::npos) {
+                // 计算小数位数
+                size_t pos = dotPos + 1;
+                while (pos < formatCode.length() && formatCode[pos] == '0') {
+                    decimalPlaces++;
+                    pos++;
+                }
+            }
+            
+            return TXCellStyle::NumberFormatDefinition(TXNumberFormat::FormatType::Number, 
+                                                     decimalPlaces, useThousandSeparator);
+        }
+        
+        // 默认情况下，作为自定义格式处理
+        return TXCellStyle::NumberFormatDefinition(formatCode);
     }
 
 } // namespace TinaXlsx

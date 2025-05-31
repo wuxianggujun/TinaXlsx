@@ -3,6 +3,7 @@
 #include <cstdio>
 
 using namespace TinaXlsx;
+using cell_value_t = TinaXlsx::cell_value_t;
 
 class NewArchitectureTest : public ::testing::Test {
 protected:
@@ -24,9 +25,9 @@ protected:
 // 测试新的数字格式架构
 TEST_F(NewArchitectureTest, NumberFormatArchitecture) {
     // 设置一些数据
-    sheet->setCellValue(row_t(1), column_t(1), 1234.567);
-    sheet->setCellValue(row_t(2), column_t(1), 0.75);
-    sheet->setCellValue(row_t(3), column_t(1), 50000.0);
+    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{1234.567});
+    sheet->setCellValue(row_t(2), column_t(1), cell_value_t{0.75});
+    sheet->setCellValue(row_t(3), column_t(1), cell_value_t{50000.0});
 
     // 使用新架构设置数字格式
     EXPECT_TRUE(sheet->setCellNumberFormat(row_t(1), column_t(1), TXNumberFormat::FormatType::Number, 2));
@@ -57,7 +58,7 @@ TEST_F(NewArchitectureTest, FullStyleArchitecture) {
          .setHorizontalAlignment(HorizontalAlignment::Center);
 
     // 设置数据和样式
-    sheet->setCellValue(row_t(1), column_t(1), 12345.67);
+    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{12345.67});
     EXPECT_TRUE(sheet->setCellStyle(row_t(1), column_t(1), style));
 
     // 验证保存

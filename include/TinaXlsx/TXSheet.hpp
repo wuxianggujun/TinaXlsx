@@ -432,6 +432,13 @@ public:
      */
     std::size_t setCellStyles(const std::vector<std::pair<Coordinate, TXCellStyle>>& styles);
 
+    /**
+     * @brief 批量设置数字格式（高性能版本）
+     * @param formats 坐标到数字格式的映射
+     * @return 成功设置的格式数量
+     */
+    std::size_t setBatchNumberFormats(const std::vector<std::pair<Coordinate, TXCellStyle::NumberFormatDefinition>>& formats);
+
     // ==================== 便捷方法 ====================
 
     /**

@@ -240,6 +240,22 @@ public:
         bool isGeneral() const { return type_ == TXNumberFormat::FormatType::General; }
         
         /**
+         * @brief 验证格式定义是否有效
+         * @return 有效返回true
+         */
+        bool isValid() const {
+            // 验证小数位数
+            if (decimalPlaces_ < 0 || decimalPlaces_ > 30) return false;
+            
+            // 验证自定义格式字符串
+            if (type_ == TXNumberFormat::FormatType::Custom && customFormatString_.empty()) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        /**
          * @brief 比较操作符
          */
         bool operator==(const NumberFormatDefinition& other) const {

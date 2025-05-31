@@ -107,6 +107,13 @@ namespace TinaXlsx
         // 生成 styles.xml 内容的 XmlNodeBuilder 对象
         XmlNodeBuilder createStylesXmlNode() const;
 
+        /**
+         * @brief 从XF索引反向构造样式对象 (用于 getCellEffectiveStyle)
+         * @param xfIndex XF记录的索引
+         * @return 重构的TXCellStyle对象
+         */
+        TXCellStyle getStyleObjectFromXfIndex(u32 xfIndex) const;
+
     private:
         // 辅助函数，用于将枚举转换为XML字符串
         std::string horizontalAlignmentToString(HorizontalAlignment alignment) const;
@@ -220,8 +227,18 @@ namespace TinaXlsx
         std::unordered_map<std::string, u32> num_fmt_lookup_; // 数字格式查找表 (兼容)
         std::unordered_map<std::string, u32> cell_xf_lookup_;
 
+        // 样式反向构造缓存 (优化性能)
+        mutable std::unordered_map<u32, TXCellStyle> style_cache_;
+
         void initializeDefaultStyles();
         void initializeBuiltinNumberFormats();  ///< 初始化内置数字格式映射
+        
+        /**
+         * @brief 从Excel格式代码解析为NumberFormatDefinition
+         * @param formatCode Excel格式代码字符串
+         * @return 解析后的NumberFormatDefinition对象
+         */
+        TXCellStyle::NumberFormatDefinition parseFormatCodeToDefinition(const std::string& formatCode) const;
         
         // 内置格式映射 (从格式代码到numFmtId)
         static const std::unordered_map<std::string, u32> S_BUILTIN_NUMBER_FORMATS;

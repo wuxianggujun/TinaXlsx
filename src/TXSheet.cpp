@@ -848,6 +848,36 @@ namespace TinaXlsx
         return count;
     }
 
+    std::size_t TXSheet::setBatchNumberFormats(const std::vector<std::pair<Coordinate, TXCellStyle::NumberFormatDefinition>>& formats) {
+        if (!workbook_) return 0;
+        
+        // 确保样式组件已注册
+        workbook_->getContext()->registerComponentFast(ExcelComponent::Styles);
+        
+        std::size_t count = 0;
+        
+        for (const auto& pair : formats) {
+            const auto& coord = pair.first;
+            const auto& formatDef = pair.second;
+            
+            TXCell* cell = getCell(coord.getRow(), coord.getCol());
+            if (!cell) continue;
+            
+            // 获取当前样式
+            TXCellStyle style = getCellEffectiveStyle(cell);
+            
+            // 设置新的数字格式
+            style.setNumberFormatDefinition(formatDef);
+            
+            // 应用样式
+            if (setCellStyle(coord.getRow(), coord.getCol(), style)) {
+                count++;
+            }
+        }
+        
+        return count;
+    }
+
     // ==================== 合并单元格功能公共接口 ====================
 
     bool TXSheet::mergeCells(row_t startRow, column_t startCol,
@@ -878,22 +908,18 @@ namespace TinaXlsx
 
     TXCellStyle TXSheet::getCellEffectiveStyle(TXCell* cell)
     {
-        // 简化版本：返回默认样式
-        // 理想情况下，这里应该从 TXStyleManager 根据 cell->getStyleIndex() 反向构造样式
-        // 但这需要更复杂的实现，目前使用简化版本
-        
-        if (!cell) {
+        if (!cell || !workbook_) {
             return TXCellStyle(); // 默认样式
         }
         
-        // TODO: 理想实现应该是：
-        // if (workbook_ && cell->getStyleIndex() > 0) {
-        //     return workbook_->getStyleManager().getStyleObjectFromXfIndex(cell->getStyleIndex());
-        // }
+        // 完整实现：从样式管理器反向构造样式
+        u32 styleIndex = cell->getStyleIndex();
+        if (styleIndex == 0) {
+            // 使用默认样式
+            return TXCellStyle();
+        }
         
-        // 简化实现：返回默认样式
-        // 注意：这意味着如果单元格已有其他样式（如字体、边框等），
-        // 调用 setCellNumberFormat 可能会丢失这些样式
-        return TXCellStyle();
+        // 从 TXStyleManager 获取完整样式对象
+        return workbook_->getStyleManager().getStyleObjectFromXfIndex(styleIndex);
     }
 } // namespace TinaXlsx 
