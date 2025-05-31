@@ -44,7 +44,7 @@ TEST_F(CellStyleTest, ComprehensiveStyleTest) {
     TXFont font2;
     font2.setName("Times New Roman");
     font2.setSize(16);
-    font2.setUnderline(true);
+    font2.setUnderline(UnderlineStyle::Single);
     font2.setColor(TXColor(0, 0, 255)); // 蓝色
     
     TXCellStyle style2;

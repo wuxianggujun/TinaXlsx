@@ -53,8 +53,8 @@ namespace TinaXlsx
         std::string font_key_oss_str;
         {
             std::ostringstream font_key_oss;
-            font_key_oss << default_font.name << "_" << default_font.size
-                << "_" << default_font.color.toARGBHexString() // Assuming TXColor has toARGBHexString()
+            font_key_oss << default_font.getName() << "_" << default_font.getSize()
+                << "_" << default_font.getColor().toARGBHexString() // Assuming TXColor has toARGBHexString()
                 << "_b" << default_font.isBold() << "_i" << default_font.isItalic()
                 << "_u" << default_font.hasUnderline() << "_s" << default_font.hasStrikethrough();
             font_key_oss_str = font_key_oss.str();
@@ -111,8 +111,8 @@ namespace TinaXlsx
     u32 TXStyleManager::registerFont(const TXFont& font)
     {
         std::ostringstream key_ss;
-        key_ss << font.name << "_" << font.size
-            << "_" << font.color.toARGBHexString()
+        key_ss << font.getName() << "_" << font.getSize()
+            << "_" << font.getColor().toARGBHexString()
             << "_b" << font.isBold() << "_i" << font.isItalic()
             << "_u" << font.hasUnderline() << "_s" << font.hasStrikethrough();
         // Consider also font.style enum if it carries more info than bold/italic/underline/strikethrough booleans
@@ -302,9 +302,9 @@ namespace TinaXlsx
         for (const auto& font_ptr : fonts_pool_)
         {
             XmlNodeBuilder font_node("font");
-            font_node.addChild(XmlNodeBuilder("sz").addAttribute("val", std::to_string(font_ptr->size)));
-            font_node.addChild(XmlNodeBuilder("color").addAttribute("rgb", font_ptr->color.toARGBHexString()));
-            font_node.addChild(XmlNodeBuilder("name").addAttribute("val", font_ptr->name));
+            font_node.addChild(XmlNodeBuilder("sz").addAttribute("val", std::to_string(font_ptr->getSize())));
+            font_node.addChild(XmlNodeBuilder("color").addAttribute("rgb", font_ptr->getColor().toARGBHexString()));
+            font_node.addChild(XmlNodeBuilder("name").addAttribute("val", font_ptr->getName()));
             if (font_ptr->isBold()) font_node.addChild(XmlNodeBuilder("b"));
             if (font_ptr->isItalic()) font_node.addChild(XmlNodeBuilder("i"));
             if (font_ptr->hasUnderline()) font_node.addChild(XmlNodeBuilder("u"));

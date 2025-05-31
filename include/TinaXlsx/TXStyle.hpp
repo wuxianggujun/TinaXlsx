@@ -1,23 +1,12 @@
 #pragma once
 
-#include "TXTypes.hpp"
-#include "TXColor.hpp"
+#include "TinaXlsx/TXTypes.hpp"
+#include "TinaXlsx/TXColor.hpp"
+#include "TinaXlsx/TXFont.hpp"  // 修正路径，移到主目录
 #include <string>
 #include <memory>
 
 namespace TinaXlsx {
-
-/**
- * @brief 字体样式枚举
- */
-enum class FontStyle : uint8_t {
-    Normal = 0,           ///< 正常
-    Bold = 1,             ///< 粗体
-    Italic = 2,           ///< 斜体
-    BoldItalic = 3,       ///< 粗斜体
-    Underline = 4,        ///< 下划线
-    Strikethrough = 8     ///< 删除线
-};
 
 /**
  * @brief 水平对齐方式
@@ -72,76 +61,15 @@ enum class FillPattern : uint8_t {
 };
 
 /**
- * @brief 字体信息结构
- */
-struct TXFont {
-    std::string name;                    ///< 字体名称
-    font_size_t size;              ///< 字体大小
-    TXColor color;                       ///< 字体颜色
-    FontStyle style;                     ///< 字体样式
-    bool bold;                     ///< 是否粗体
-    bool italic;                   ///< 是否斜体
-    bool underline;                ///< 是否下划线
-    bool strikethrough;            ///< 是否删除线
-    
-    /**
-     * @brief 默认构造函数
-     */
-    TXFont() : name("Calibri")
-        , size(DEFAULT_FONT_SIZE)
-        , color(ColorConstants::BLACK)
-        , style(FontStyle::Normal)
-        , bold(false), italic(false), underline(false), strikethrough(false) {}
-    
-    /**
-     * @brief 构造函数
-     * @param fontName 字体名称
-     * @param fontSize 字体大小
-     */
-    TXFont(const std::string& fontName, font_size_t fontSize = DEFAULT_FONT_SIZE)
-        : name(fontName), size(fontSize)
-        , color(ColorConstants::BLACK)
-        , style(FontStyle::Normal)
-        , bold(false), italic(false), underline(false), strikethrough(false) {}
-    
-    // 便捷方法
-    TXFont& setName(const std::string& fontName) { name = fontName; return *this; }
-    TXFont& setSize(font_size_t fontSize) { size = fontSize; return *this; }
-    TXFont& setColor(color_value_t colorValue) { color = TXColor(colorValue); return *this; }
-    TXFont& setStyle(FontStyle fontStyle) { 
-        style = fontStyle; 
-        // 同步布尔字段
-        bold = (fontStyle == FontStyle::Bold || fontStyle == FontStyle::BoldItalic);
-        italic = (fontStyle == FontStyle::Italic || fontStyle == FontStyle::BoldItalic);
-        underline = (fontStyle == FontStyle::Underline);
-        strikethrough = (fontStyle == FontStyle::Strikethrough);
-        return *this; 
-    }
-    TXFont& setBold(bool value = true) { this->bold = value; return *this; }
-    TXFont& setItalic(bool value = true) { this->italic = value; return *this; }
-    TXFont& setUnderline(bool value = true) { this->underline = value; return *this; }
-    TXFont& setStrikethrough(bool value = true) { this->strikethrough = value; return *this; }
-    
-    // 查询方法
-    bool isBold() const { return bold; }
-    bool isItalic() const { return italic; }
-    bool hasUnderline() const { return underline; }
-    bool hasStrikethrough() const { return strikethrough; }
-    
-    bool operator==(const TXFont& other) const;
-    bool operator!=(const TXFont& other) const { return !(*this == other); }
-};
-
-/**
  * @brief 对齐信息结构
  */
 struct TXAlignment {
     HorizontalAlignment horizontal;      ///< 水平对齐
     VerticalAlignment vertical;          ///< 垂直对齐
-    u32 textRotation;      ///< 文字旋转角度 (0-180)
-    u32 indent;            ///< 缩进级别
-    bool wrapText;                  ///< 是否自动换行
-    bool shrinkToFit;               ///< 是否缩小字体以适应
+    uint32_t textRotation;               ///< 文字旋转角度 (0-180)
+    uint32_t indent;                     ///< 缩进级别
+    bool wrapText;                       ///< 是否自动换行
+    bool shrinkToFit;                    ///< 是否缩小字体以适应
     
     /**
      * @brief 默认构造函数
@@ -159,8 +87,8 @@ struct TXAlignment {
     TXAlignment& setVertical(VerticalAlignment align) { vertical = align; return *this; }
     TXAlignment& setWrapText(bool wrap) { wrapText = wrap; return *this; }
     TXAlignment& setShrinkToFit(bool shrink) { shrinkToFit = shrink; return *this; }
-    TXAlignment& setTextRotation(u32 rotation) { textRotation = rotation; return *this; }
-    TXAlignment& setIndent(u32 indentLevel) { indent = indentLevel; return *this; }
+    TXAlignment& setTextRotation(uint32_t rotation) { textRotation = rotation; return *this; }
+    TXAlignment& setIndent(uint32_t indentLevel) { indent = indentLevel; return *this; }
     
     bool operator==(const TXAlignment& other) const;
     bool operator!=(const TXAlignment& other) const { return !(*this == other); }
@@ -243,147 +171,162 @@ struct TXFill {
 };
 
 /**
- * @brief 完整的单元格样式
+ * @brief 单元格样式类 - 整合各种样式组件
+ * 
+ * 现在使用独立的TXFont类而不是内联结构体
  */
 class TXCellStyle {
 public:
-    TXCellStyle();
-    ~TXCellStyle();
+    // ==================== 构造函数 ====================
     
-    // 禁用拷贝构造，使用智能指针管理
+    /**
+     * @brief 默认构造函数
+     */
+    TXCellStyle();
+    
+    /**
+     * @brief 拷贝构造函数
+     */
     TXCellStyle(const TXCellStyle& other);
+    
+    /**
+     * @brief 移动构造函数
+     */
+    TXCellStyle(TXCellStyle&& other) noexcept;
+    
+    /**
+     * @brief 拷贝赋值操作符
+     */
     TXCellStyle& operator=(const TXCellStyle& other);
     
-    // 支持移动语义
-    TXCellStyle(TXCellStyle&& other) noexcept;
+    /**
+     * @brief 移动赋值操作符
+     */
     TXCellStyle& operator=(TXCellStyle&& other) noexcept;
     
-    // ==================== 样式组件访问 ====================
-    
     /**
-     * @brief 获取字体样式
-     * @return 字体样式引用
+     * @brief 析构函数
      */
-    TXFont& getFont();
-    const TXFont& getFont() const;
-    
-    /**
-     * @brief 获取对齐样式
-     * @return 对齐样式引用
-     */
-    TXAlignment& getAlignment();
-    const TXAlignment& getAlignment() const;
-    
-    /**
-     * @brief 获取边框样式
-     * @return 边框样式引用
-     */
-    TXBorder& getBorder();
-    const TXBorder& getBorder() const;
-    
-    /**
-     * @brief 获取填充样式
-     * @return 填充样式引用
-     */
-    TXFill& getFill();
-    const TXFill& getFill() const;
-    
-    // ==================== 便捷设置方法 ====================
+    ~TXCellStyle() = default;
+
+    // ==================== 字体设置（使用新的TXFont类）====================
     
     /**
      * @brief 设置字体
-     * @param font 字体信息
+     * @param font 字体对象
      * @return 自身引用，支持链式调用
      */
     TXCellStyle& setFont(const TXFont& font);
     
     /**
-     * @brief 设置对齐
-     * @param alignment 对齐信息
+     * @brief 获取字体
+     * @return 字体对象的常量引用
+     */
+    [[nodiscard]] const TXFont& getFont() const { return font_; }
+    
+    /**
+     * @brief 获取字体（可修改）
+     * @return 字体对象的引用
+     */
+    [[nodiscard]] TXFont& getFont() { return font_; }
+    
+    // 字体便捷方法
+    TXCellStyle& setFontName(const std::string& name);
+    TXCellStyle& setFontSize(font_size_t size);
+    TXCellStyle& setFontColor(color_value_t color);
+    TXCellStyle& setFontColor(const TXColor& color);
+    TXCellStyle& setFontBold(bool bold = true);
+    TXCellStyle& setFontItalic(bool italic = true);
+    TXCellStyle& setFontStyle(FontStyle style);
+
+    // ==================== 对齐设置 ====================
+    
+    /**
+     * @brief 设置对齐方式
+     * @param alignment 对齐对象
      * @return 自身引用，支持链式调用
      */
     TXCellStyle& setAlignment(const TXAlignment& alignment);
     
     /**
+     * @brief 获取对齐方式
+     * @return 对齐对象的常量引用
+     */
+    [[nodiscard]] const TXAlignment& getAlignment() const { return alignment_; }
+    
+    /**
+     * @brief 获取对齐方式（可修改）
+     * @return 对齐对象的引用
+     */
+    [[nodiscard]] TXAlignment& getAlignment() { return alignment_; }
+    
+    // 对齐便捷方法
+    TXCellStyle& setHorizontalAlignment(HorizontalAlignment alignment);
+    TXCellStyle& setVerticalAlignment(VerticalAlignment alignment);
+    TXCellStyle& setWrapText(bool wrap = true);
+    TXCellStyle& setTextRotation(uint32_t rotation);
+
+    // ==================== 边框设置 ====================
+    
+    /**
      * @brief 设置边框
-     * @param border 边框信息
+     * @param border 边框对象
      * @return 自身引用，支持链式调用
      */
     TXCellStyle& setBorder(const TXBorder& border);
     
     /**
+     * @brief 获取边框
+     * @return 边框对象的常量引用
+     */
+    [[nodiscard]] const TXBorder& getBorder() const { return border_; }
+    
+    /**
+     * @brief 获取边框（可修改）
+     * @return 边框对象的引用
+     */
+    [[nodiscard]] TXBorder& getBorder() { return border_; }
+    
+    // 边框便捷方法
+    TXCellStyle& setAllBorders(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXCellStyle& setLeftBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXCellStyle& setRightBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXCellStyle& setTopBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    TXCellStyle& setBottomBorder(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+
+    // ==================== 填充设置 ====================
+    
+    /**
      * @brief 设置填充
-     * @param fill 填充信息
+     * @param fill 填充对象
      * @return 自身引用，支持链式调用
      */
     TXCellStyle& setFill(const TXFill& fill);
     
-    // ==================== 快捷样式方法 ====================
+    /**
+     * @brief 获取填充
+     * @return 填充对象的常量引用
+     */
+    [[nodiscard]] const TXFill& getFill() const { return fill_; }
     
     /**
-     * @brief 设置字体名称和大小
-     * @param name 字体名称
-     * @param size 字体大小
-     * @return 自身引用，支持链式调用
+     * @brief 获取填充（可修改）
+     * @return 填充对象的引用
      */
-    TXCellStyle& setFont(const std::string& name, font_size_t size = DEFAULT_FONT_SIZE);
+    [[nodiscard]] TXFill& getFill() { return fill_; }
     
-    /**
-     * @brief 设置字体颜色
-     * @param color 颜色对象
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setFontColor(const TXColor& color);
-    
-    /**
-     * @brief 设置字体颜色（从颜色值）
-     * @param color 颜色值
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setFontColor(color_value_t color);
-    
-    /**
-     * @brief 设置字体样式
-     * @param style 字体样式
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setFontStyle(FontStyle style);
-    
-    /**
-     * @brief 设置水平对齐
-     * @param alignment 水平对齐方式
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setHorizontalAlignment(HorizontalAlignment alignment);
-    
-    /**
-     * @brief 设置垂直对齐
-     * @param alignment 垂直对齐方式
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setVerticalAlignment(VerticalAlignment alignment);
-    
-    /**
-     * @brief 设置背景颜色
-     * @param color 背景颜色
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setBackgroundColor(const TXColor& color);
-    
-    /**
-     * @brief 设置背景颜色（从颜色值）
-     * @param color 颜色值
-     * @return 自身引用，支持链式调用
-     */
+    // 填充便捷方法
     TXCellStyle& setBackgroundColor(color_value_t color);
+    TXCellStyle& setBackgroundColor(const TXColor& color);
+    TXCellStyle& setFillPattern(FillPattern pattern);
+    TXCellStyle& setSolidFill(const TXColor& color);
+
+    // ==================== 比较操作符 ====================
     
-    /**
-     * @brief 设置所有边框
-     * @param style 边框样式
-     * @param color 边框颜色
-     * @return 自身引用，支持链式调用
-     */
-    TXCellStyle& setAllBorders(BorderStyle style, const TXColor& color = ColorConstants::BLACK);
+    bool operator==(const TXCellStyle& other) const;
+    bool operator!=(const TXCellStyle& other) const { return !(*this == other); }
+
+    // ==================== 工具方法 ====================
     
     /**
      * @brief 重置为默认样式
@@ -391,18 +334,24 @@ public:
     void reset();
     
     /**
-     * @brief 比较两个样式是否相等
-     * @param other 另一个样式
-     * @return 相等返回true，否则返回false
+     * @brief 检查是否为默认样式
+     * @return 是默认样式返回true
      */
-    bool operator==(const TXCellStyle& other) const;
-    bool operator!=(const TXCellStyle& other) const { return !(*this == other); }
+    [[nodiscard]] bool isDefault() const;
+    
+    /**
+     * @brief 获取样式的唯一标识键（用于样式管理器）
+     * @return 唯一标识字符串
+     */
+    [[nodiscard]] std::string getUniqueKey() const;
 
 private:
-    TXFont font_;
-    TXAlignment alignment_;
-    TXBorder border_;
-    TXFill fill_;
+    // ==================== 私有成员（使用新的独立类）====================
+    
+    TXFont font_;                        ///< 字体样式（新的独立类）
+    TXAlignment alignment_;              ///< 对齐方式
+    TXBorder border_;                    ///< 边框样式
+    TXFill fill_;                        ///< 填充样式
 };
 
 } // namespace TinaXlsx 
