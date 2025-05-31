@@ -13,40 +13,27 @@
 // ==================== 核心类型系统 ====================
 #include "TXTypes.hpp"         ///< 统一类型定义
 #include "TXColor.hpp"         ///< 颜色处理类
-#include "TXCoordinate.hpp"    ///< 坐标和范围类
+#include "TXCoordinate.hpp"    ///< 坐标类
+#include "TXRange.hpp"         ///< 范围类
 
 // ==================== 样式系统 ====================
 #include "TXStyle.hpp"         ///< 完整样式系统
 
-// ==================== 新增功能模块 ====================
+// ==================== 业务功能模块 ====================
 #include "TXFormula.hpp"       ///< 公式处理类
 #include "TXMergedCells.hpp"   ///< 合并单元格管理类
 #include "TXNumberFormat.hpp"  ///< 数字格式化类
-
-// ==================== 单元格格式设置功能模块 ====================
-#include "TXConditionalFormat.hpp"  ///< 条件格式系统
-#include "TXStyleTemplate.hpp"      ///< 样式模板系统
-#include "TXBatchFormat.hpp"        ///< 批量格式应用系统
+#include "TXStyleTemplate.hpp" ///< 样式模板系统（预设主题）
 
 // ==================== 核心业务类 ====================
 #include "TXCell.hpp"          ///< 单元格类
 #include "TXSheet.hpp"         ///< 工作表类
 #include "TXWorkbook.hpp"      ///< 工作簿类
 
-// ==================== 辅助工具类 ====================
-#include "TXXmlReader.hpp"     ///< XML读取器
-#include "TXXmlWriter.hpp"     ///< XML写入器
+// ==================== 工具类 ====================
+#include "TXComponentManager.hpp" ///< 组件管理器
 
-// 包含所有公共头文件
-#include "TXTypes.hpp"
-#include "TXCoordinate.hpp"
-#include "TXRange.hpp"
-#include "TXCell.hpp"
-#include "TXSheet.hpp"
-#include "TXWorkbook.hpp"
-#include "TXComponentManager.hpp"
-
-// XML处理器 - 新架构使用Handler模式
+// XML处理器
 #include "TXWorksheetXmlHandler.hpp"
 #include "TXWorkbookXmlHandler.hpp"
 #include "TXStylesXmlHandler.hpp"

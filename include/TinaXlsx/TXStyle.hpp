@@ -186,15 +186,6 @@ struct TXFill {
 class TXCellStyle {
 
 public:
-    // --- 新增: 数字格式定义结构体 ---
-    struct NumberFormatDefinition
-    {
-        TXNumberFormat::FormatType types_ = TXNumberFormat::FormatType::General;
-        
-    };
-
-    
-public:
     // ==================== 构造函数 ====================
     
     /**
