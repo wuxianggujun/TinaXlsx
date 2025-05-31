@@ -181,11 +181,80 @@ struct TXFill {
 /**
  * @brief 单元格样式类 - 整合各种样式组件
  * 
- * 现在使用独立的TXFont类而不是内联结构体
+ * 现在使用独立的TXFont类而不是内联结构体，并包含数字格式定义
  */
 class TXCellStyle {
-
 public:
+    /**
+     * @brief 数字格式定义
+     * 完整描述一个数字格式的所有参数
+     */
+    struct NumberFormatDefinition {
+        TXNumberFormat::FormatType type_;        ///< 格式类型
+        std::string customFormatString_;         ///< 自定义格式字符串（当type_为Custom时使用）
+        int decimalPlaces_;                      ///< 小数位数
+        bool useThousandSeparator_;             ///< 是否使用千位分隔符
+        std::string currencySymbol_;            ///< 货币符号
+        
+        /**
+         * @brief 默认构造函数 - 创建常规格式
+         */
+        NumberFormatDefinition() 
+            : type_(TXNumberFormat::FormatType::General)
+            , customFormatString_()
+            , decimalPlaces_(2)
+            , useThousandSeparator_(false)
+            , currencySymbol_("$") {}
+        
+        /**
+         * @brief 构造预定义格式
+         */
+        NumberFormatDefinition(TXNumberFormat::FormatType type, int decimalPlaces = 2, 
+                             bool useThousandSeparator = false, const std::string& currencySymbol = "$")
+            : type_(type)
+            , customFormatString_()
+            , decimalPlaces_(decimalPlaces)
+            , useThousandSeparator_(useThousandSeparator)
+            , currencySymbol_(currencySymbol) {}
+        
+        /**
+         * @brief 构造自定义格式
+         */
+        explicit NumberFormatDefinition(const std::string& customFormatString)
+            : type_(TXNumberFormat::FormatType::Custom)
+            , customFormatString_(customFormatString)
+            , decimalPlaces_(2)
+            , useThousandSeparator_(false)
+            , currencySymbol_("$") {}
+        
+        /**
+         * @brief 生成Excel格式代码
+         * @return Excel标准格式代码字符串
+         */
+        std::string generateExcelFormatCode() const;
+        
+        /**
+         * @brief 判断是否为常规格式
+         * @return 是常规格式返回true
+         */
+        bool isGeneral() const { return type_ == TXNumberFormat::FormatType::General; }
+        
+        /**
+         * @brief 比较操作符
+         */
+        bool operator==(const NumberFormatDefinition& other) const {
+            return type_ == other.type_ &&
+                   customFormatString_ == other.customFormatString_ &&
+                   decimalPlaces_ == other.decimalPlaces_ &&
+                   useThousandSeparator_ == other.useThousandSeparator_ &&
+                   currencySymbol_ == other.currencySymbol_;
+        }
+        
+        bool operator!=(const NumberFormatDefinition& other) const {
+            return !(*this == other);
+        }
+    };
+
     // ==================== 构造函数 ====================
     
     /**
@@ -330,6 +399,53 @@ public:
     TXCellStyle& setFillPattern(FillPattern pattern);
     TXCellStyle& setSolidFill(const TXColor& color);
 
+    // ==================== 数字格式设置 ====================
+    
+    /**
+     * @brief 设置数字格式定义
+     * @param definition 数字格式定义对象
+     * @return 自身引用，支持链式调用
+     */
+    TXCellStyle& setNumberFormatDefinition(const NumberFormatDefinition& definition);
+    
+    /**
+     * @brief 获取数字格式定义
+     * @return 数字格式定义对象的常量引用
+     */
+    [[nodiscard]] const NumberFormatDefinition& getNumberFormatDefinition() const { return numberFormatDefinition_; }
+    
+    /**
+     * @brief 获取数字格式定义（可修改）
+     * @return 数字格式定义对象的引用
+     */
+    [[nodiscard]] NumberFormatDefinition& getNumberFormatDefinition() { return numberFormatDefinition_; }
+    
+    // 数字格式便捷方法
+    
+    /**
+     * @brief 设置预定义数字格式
+     * @param type 格式类型
+     * @param decimalPlaces 小数位数
+     * @param useThousandSeparator 是否使用千位分隔符
+     * @param currencySymbol 货币符号
+     * @return 自身引用，支持链式调用
+     */
+    TXCellStyle& setNumberFormat(TXNumberFormat::FormatType type, int decimalPlaces = 2, 
+                                bool useThousandSeparator = false, const std::string& currencySymbol = "$");
+    
+    /**
+     * @brief 设置自定义数字格式
+     * @param formatString 自定义格式字符串
+     * @return 自身引用，支持链式调用
+     */
+    TXCellStyle& setCustomNumberFormat(const std::string& formatString);
+    
+    /**
+     * @brief 创建数字格式对象
+     * @return 数字格式对象的智能指针
+     */
+    std::unique_ptr<TXNumberFormat> createNumberFormatObject() const;
+
     // ==================== 比较操作符 ====================
     
     bool operator==(const TXCellStyle& other) const;
@@ -361,6 +477,7 @@ private:
     TXAlignment alignment_;              ///< 对齐方式
     TXBorder border_;                    ///< 边框样式
     TXFill fill_;                        ///< 填充样式
+    NumberFormatDefinition numberFormatDefinition_;  ///< 数字格式定义
 };
 
 } // namespace TinaXlsx 

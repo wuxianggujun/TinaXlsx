@@ -92,7 +92,8 @@ TXCellStyle::TXCellStyle(const TXCellStyle& other)
     : font_(other.font_)
     , alignment_(other.alignment_)
     , border_(other.border_)
-    , fill_(other.fill_) {}
+    , fill_(other.fill_)
+    , numberFormatDefinition_(other.numberFormatDefinition_) {}
 
 TXCellStyle& TXCellStyle::operator=(const TXCellStyle& other) {
     if (this != &other) {
@@ -100,6 +101,7 @@ TXCellStyle& TXCellStyle::operator=(const TXCellStyle& other) {
         alignment_ = other.alignment_;
         border_ = other.border_;
         fill_ = other.fill_;
+        numberFormatDefinition_ = other.numberFormatDefinition_;
     }
     return *this;
 }
@@ -108,7 +110,8 @@ TXCellStyle::TXCellStyle(TXCellStyle&& other) noexcept
     : font_(std::move(other.font_))
     , alignment_(std::move(other.alignment_))
     , border_(std::move(other.border_))
-    , fill_(std::move(other.fill_)) {}
+    , fill_(std::move(other.fill_))
+    , numberFormatDefinition_(std::move(other.numberFormatDefinition_)) {}
 
 TXCellStyle& TXCellStyle::operator=(TXCellStyle&& other) noexcept {
     if (this != &other) {
@@ -116,6 +119,7 @@ TXCellStyle& TXCellStyle::operator=(TXCellStyle&& other) noexcept {
         alignment_ = std::move(other.alignment_);
         border_ = std::move(other.border_);
         fill_ = std::move(other.fill_);
+        numberFormatDefinition_ = std::move(other.numberFormatDefinition_);
     }
     return *this;
 }
@@ -250,7 +254,8 @@ bool TXCellStyle::operator==(const TXCellStyle& other) const {
     return font_ == other.font_ &&
            alignment_ == other.alignment_ &&
            border_ == other.border_ &&
-           fill_ == other.fill_;
+           fill_ == other.fill_ &&
+           numberFormatDefinition_ == other.numberFormatDefinition_;
 }
 
 // 工具方法
@@ -259,6 +264,7 @@ void TXCellStyle::reset() {
     alignment_ = TXAlignment();
     border_ = TXBorder();
     fill_ = TXFill();
+    numberFormatDefinition_ = NumberFormatDefinition();
 }
 
 bool TXCellStyle::isDefault() const {
@@ -270,7 +276,8 @@ bool TXCellStyle::isDefault() const {
            alignment_.textRotation == 0 &&
            alignment_.indent == 0 &&
            border_.leftStyle == BorderStyle::None &&
-           fill_.pattern == FillPattern::None;
+           fill_.pattern == FillPattern::None &&
+           numberFormatDefinition_.isGeneral();
 }
 
 std::string TXCellStyle::getUniqueKey() const {
@@ -279,7 +286,108 @@ std::string TXCellStyle::getUniqueKey() const {
            std::to_string(static_cast<int>(alignment_.vertical)) + "|" +
            std::to_string(alignment_.wrapText) + "|" +
            std::to_string(static_cast<int>(border_.leftStyle)) + "|" +
-           std::to_string(static_cast<int>(fill_.pattern));
+           std::to_string(static_cast<int>(fill_.pattern)) + "|" +
+           numberFormatDefinition_.generateExcelFormatCode();
+}
+
+// ==================== TXCellStyle::NumberFormatDefinition 实现 ====================
+
+std::string TXCellStyle::NumberFormatDefinition::generateExcelFormatCode() const {
+    if (type_ == TXNumberFormat::FormatType::Custom) {
+        return customFormatString_;
+    }
+    
+    switch (type_) {
+        case TXNumberFormat::FormatType::General:
+            return "General";
+        
+        case TXNumberFormat::FormatType::Number: {
+            std::string format = useThousandSeparator_ ? "#,##0" : "0";
+            if (decimalPlaces_ > 0) {
+                format += ".";
+                for (int i = 0; i < decimalPlaces_; ++i) {
+                    format += "0";
+                }
+            }
+            return format;
+        }
+        
+        case TXNumberFormat::FormatType::Percentage: {
+            std::string format = "0";
+            if (decimalPlaces_ > 0) {
+                format += ".";
+                for (int i = 0; i < decimalPlaces_; ++i) {
+                    format += "0";
+                }
+            }
+            format += "%";
+            return format;
+        }
+        
+        case TXNumberFormat::FormatType::Currency: {
+            std::string format = currencySymbol_ + (useThousandSeparator_ ? "#,##0" : "0");
+            if (decimalPlaces_ > 0) {
+                format += ".";
+                for (int i = 0; i < decimalPlaces_; ++i) {
+                    format += "0";
+                }
+            }
+            return format;
+        }
+        
+        case TXNumberFormat::FormatType::Date:
+            return "yyyy-mm-dd";
+        
+        case TXNumberFormat::FormatType::Time:
+            return "hh:mm:ss";
+        
+        case TXNumberFormat::FormatType::DateTime:
+            return "yyyy-mm-dd hh:mm:ss";
+        
+        case TXNumberFormat::FormatType::Scientific:
+            return "0.00E+00";
+        
+        case TXNumberFormat::FormatType::Text:
+            return "@";
+        
+        default:
+            return "General";
+    }
+}
+
+// ==================== TXCellStyle 数字格式方法实现 ====================
+
+TXCellStyle& TXCellStyle::setNumberFormatDefinition(const NumberFormatDefinition& definition) {
+    numberFormatDefinition_ = definition;
+    return *this;
+}
+
+TXCellStyle& TXCellStyle::setNumberFormat(TXNumberFormat::FormatType type, int decimalPlaces, 
+                                         bool useThousandSeparator, const std::string& currencySymbol) {
+    numberFormatDefinition_ = NumberFormatDefinition(type, decimalPlaces, useThousandSeparator, currencySymbol);
+    return *this;
+}
+
+TXCellStyle& TXCellStyle::setCustomNumberFormat(const std::string& formatString) {
+    numberFormatDefinition_ = NumberFormatDefinition(formatString);
+    return *this;
+}
+
+std::unique_ptr<TXNumberFormat> TXCellStyle::createNumberFormatObject() const {
+    auto numberFormat = std::make_unique<TXNumberFormat>();
+    
+    if (numberFormatDefinition_.type_ == TXNumberFormat::FormatType::Custom) {
+        numberFormat->setCustomFormat(numberFormatDefinition_.customFormatString_);
+    } else {
+        TXNumberFormat::FormatOptions options;
+        options.decimalPlaces = numberFormatDefinition_.decimalPlaces_;
+        options.useThousandSeparator = numberFormatDefinition_.useThousandSeparator_;
+        options.currencySymbol = numberFormatDefinition_.currencySymbol_;
+        
+        numberFormat->setFormat(numberFormatDefinition_.type_, options);
+    }
+    
+    return numberFormat;
 }
 
 } // namespace TinaXlsx 

@@ -16,8 +16,10 @@ namespace TinaXlsx
     // --- TXStyleManager Implementation ---
 
     TXStyleManager::TXStyleManager()
+        : next_custom_num_fmt_id_(164)  // 自定义格式从164开始
     {
         initializeDefaultStyles();
+        initializeBuiltinNumberFormats();
     }
 
     TXStyleManager::~TXStyleManager() = default;
@@ -28,6 +30,9 @@ namespace TinaXlsx
         , borders_pool_(std::move(other.borders_pool_))
         , num_fmts_pool_(std::move(other.num_fmts_pool_))
         , cell_xfs_pool_(std::move(other.cell_xfs_pool_))
+        , num_fmts_pool_new_(std::move(other.num_fmts_pool_new_))
+        , num_fmt_lookup_new_(std::move(other.num_fmt_lookup_new_))
+        , next_custom_num_fmt_id_(other.next_custom_num_fmt_id_)
         , font_lookup_(std::move(other.font_lookup_))
         , fill_lookup_(std::move(other.fill_lookup_))
         , border_lookup_(std::move(other.border_lookup_))
@@ -42,6 +47,9 @@ namespace TinaXlsx
             borders_pool_ = std::move(other.borders_pool_);
             num_fmts_pool_ = std::move(other.num_fmts_pool_);
             cell_xfs_pool_ = std::move(other.cell_xfs_pool_);
+            num_fmts_pool_new_ = std::move(other.num_fmts_pool_new_);
+            num_fmt_lookup_new_ = std::move(other.num_fmt_lookup_new_);
+            next_custom_num_fmt_id_ = other.next_custom_num_fmt_id_;
             font_lookup_ = std::move(other.font_lookup_);
             fill_lookup_ = std::move(other.fill_lookup_);
             border_lookup_ = std::move(other.border_lookup_);
@@ -370,64 +378,13 @@ namespace TinaXlsx
         // --- Number Formats (<numFmts>) ---
         XmlNodeBuilder numFmts_node("numFmts");
         
-        // 只包含自定义格式（ID >= 164）
-        std::vector<NumberFormat> customFormats;
-        for (const auto& fmt : num_fmts_pool_) {
-            if (fmt.numFmtId_ >= 164) {
-                customFormats.push_back(fmt);
-            }
-        }
+        // 使用新的数字格式池，只包含自定义格式 (ID >= 164)
+        numFmts_node.addAttribute("count", std::to_string(num_fmts_pool_new_.size()));
         
-        numFmts_node.addAttribute("count", std::to_string(customFormats.size()));
-        
-        for (const auto& fmt : customFormats) {
+        for (const auto& fmt_entry : num_fmts_pool_new_) {
             XmlNodeBuilder numFmt_node("numFmt");
-            numFmt_node.addAttribute("numFmtId", std::to_string(fmt.numFmtId_));
-            
-            // 生成格式代码
-            std::string formatCode;
-            if (fmt.formatType_ == TXNumberFormat::FormatType::Custom) {
-                formatCode = fmt.formatString_;
-            } else {
-                // 为其他类型生成标准格式代码
-                switch (fmt.formatType_) {
-                    case TXNumberFormat::FormatType::Number:
-                        if (fmt.useThousandSeparator_) {
-                            formatCode = "#,##0";
-                            if (fmt.decimalPlaces_ > 0) {
-                                formatCode += ".";
-                                formatCode += std::string(fmt.decimalPlaces_, '0');
-                            }
-                        } else {
-                            formatCode = "0";
-                            if (fmt.decimalPlaces_ > 0) {
-                                formatCode += ".";
-                                formatCode += std::string(fmt.decimalPlaces_, '0');
-                            }
-                        }
-                        break;
-                    case TXNumberFormat::FormatType::Currency:
-                        formatCode = fmt.currencySymbol_ + "#,##0";
-                        if (fmt.decimalPlaces_ > 0) {
-                            formatCode += ".";
-                            formatCode += std::string(fmt.decimalPlaces_, '0');
-                        }
-                        break;
-                    case TXNumberFormat::FormatType::Percentage:
-                        formatCode = "0";
-                        if (fmt.decimalPlaces_ > 0) {
-                            formatCode += ".";
-                            formatCode += std::string(fmt.decimalPlaces_, '0');
-                        }
-                        formatCode += "%";
-                        break;
-                    default:
-                        formatCode = "General";
-                        break;
-                }
-            }
-            
-            numFmt_node.addAttribute("formatCode", formatCode);
+            numFmt_node.addAttribute("numFmtId", std::to_string(fmt_entry.id_))
+                       .addAttribute("formatCode", fmt_entry.formatCode_);
             numFmts_node.addChild(numFmt_node);
         }
         
@@ -621,4 +578,123 @@ namespace TinaXlsx
 
         return styleSheet_node;
     }
+
+    // ==================== 内置数字格式映射表 ====================
+    
+    const std::unordered_map<std::string, u32> TXStyleManager::S_BUILTIN_NUMBER_FORMATS = {
+        {"General", 0},
+        {"0", 1},
+        {"0.00", 2},
+        {"#,##0", 3},
+        {"#,##0.00", 4},
+        // {"$#,##0_);($#,##0)", 5},  // 会因为货币符号不同而有变化
+        // {"$#,##0_);[Red]($#,##0)", 6},
+        // {"$#,##0.00_);($#,##0.00)", 7},
+        // {"$#,##0.00_);[Red]($#,##0.00)", 8},
+        {"0%", 9},
+        {"0.00%", 10},
+        {"0.00E+00", 11},
+        {"# ?/?", 12},
+        {"# ??/??", 13},
+        {"m/d/yy", 14},
+        {"d-mmm-yy", 15},
+        {"d-mmm", 16},
+        {"mmm-yy", 17},
+        {"h:mm AM/PM", 18},
+        {"h:mm:ss AM/PM", 19},
+        {"h:mm", 20},
+        {"h:mm:ss", 21},
+        {"m/d/yy h:mm", 22},
+        {"yyyy-mm-dd", 14},  // 常用日期格式，映射到14
+        {"hh:mm:ss", 21},    // 常用时间格式，映射到21
+        {"@", 49}            // 文本格式
+    };
+
+    void TXStyleManager::initializeBuiltinNumberFormats() {
+        // 这里可以添加额外的初始化逻辑，如果需要的话
+        // 目前静态映射表已经足够使用
+    }
+
+    // ==================== 新的数字格式注册方法 ====================
+    
+    u32 TXStyleManager::registerNumberFormat(const TXCellStyle::NumberFormatDefinition& definition) {
+        // 如果是常规格式，直接返回0
+        if (definition.isGeneral()) {
+            return 0;
+        }
+        
+        // 生成Excel格式代码
+        std::string formatCode = definition.generateExcelFormatCode();
+        
+        // 检查是否为内置格式
+        auto builtin_it = S_BUILTIN_NUMBER_FORMATS.find(formatCode);
+        if (builtin_it != S_BUILTIN_NUMBER_FORMATS.end()) {
+            return builtin_it->second;
+        }
+        
+        // 检查是否已经注册过
+        auto existing_it = num_fmt_lookup_new_.find(formatCode);
+        if (existing_it != num_fmt_lookup_new_.end()) {
+            return existing_it->second;
+        }
+        
+        // 注册新的自定义格式
+        u32 newId = next_custom_num_fmt_id_++;
+        num_fmts_pool_new_.emplace_back(newId, formatCode);
+        num_fmt_lookup_new_[formatCode] = newId;
+        
+        return newId;
+    }
+
+    // ==================== 新的样式注册方法 ====================
+    
+    u32 TXStyleManager::registerCellStyleXF(const TXCellStyle& style,
+                                            bool applyFont, bool applyFill,
+                                            bool applyBorder, bool applyAlignment) {
+        CellXF xf_data;
+        
+        // 注册各个组件
+        xf_data.font_id_ = registerFont(style.getFont());
+        xf_data.fill_id_ = registerFill(style.getFill());
+        xf_data.border_id_ = registerBorder(style.getBorder());
+        
+        // 注册数字格式
+        const auto& num_fmt_def = style.getNumberFormatDefinition();
+        xf_data.num_fmt_id_ = registerNumberFormat(num_fmt_def);
+        xf_data.apply_number_format_ = !num_fmt_def.isGeneral();
+        
+        xf_data.xf_id_ = 0; // 总是指向cellStyleXfs的第一个XF
+        
+        // 设置应用标志
+        xf_data.apply_font_ = applyFont && !style.getFont().isDefault();
+        xf_data.apply_fill_ = applyFill && (style.getFill().pattern != FillPattern::None);
+        xf_data.apply_border_ = applyBorder && (style.getBorder().leftStyle != BorderStyle::None ||
+                                               style.getBorder().rightStyle != BorderStyle::None ||
+                                               style.getBorder().topStyle != BorderStyle::None ||
+                                               style.getBorder().bottomStyle != BorderStyle::None);
+        xf_data.apply_alignment_ = applyAlignment && (
+            style.getAlignment().horizontal != HorizontalAlignment::Left ||
+            style.getAlignment().vertical != VerticalAlignment::Bottom ||
+            style.getAlignment().wrapText ||
+            style.getAlignment().shrinkToFit ||
+            style.getAlignment().textRotation != 0 ||
+            style.getAlignment().indent != 0
+        );
+        
+        xf_data.alignment_ = style.getAlignment();
+        
+        // 检查是否已存在
+        std::string key = xf_data.generateKey();
+        auto it = cell_xf_lookup_.find(key);
+        if (it != cell_xf_lookup_.end()) {
+            return it->second;
+        }
+        
+        // 添加新的XF
+        cell_xfs_pool_.push_back(xf_data);
+        u32 index = static_cast<u32>(cell_xfs_pool_.size() - 1);
+        cell_xf_lookup_[key] = index;
+        return index;
+    }
+
 } // namespace TinaXlsx

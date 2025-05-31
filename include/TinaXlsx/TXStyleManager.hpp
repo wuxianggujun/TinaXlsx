@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "TXStyle.hpp" // 确保 TXFont, TXFill, TXBorder, TXCellStyle, FontStyle 等都在这里
 #include "TXNumberFormat.hpp" // 添加数字格式头文件
 #include "TXXmlWriter.hpp" // 用于生成XML
@@ -35,7 +37,14 @@ namespace TinaXlsx
         // u32 registerNumberFormat(const std::string& formatCode, u32 id); // 自定义数字格式可以有ID
 
         /**
-         * @brief 注册数字格式
+         * @brief 注册数字格式 (通过 NumberFormatDefinition)
+         * @param definition 数字格式定义
+         * @return 数字格式ID
+         */
+        u32 registerNumberFormat(const TXCellStyle::NumberFormatDefinition& definition);
+
+        /**
+         * @brief 注册数字格式 (兼容旧接口)
          * @param formatType 数字格式类型
          * @param formatString 自定义格式字符串（对于Custom类型）
          * @param decimalPlaces 小数位数
@@ -57,7 +66,26 @@ namespace TinaXlsx
         u32 registerNumberFormat(const TXNumberFormat& numberFormat);
 
         /**
-         * @brief 注册一个完整的单元格样式 (XF record)
+         * @brief 注册一个完整的单元格样式 (XF record) - 新版本
+         * 
+         * 从 TXCellStyle 对象中提取所有样式组件（字体、填充、边框、对齐、数字格式），
+         * 自动注册这些组件并创建XF记录。
+         *
+         * @param style TXCellStyle 对象，包含了所有样式信息
+         * @param applyFont 是否应用此XF中的字体设置
+         * @param applyFill 是否应用此XF中的填充设置
+         * @param applyBorder 是否应用此XF中的边框设置
+         * @param applyAlignment 是否应用此XF中的对齐设置
+         * @return u32 此XF在styles.xml中<cellXfs>内的索引
+         */
+        u32 registerCellStyleXF(const TXCellStyle& style,
+                                bool applyFont = true,
+                                bool applyFill = true,
+                                bool applyBorder = true,
+                                bool applyAlignment = true);
+
+        /**
+         * @brief 注册一个完整的单元格样式 (XF record) - 兼容旧版本
          *
          * @param style TXCellStyle 对象，包含了字体、填充、边框和对齐等信息
          * @param numFmtId 数字格式ID (0 代表 General)
@@ -69,12 +97,12 @@ namespace TinaXlsx
          * @return u32 此XF在styles.xml中<cellXfs>内的索引
          */
         u32 registerCellStyleXF(const TXCellStyle& style,
-                                u32 numFmtId = 0, // 默认为 General
-                                bool applyFont = true,
-                                bool applyFill = true,
-                                bool applyBorder = true,
-                                bool applyAlignment = true,
-                                bool applyNumberFormat = true);
+                                u32 numFmtId,
+                                bool applyFont,
+                                bool applyFill,
+                                bool applyBorder,
+                                bool applyAlignment,
+                                bool applyNumberFormat);
 
         // 生成 styles.xml 内容的 XmlNodeBuilder 对象
         XmlNodeBuilder createStylesXmlNode() const;
@@ -137,7 +165,16 @@ namespace TinaXlsx
             }
         };
 
-        // 数字格式结构
+        // 数字格式条目结构 (用于XML生成)
+        struct NumFmtEntry {
+            u32 id_;            ///< numFmtId
+            std::string formatCode_;  ///< Excel格式代码
+            
+            NumFmtEntry(u32 id, const std::string& formatCode)
+                : id_(id), formatCode_(formatCode) {}
+        };
+
+        // 数字格式结构 (保留用于兼容)
         struct NumberFormat
         {
             u32 numFmtId_;
@@ -168,19 +205,25 @@ namespace TinaXlsx
         std::vector<std::shared_ptr<TXFont>> fonts_pool_;
         std::vector<std::shared_ptr<TXFill>> fills_pool_;
         std::vector<std::shared_ptr<TXBorder>> borders_pool_;
-        // std::vector<YourNumberFormatStruct> num_fmts_pool_; // 如果管理自定义数字格式
-        std::vector<NumberFormat> num_fmts_pool_; // 数字格式池
-
+        std::vector<NumberFormat> num_fmts_pool_; // 数字格式池 (兼容)
         std::vector<CellXF> cell_xfs_pool_; // 存储 <cellXfs> 的 <xf> 元素数据
+
+        // 新的数字格式管理
+        std::vector<NumFmtEntry> num_fmts_pool_new_;  ///< 需要写入XML的自定义/非内置numFmt条目
+        std::map<std::string, u32> num_fmt_lookup_new_;  ///< 从formatCode到numFmtId的映射
+        u32 next_custom_num_fmt_id_;  ///< 自定义numFmtId的起始值
 
         // 用于快速查找已注册组件和XF的哈希表
         std::unordered_map<std::string, u32> font_lookup_;
         std::unordered_map<std::string, u32> fill_lookup_;
         std::unordered_map<std::string, u32> border_lookup_;
-        // std::unordered_map<std::string, u32> num_fmt_lookup_;
-        std::unordered_map<std::string, u32> num_fmt_lookup_; // 数字格式查找表
+        std::unordered_map<std::string, u32> num_fmt_lookup_; // 数字格式查找表 (兼容)
         std::unordered_map<std::string, u32> cell_xf_lookup_;
 
         void initializeDefaultStyles();
+        void initializeBuiltinNumberFormats();  ///< 初始化内置数字格式映射
+        
+        // 内置格式映射 (从格式代码到numFmtId)
+        static const std::unordered_map<std::string, u32> S_BUILTIN_NUMBER_FORMATS;
     };
 } // namespace TinaXlsx

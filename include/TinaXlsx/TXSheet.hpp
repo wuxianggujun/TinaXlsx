@@ -515,6 +515,13 @@ private:
     bool applyCellNumberFormat(TXCell* cell, u32 numFmtId);
     
     /**
+     * @brief 获取单元格当前的有效样式
+     * @param cell 目标单元格
+     * @return 当前的完整样式对象
+     */
+    TXCellStyle getCellEffectiveStyle(TXCell* cell);
+    
+    /**
      * @brief 更新已使用范围
      */
     void updateUsedRange();
