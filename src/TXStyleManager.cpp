@@ -28,7 +28,6 @@ namespace TinaXlsx
         : fonts_pool_(std::move(other.fonts_pool_))
         , fills_pool_(std::move(other.fills_pool_))
         , borders_pool_(std::move(other.borders_pool_))
-        , num_fmts_pool_(std::move(other.num_fmts_pool_))
         , cell_xfs_pool_(std::move(other.cell_xfs_pool_))
         , num_fmts_pool_new_(std::move(other.num_fmts_pool_new_))
         , num_fmt_lookup_new_(std::move(other.num_fmt_lookup_new_))
@@ -36,8 +35,8 @@ namespace TinaXlsx
         , font_lookup_(std::move(other.font_lookup_))
         , fill_lookup_(std::move(other.fill_lookup_))
         , border_lookup_(std::move(other.border_lookup_))
-        , num_fmt_lookup_(std::move(other.num_fmt_lookup_))
-        , cell_xf_lookup_(std::move(other.cell_xf_lookup_)) {
+        , cell_xf_lookup_(std::move(other.cell_xf_lookup_))
+        , style_cache_(std::move(other.style_cache_)) {
     }
 
     TXStyleManager& TXStyleManager::operator=(TXStyleManager&& other) noexcept {
@@ -45,7 +44,6 @@ namespace TinaXlsx
             fonts_pool_ = std::move(other.fonts_pool_);
             fills_pool_ = std::move(other.fills_pool_);
             borders_pool_ = std::move(other.borders_pool_);
-            num_fmts_pool_ = std::move(other.num_fmts_pool_);
             cell_xfs_pool_ = std::move(other.cell_xfs_pool_);
             num_fmts_pool_new_ = std::move(other.num_fmts_pool_new_);
             num_fmt_lookup_new_ = std::move(other.num_fmt_lookup_new_);
@@ -53,8 +51,8 @@ namespace TinaXlsx
             font_lookup_ = std::move(other.font_lookup_);
             fill_lookup_ = std::move(other.fill_lookup_);
             border_lookup_ = std::move(other.border_lookup_);
-            num_fmt_lookup_ = std::move(other.num_fmt_lookup_);
             cell_xf_lookup_ = std::move(other.cell_xf_lookup_);
+            style_cache_ = std::move(other.style_cache_);
         }
         return *this;
     }
@@ -191,112 +189,9 @@ namespace TinaXlsx
         return index;
     }
 
-    u32 TXStyleManager::registerCellStyleXF(const TXCellStyle& style,
-                                            u32 numFmtId,
-                                            bool applyFont, bool applyFill,
-                                            bool applyBorder, bool applyAlignment,
-                                            bool applyNumberFormat)
-    {
-        CellXF xf_data;
-        xf_data.font_id_ = registerFont(style.getFont());
-        xf_data.fill_id_ = registerFill(style.getFill());
-        xf_data.border_id_ = registerBorder(style.getBorder());
-        xf_data.num_fmt_id_ = numFmtId;
-        xf_data.xf_id_ = 0; // Always points to the main master XF in cellStyleXfs (index 0)
 
-        xf_data.apply_font_ = applyFont;
-        xf_data.apply_fill_ = applyFill;
-        xf_data.apply_border_ = applyBorder;
-        xf_data.apply_alignment_ = applyAlignment;
-        xf_data.apply_number_format_ = applyNumberFormat;
 
-        xf_data.alignment_ = style.getAlignment(); // Copy alignment settings
 
-        std::string key = xf_data.generateKey();
-        auto it = cell_xf_lookup_.find(key);
-        if (it != cell_xf_lookup_.end())
-        {
-            return it->second;
-        }
-
-        cell_xfs_pool_.push_back(xf_data);
-        u32 index = static_cast<u32>(cell_xfs_pool_.size() - 1);
-        cell_xf_lookup_[key] = index;
-        return index;
-    }
-
-    u32 TXStyleManager::registerNumberFormat(TXNumberFormat::FormatType formatType,
-                                            const std::string& formatString,
-                                            int decimalPlaces,
-                                            bool useThousandSeparator,
-                                            const std::string& currencySymbol)
-    {
-        u32 numFmtId = 164; // 默认为自定义格式起始ID
-        
-        // 检查是否为内置格式
-        if (formatType == TXNumberFormat::FormatType::General) {
-            numFmtId = 0;
-        } else if (formatType == TXNumberFormat::FormatType::Number) {
-            // Excel 内置数字格式：
-            // 1: 0 (整数)
-            // 2: 0.00 (2位小数)
-            // 3: #,##0 (带千位分隔符的整数)
-            // 4: #,##0.00 (带千位分隔符的2位小数)
-            if (useThousandSeparator) {
-                numFmtId = (decimalPlaces == 0) ? 3 : 4;
-            } else {
-                numFmtId = (decimalPlaces == 0) ? 1 : 2;
-            }
-        } else if (formatType == TXNumberFormat::FormatType::Percentage) {
-            numFmtId = (decimalPlaces == 0) ? 9 : 10;
-        } else if (formatType == TXNumberFormat::FormatType::Currency) {
-            numFmtId = (decimalPlaces == 0) ? 43 : 44;
-        } else if (formatType == TXNumberFormat::FormatType::Date) {
-            numFmtId = 14;
-        } else if (formatType == TXNumberFormat::FormatType::Time) {
-            numFmtId = 18;
-        } else if (formatType == TXNumberFormat::FormatType::DateTime) {
-            numFmtId = 22;
-        } else if (formatType == TXNumberFormat::FormatType::Scientific) {
-            numFmtId = 11;
-        } else if (formatType == TXNumberFormat::FormatType::Text) {
-            numFmtId = 49;
-        } else {
-            // 自定义格式，分配新的ID
-            numFmtId = 164 + static_cast<u32>(num_fmts_pool_.size());
-        }
-
-        NumberFormat numFmt(numFmtId, formatType, formatString, decimalPlaces, useThousandSeparator, currencySymbol);
-        std::string key = numFmt.generateKey();
-
-        auto it = num_fmt_lookup_.find(key);
-        if (it != num_fmt_lookup_.end())
-        {
-            // 找到了相同的格式，返回对应的numFmtId
-            for (const auto& fmt : num_fmts_pool_)
-            {
-                if (fmt.generateKey() == key)
-                {
-                    return fmt.numFmtId_;
-                }
-            }
-        }
-
-        num_fmts_pool_.push_back(numFmt);
-        num_fmt_lookup_[key] = numFmtId;
-        return numFmtId;
-    }
-
-    u32 TXStyleManager::registerNumberFormat(const TXNumberFormat& numberFormat)
-    {
-        return registerNumberFormat(
-            numberFormat.getFormatType(),
-            numberFormat.getFormatString(),
-            numberFormat.getFormatOptions().decimalPlaces,
-            numberFormat.getFormatOptions().useThousandSeparator,
-            numberFormat.getFormatOptions().currencySymbol
-        );
-    }
 
     // --- XML String Converters ---
     std::string TXStyleManager::horizontalAlignmentToString(HorizontalAlignment alignment) const

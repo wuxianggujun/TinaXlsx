@@ -5,6 +5,7 @@
 #include <fstream>
 
 using namespace TinaXlsx;
+using cell_value_t = TinaXlsx::cell_value_t;
 
 class XlsxReaderTest : public ::testing::Test {
 protected:
@@ -32,8 +33,8 @@ protected:
         
         // 创建包含各种数据类型的测试文件
         sheet->setCellValue(row_t(1), column_t(1), "字符串测试");
-        sheet->setCellValue(row_t(1), column_t(2), 123.45);
-        sheet->setCellValue(row_t(1), column_t(3), true);
+        sheet->setCellValue(row_t(1), column_t(2), cell_value_t{123.45});
+        sheet->setCellValue(row_t(1), column_t(3), cell_value_t{true});
         sheet->setCellValue(row_t(1), column_t(4), "=A1&B1");
         
         // 添加数字格式
@@ -115,8 +116,8 @@ TEST_F(XlsxReaderTest, LargeFileReading) {
     // 写入1000行数据
     for (int i = 1; i <= 1000; ++i) {
         sheet->setCellValue(row_t(i), column_t(1), "行数据_" + std::to_string(i));
-        sheet->setCellValue(row_t(i), column_t(2), i * 10.5);
-        sheet->setCellValue(row_t(i), column_t(3), i % 2 == 0);
+        sheet->setCellValue(row_t(i), column_t(2), cell_value_t{i * 10.5});
+        sheet->setCellValue(row_t(i), column_t(3), cell_value_t{i % 2 == 0});
     }
     
     EXPECT_TRUE(workbook->saveToFile(large_file));
@@ -140,7 +141,7 @@ TEST_F(XlsxReaderTest, MultiSheetFileReading) {
     
     // 在每个工作表中添加数据
     sheet1->setCellValue(row_t(1), column_t(1), "销售金额");
-    sheet1->setCellValue(row_t(2), column_t(1), 10000.0);
+    sheet1->setCellValue(row_t(2), column_t(1), cell_value_t{10000.0});
     
     sheet2->setCellValue(row_t(1), column_t(1), "总计");
     sheet2->setCellValue(row_t(2), column_t(1), "=销售数据.B2*1.2");
@@ -175,13 +176,13 @@ TEST_F(XlsxReaderTest, FormattedDataReading) {
     auto* sheet = workbook->addSheet("格式化数据");
     
     // 设置各种格式的数据
-    sheet->setCellValue(row_t(1), column_t(1), 1234.567);
+    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{1234.567});
     sheet->setCellNumberFormat(row_t(1), column_t(1), TXNumberFormat::FormatType::Number, 2);
     
-    sheet->setCellValue(row_t(2), column_t(1), 0.75);
+    sheet->setCellValue(row_t(2), column_t(1), cell_value_t{0.75});
     sheet->setCellNumberFormat(row_t(2), column_t(1), TXNumberFormat::FormatType::Percentage, 1);
     
-    sheet->setCellValue(row_t(3), column_t(1), 50000.0);
+    sheet->setCellValue(row_t(3), column_t(1), cell_value_t{50000.0});
     sheet->setCellNumberFormat(row_t(3), column_t(1), TXNumberFormat::FormatType::Currency, 2);
     
     EXPECT_TRUE(workbook->saveToFile(formatted_file));

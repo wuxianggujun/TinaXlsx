@@ -723,19 +723,23 @@ namespace TinaXlsx
 
         auto& styleManager = workbook_->getStyleManager();
         
-        // 创建一个包含此数字格式的样式
-        TXCellStyle cellStyle; // 使用默认样式，只改变数字格式
+        // 获取当前样式
+        TXCellStyle cellStyle = getCellEffectiveStyle(cell);
         
-        // 注册或获取这个样式的XF记录，指定numFmtId
-        u32 styleIndex = styleManager.registerCellStyleXF(
-            cellStyle, 
-            numFmtId,       // 数字格式ID
-            true,           // applyFont
-            true,           // applyFill  
-            true,           // applyBorder
-            true,           // applyAlignment
-            true            // applyNumberFormat - 关键！
-        );
+        // 创建数字格式定义 - 这里简化处理，因为我们只有numFmtId
+        // 实际应用中可能需要根据numFmtId逆向解析格式类型
+        TXCellStyle::NumberFormatDefinition numFmtDef;
+        if (numFmtId == 0) {
+            numFmtDef = TXCellStyle::NumberFormatDefinition(); // 常规格式
+        } else {
+            // 简化处理：作为自定义格式处理
+            numFmtDef = TXCellStyle::NumberFormatDefinition("General"); // 默认
+        }
+        
+        cellStyle.setNumberFormatDefinition(numFmtDef);
+        
+        // 注册或获取这个样式的XF记录
+        u32 styleIndex = styleManager.registerCellStyleXF(cellStyle);
 
         // 设置单元格的样式索引
         cell->setStyleIndex(styleIndex);

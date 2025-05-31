@@ -43,27 +43,7 @@ namespace TinaXlsx
          */
         u32 registerNumberFormat(const TXCellStyle::NumberFormatDefinition& definition);
 
-        /**
-         * @brief 注册数字格式 (兼容旧接口)
-         * @param formatType 数字格式类型
-         * @param formatString 自定义格式字符串（对于Custom类型）
-         * @param decimalPlaces 小数位数
-         * @param useThousandSeparator 是否使用千位分隔符
-         * @param currencySymbol 货币符号
-         * @return 数字格式ID
-         */
-        u32 registerNumberFormat(TXNumberFormat::FormatType formatType, 
-                                const std::string& formatString = "",
-                                int decimalPlaces = 2,
-                                bool useThousandSeparator = false,
-                                const std::string& currencySymbol = "$");
 
-        /**
-         * @brief 通过 TXNumberFormat 对象注册数字格式
-         * @param numberFormat TXNumberFormat对象
-         * @return 数字格式ID
-         */
-        u32 registerNumberFormat(const TXNumberFormat& numberFormat);
 
         /**
          * @brief 注册一个完整的单元格样式 (XF record) - 新版本
@@ -84,25 +64,7 @@ namespace TinaXlsx
                                 bool applyBorder = true,
                                 bool applyAlignment = true);
 
-        /**
-         * @brief 注册一个完整的单元格样式 (XF record) - 兼容旧版本
-         *
-         * @param style TXCellStyle 对象，包含了字体、填充、边框和对齐等信息
-         * @param numFmtId 数字格式ID (0 代表 General)
-         * @param applyFont 是否应用此XF中的字体设置
-         * @param applyFill 是否应用此XF中的填充设置
-         * @param applyBorder 是否应用此XF中的边框设置
-         * @param applyAlignment 是否应用此XF中的对齐设置
-         * @param applyNumberFormat 是否应用此XF中的数字格式设置
-         * @return u32 此XF在styles.xml中<cellXfs>内的索引
-         */
-        u32 registerCellStyleXF(const TXCellStyle& style,
-                                u32 numFmtId,
-                                bool applyFont,
-                                bool applyFill,
-                                bool applyBorder,
-                                bool applyAlignment,
-                                bool applyNumberFormat);
+
 
         // 生成 styles.xml 内容的 XmlNodeBuilder 对象
         XmlNodeBuilder createStylesXmlNode() const;
@@ -181,38 +143,13 @@ namespace TinaXlsx
                 : id_(id), formatCode_(formatCode) {}
         };
 
-        // 数字格式结构 (保留用于兼容)
-        struct NumberFormat
-        {
-            u32 numFmtId_;
-            TXNumberFormat::FormatType formatType_;
-            std::string formatString_;
-            int decimalPlaces_;
-            bool useThousandSeparator_;
-            std::string currencySymbol_;
 
-            NumberFormat(u32 id, TXNumberFormat::FormatType type, const std::string& formatStr = "",
-                        int decimals = 2, bool useThousands = false, const std::string& currency = "$")
-                : numFmtId_(id), formatType_(type), formatString_(formatStr), 
-                  decimalPlaces_(decimals), useThousandSeparator_(useThousands), currencySymbol_(currency) {}
-
-            std::string generateKey() const
-            {
-                std::ostringstream oss;
-                oss << "type:" << static_cast<int>(formatType_) 
-                    << ";str:" << formatString_
-                    << ";dec:" << decimalPlaces_
-                    << ";thou:" << useThousandSeparator_
-                    << ";curr:" << currencySymbol_;
-                return oss.str();
-            }
-        };
 
         // 存储池
         std::vector<std::shared_ptr<TXFont>> fonts_pool_;
         std::vector<std::shared_ptr<TXFill>> fills_pool_;
         std::vector<std::shared_ptr<TXBorder>> borders_pool_;
-        std::vector<NumberFormat> num_fmts_pool_; // 数字格式池 (兼容)
+
         std::vector<CellXF> cell_xfs_pool_; // 存储 <cellXfs> 的 <xf> 元素数据
 
         // 新的数字格式管理
@@ -224,7 +161,7 @@ namespace TinaXlsx
         std::unordered_map<std::string, u32> font_lookup_;
         std::unordered_map<std::string, u32> fill_lookup_;
         std::unordered_map<std::string, u32> border_lookup_;
-        std::unordered_map<std::string, u32> num_fmt_lookup_; // 数字格式查找表 (兼容)
+
         std::unordered_map<std::string, u32> cell_xf_lookup_;
 
         // 样式反向构造缓存 (优化性能)
