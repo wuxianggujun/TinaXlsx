@@ -1,19 +1,21 @@
 #include <gtest/gtest.h>
-#include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <memory>
 
 using namespace TinaXlsx;
 
-class ColumnWidthRowHeightTest : public ::testing::Test {
+class ColumnWidthRowHeightTest : public TestWithFileGeneration<ColumnWidthRowHeightTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<ColumnWidthRowHeightTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = workbook->addSheet("测试工作表");
     }
 
     void TearDown() override {
         workbook.reset();
+        TestWithFileGeneration<ColumnWidthRowHeightTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -94,15 +96,42 @@ TEST_F(ColumnWidthRowHeightTest, AutoFitAllColumns) {
     sheet->setCellValue(row_t(1), column_t(1), cell_value_t{"列A数据"});
     sheet->setCellValue(row_t(1), column_t(2), cell_value_t{"列B的长数据内容"});
     sheet->setCellValue(row_t(1), column_t(3), cell_value_t{"列C"});
-    
+
     // 测试自动调整所有列宽
     std::size_t adjustedCount = sheet->autoFitAllColumnWidths();
     EXPECT_EQ(adjustedCount, 3); // 应该调整了3列
-    
+
     // 验证各列宽度都被调整
     EXPECT_GT(sheet->getColumnWidth(column_t(1)), 8.43);
     EXPECT_GT(sheet->getColumnWidth(column_t(2)), 8.43);
     EXPECT_GT(sheet->getColumnWidth(column_t(3)), 8.43);
+
+    // 生成测试文件
+    addTestInfo(sheet, "AutoFitAllColumns", "测试自动调整所有列宽功能");
+
+    // 添加更多测试数据来展示自动调整效果
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"列"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"原始宽度"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"调整后宽度"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"内容示例"});
+
+    // 重新设置一些内容并记录宽度变化
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"8.43"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{sheet->getColumnWidth(column_t(1))});
+    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"短内容"});
+
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"B"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"8.43"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{sheet->getColumnWidth(column_t(2))});
+    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"这是一个比较长的内容，用于测试自动调整列宽功能"});
+
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"C"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"8.43"});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{sheet->getColumnWidth(column_t(3))});
+    sheet->setCellValue(row_t(10), column_t(4), cell_value_t{"中文测试内容"});
+
+    saveWorkbook(workbook, "AutoFitAllColumns");
 }
 
 TEST_F(ColumnWidthRowHeightTest, AutoFitAllRows) {

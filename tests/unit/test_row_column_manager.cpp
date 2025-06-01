@@ -2,15 +2,23 @@
 #include "TinaXlsx/TXRowColumnManager.hpp"
 #include "TinaXlsx/TXCellManager.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
+#include "TinaXlsx/TXWorkbook.hpp"
+#include "TinaXlsx/TXSheet.hpp"
+#include "test_file_generator.hpp"
 
 using namespace TinaXlsx;
 
-class TXRowColumnManagerTest : public ::testing::Test {
+class TXRowColumnManagerTest : public TestWithFileGeneration<TXRowColumnManagerTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<TXRowColumnManagerTest>::SetUp();
         rowColManager = std::make_unique<TXRowColumnManager>();
         cellManager = std::make_unique<TXCellManager>();
-        
+
+        // 为文件生成创建工作簿和工作表
+        workbook = std::make_unique<TXWorkbook>();
+        sheet = workbook->addSheet("RowColumn管理器测试");
+
         // 设置一些测试数据
         cellManager->setCellValue(TXCoordinate(row_t(1), column_t(1)), std::string("A1"));
         cellManager->setCellValue(TXCoordinate(row_t(1), column_t(2)), std::string("B1"));
@@ -22,10 +30,14 @@ protected:
     void TearDown() override {
         rowColManager.reset();
         cellManager.reset();
+        workbook.reset();
+        TestWithFileGeneration<TXRowColumnManagerTest>::TearDown();
     }
 
     std::unique_ptr<TXRowColumnManager> rowColManager;
     std::unique_ptr<TXCellManager> cellManager;
+    std::unique_ptr<TXWorkbook> workbook;
+    TXSheet* sheet = nullptr;
 };
 
 // ==================== 行操作测试 ====================
@@ -236,6 +248,38 @@ TEST_F(TXRowColumnManagerTest, BatchSetColumnWidths) {
     EXPECT_DOUBLE_EQ(rowColManager->getColumnWidth(column_t(1)), 10.0);
     EXPECT_DOUBLE_EQ(rowColManager->getColumnWidth(column_t(2)), 15.0);
     EXPECT_DOUBLE_EQ(rowColManager->getColumnWidth(column_t(3)), 20.0);
+
+    // 生成测试文件
+    addTestInfo(sheet, "BatchSetColumnWidths", "测试批量设置列宽功能");
+
+    // 演示不同列宽的效果
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"列"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"宽度"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"内容示例"});
+
+    // 设置实际的列宽并添加内容
+    sheet->setColumnWidth(column_t(1), 10.0);
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"10.0"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"窄列内容"});
+
+    sheet->setColumnWidth(column_t(2), 15.0);
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"B"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"15.0"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"中等宽度列内容"});
+
+    sheet->setColumnWidth(column_t(3), 20.0);
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"C"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"20.0"});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"较宽列可以容纳更多内容"});
+
+    // 添加批量操作统计
+    sheet->setCellValue(row_t(12), column_t(1), cell_value_t{"批量操作统计:"});
+    sheet->setCellValue(row_t(12), column_t(2), cell_value_t{"成功设置"});
+    sheet->setCellValue(row_t(12), column_t(3), cell_value_t{static_cast<double>(count)});
+    sheet->setCellValue(row_t(12), column_t(4), cell_value_t{"列的宽度"});
+
+    saveWorkbook(workbook, "BatchSetColumnWidths");
 }
 
 // ==================== 边界条件测试 ====================

@@ -3,15 +3,23 @@
 #include "TinaXlsx/TXCellManager.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
 #include "TinaXlsx/TXRange.hpp"
+#include "TinaXlsx/TXWorkbook.hpp"
+#include "TinaXlsx/TXSheet.hpp"
+#include "test_file_generator.hpp"
 
 using namespace TinaXlsx;
 
-class TXSheetProtectionManagerTest : public ::testing::Test {
+class TXSheetProtectionManagerTest : public TestWithFileGeneration<TXSheetProtectionManagerTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<TXSheetProtectionManagerTest>::SetUp();
         protectionManager = std::make_unique<TXSheetProtectionManager>();
         cellManager = std::make_unique<TXCellManager>();
-        
+
+        // 为文件生成创建工作簿和工作表
+        workbook = std::make_unique<TXWorkbook>();
+        sheet = workbook->addSheet("保护管理器测试");
+
         // 设置一些测试单元格
         cellManager->setCellValue(TXCoordinate(row_t(1), column_t(1)), std::string("A1"));
         cellManager->setCellValue(TXCoordinate(row_t(1), column_t(2)), std::string("B1"));
@@ -22,10 +30,14 @@ protected:
     void TearDown() override {
         protectionManager.reset();
         cellManager.reset();
+        workbook.reset();
+        TestWithFileGeneration<TXSheetProtectionManagerTest>::TearDown();
     }
 
     std::unique_ptr<TXSheetProtectionManager> protectionManager;
     std::unique_ptr<TXCellManager> cellManager;
+    std::unique_ptr<TXWorkbook> workbook;
+    TXSheet* sheet = nullptr;
 };
 
 // ==================== 基本保护功能测试 ====================
@@ -248,6 +260,51 @@ TEST_F(TXSheetProtectionManagerTest, ProtectionStats) {
     EXPECT_EQ(stats.lockedCellCount, 3);
     EXPECT_EQ(stats.unlockedCellCount, 1);
     EXPECT_GT(stats.allowedOperationCount, 0);  // 至少选择操作是允许的
+
+    // 生成测试文件
+    addTestInfo(sheet, "ProtectionStats", "测试工作表保护统计功能");
+
+    // 演示保护统计信息
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"保护统计项目"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"值"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"说明"});
+
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"工作表保护状态"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{stats.isProtected ? "已保护" : "未保护"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"工作表是否启用保护"});
+
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"密码保护"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{stats.hasPassword ? "有密码" : "无密码"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"是否设置了保护密码"});
+
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"锁定单元格数量"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{static_cast<double>(stats.lockedCellCount)});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"被锁定的单元格总数"});
+
+    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"未锁定单元格数量"});
+    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{static_cast<double>(stats.unlockedCellCount)});
+    sheet->setCellValue(row_t(11), column_t(3), cell_value_t{"未锁定的单元格总数"});
+
+    sheet->setCellValue(row_t(12), column_t(1), cell_value_t{"允许的操作数量"});
+    sheet->setCellValue(row_t(12), column_t(2), cell_value_t{static_cast<double>(stats.allowedOperationCount)});
+    sheet->setCellValue(row_t(12), column_t(3), cell_value_t{"保护状态下允许的操作数量"});
+
+    // 添加示例数据
+    sheet->setCellValue(row_t(14), column_t(1), cell_value_t{"示例数据:"});
+    sheet->setCellValue(row_t(15), column_t(1), cell_value_t{"锁定单元格"});
+    sheet->setCellValue(row_t(15), column_t(2), cell_value_t{"重要数据"});
+    sheet->setCellValue(row_t(15), column_t(3), cell_value_t{"此单元格被锁定"});
+    sheet->setCellLocked(row_t(15), column_t(2), true);
+
+    sheet->setCellValue(row_t(16), column_t(1), cell_value_t{"未锁定单元格"});
+    sheet->setCellValue(row_t(16), column_t(2), cell_value_t{"可编辑数据"});
+    sheet->setCellValue(row_t(16), column_t(3), cell_value_t{"此单元格未锁定"});
+    sheet->setCellLocked(row_t(16), column_t(2), false);
+
+    // 保护工作表
+    sheet->protectSheet("password");
+
+    saveWorkbook(workbook, "ProtectionStats");
 }
 
 // ==================== 清空和重置测试 ====================

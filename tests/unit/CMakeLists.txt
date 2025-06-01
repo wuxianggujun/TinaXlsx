@@ -17,6 +17,9 @@ set(UNIT_TEST_SOURCES
     test_row_column_manager.cpp
     test_sheet_protection_manager.cpp
     test_sheet_refactored_integration.cpp
+
+    # 测试文件生成器
+    test_file_generator.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）

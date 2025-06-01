@@ -1,19 +1,21 @@
 #include <gtest/gtest.h>
-#include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <memory>
 
 using namespace TinaXlsx;
 
-class SheetProtectionTest : public ::testing::Test {
+class SheetProtectionTest : public TestWithFileGeneration<SheetProtectionTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<SheetProtectionTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = workbook->addSheet("保护测试");
     }
 
     void TearDown() override {
         workbook.reset();
+        TestWithFileGeneration<SheetProtectionTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -69,6 +71,38 @@ TEST_F(SheetProtectionTest, CustomProtectionOptions) {
     EXPECT_FALSE(retrievedProtection.deleteRows);
     EXPECT_TRUE(retrievedProtection.selectLockedCells);
     EXPECT_TRUE(retrievedProtection.selectUnlockedCells);
+
+    // 生成测试文件
+    addTestInfo(sheet, "CustomProtectionOptions", "测试自定义工作表保护选项");
+
+    // 添加保护选项说明
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"保护选项"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"状态"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"说明"});
+
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"格式化单元格"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"禁止"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"用户无法格式化单元格"});
+
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"插入行"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"禁止"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"用户无法插入新行"});
+
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"删除行"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"禁止"});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"用户无法删除行"});
+
+    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"选择锁定单元格"});
+    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{"允许"});
+    sheet->setCellValue(row_t(11), column_t(3), cell_value_t{"用户可以选择锁定的单元格"});
+
+    sheet->setCellValue(row_t(12), column_t(1), cell_value_t{"选择未锁定单元格"});
+    sheet->setCellValue(row_t(12), column_t(2), cell_value_t{"允许"});
+    sheet->setCellValue(row_t(12), column_t(3), cell_value_t{"用户可以选择未锁定的单元格"});
+
+    sheet->setCellValue(row_t(14), column_t(1), cell_value_t{"保护密码: password"});
+
+    saveWorkbook(workbook, "CustomProtectionOptions");
 }
 
 TEST_F(SheetProtectionTest, CellLocking) {

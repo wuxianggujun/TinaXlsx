@@ -2,20 +2,31 @@
 #include "TinaXlsx/TXCellManager.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
 #include "TinaXlsx/TXRange.hpp"
+#include "TinaXlsx/TXWorkbook.hpp"
+#include "TinaXlsx/TXSheet.hpp"
+#include "test_file_generator.hpp"
 
 using namespace TinaXlsx;
 
-class TXCellManagerTest : public ::testing::Test {
+class TXCellManagerTest : public TestWithFileGeneration<TXCellManagerTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<TXCellManagerTest>::SetUp();
         cellManager = std::make_unique<TXCellManager>();
+        // 为文件生成创建工作簿和工作表
+        workbook = std::make_unique<TXWorkbook>();
+        sheet = workbook->addSheet("CellManager测试");
     }
 
     void TearDown() override {
         cellManager.reset();
+        workbook.reset();
+        TestWithFileGeneration<TXCellManagerTest>::TearDown();
     }
 
     std::unique_ptr<TXCellManager> cellManager;
+    std::unique_ptr<TXWorkbook> workbook;
+    TXSheet* sheet = nullptr;
 };
 
 // ==================== 基本单元格操作测试 ====================
@@ -102,6 +113,42 @@ TEST_F(TXCellManagerTest, BatchOperations) {
     EXPECT_EQ(std::get<std::string>(cellManager->getCellValue(TXCoordinate(row_t(1), column_t(2)))), "B1");
     EXPECT_DOUBLE_EQ(std::get<double>(cellManager->getCellValue(TXCoordinate(row_t(2), column_t(1)))), 123.0);
     EXPECT_EQ(std::get<bool>(cellManager->getCellValue(TXCoordinate(row_t(2), column_t(2)))), true);
+
+    // 生成测试文件
+    addTestInfo(sheet, "BatchOperations", "测试TXCellManager批量操作功能");
+
+    // 将测试数据复制到工作表中进行演示
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"坐标"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"数据类型"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"值"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"说明"});
+
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A1"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"字符串"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"A1"});
+    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"批量设置的字符串值"});
+
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"B1"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"字符串"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"B1"});
+    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"批量设置的字符串值"});
+
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"A2"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"数字"});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{123.0});
+    sheet->setCellValue(row_t(10), column_t(4), cell_value_t{"批量设置的数字值"});
+
+    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"B2"});
+    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{"布尔值"});
+    sheet->setCellValue(row_t(11), column_t(3), cell_value_t{true});
+    sheet->setCellValue(row_t(11), column_t(4), cell_value_t{"批量设置的布尔值"});
+
+    sheet->setCellValue(row_t(13), column_t(1), cell_value_t{"批量操作统计:"});
+    sheet->setCellValue(row_t(13), column_t(2), cell_value_t{"成功设置"});
+    sheet->setCellValue(row_t(13), column_t(3), cell_value_t{static_cast<double>(count)});
+    sheet->setCellValue(row_t(13), column_t(4), cell_value_t{"个单元格"});
+
+    saveWorkbook(workbook, "BatchOperations");
 }
 
 TEST_F(TXCellManagerTest, BatchGetValues) {

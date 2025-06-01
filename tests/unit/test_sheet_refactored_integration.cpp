@@ -2,12 +2,14 @@
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXWorkbook.hpp"
 #include "TinaXlsx/TXStyle.hpp"
+#include "test_file_generator.hpp"
 
 using namespace TinaXlsx;
 
-class TXSheetRefactoredIntegrationTest : public ::testing::Test {
+class TXSheetRefactoredIntegrationTest : public TestWithFileGeneration<TXSheetRefactoredIntegrationTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<TXSheetRefactoredIntegrationTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = std::make_unique<TXSheet>("TestSheet", workbook.get());
     }
@@ -15,6 +17,7 @@ protected:
     void TearDown() override {
         sheet.reset();
         workbook.reset();
+        TestWithFileGeneration<TXSheetRefactoredIntegrationTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -256,6 +259,48 @@ TEST_F(TXSheetRefactoredIntegrationTest, BatchOperations) {
     
     auto result = sheet->getCellValues(coords);
     EXPECT_EQ(result.size(), 4);
+
+    // 生成测试文件
+    // 注意：这里需要使用workbook中的sheet，而不是独立的sheet
+    auto* workbookSheet = workbook->addSheet("集成测试");
+    addTestInfo(workbookSheet, "BatchOperations", "测试TXSheet重构后的批量操作功能");
+
+    // 复制测试数据到工作簿的工作表中
+    workbookSheet->setCellValue(row_t(7), column_t(1), cell_value_t{"坐标"});
+    workbookSheet->setCellValue(row_t(7), column_t(2), cell_value_t{"数据类型"});
+    workbookSheet->setCellValue(row_t(7), column_t(3), cell_value_t{"值"});
+    workbookSheet->setCellValue(row_t(7), column_t(4), cell_value_t{"说明"});
+
+    workbookSheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A1"});
+    workbookSheet->setCellValue(row_t(8), column_t(2), cell_value_t{"字符串"});
+    workbookSheet->setCellValue(row_t(8), column_t(3), cell_value_t{"A1"});
+    workbookSheet->setCellValue(row_t(8), column_t(4), cell_value_t{"批量设置的字符串值"});
+
+    workbookSheet->setCellValue(row_t(9), column_t(1), cell_value_t{"B1"});
+    workbookSheet->setCellValue(row_t(9), column_t(2), cell_value_t{"字符串"});
+    workbookSheet->setCellValue(row_t(9), column_t(3), cell_value_t{"B1"});
+    workbookSheet->setCellValue(row_t(9), column_t(4), cell_value_t{"批量设置的字符串值"});
+
+    workbookSheet->setCellValue(row_t(10), column_t(1), cell_value_t{"A2"});
+    workbookSheet->setCellValue(row_t(10), column_t(2), cell_value_t{"数字"});
+    workbookSheet->setCellValue(row_t(10), column_t(3), cell_value_t{123.0});
+    workbookSheet->setCellValue(row_t(10), column_t(4), cell_value_t{"批量设置的数字值"});
+
+    workbookSheet->setCellValue(row_t(11), column_t(1), cell_value_t{"B2"});
+    workbookSheet->setCellValue(row_t(11), column_t(2), cell_value_t{"布尔值"});
+    workbookSheet->setCellValue(row_t(11), column_t(3), cell_value_t{true});
+    workbookSheet->setCellValue(row_t(11), column_t(4), cell_value_t{"批量设置的布尔值"});
+
+    workbookSheet->setCellValue(row_t(13), column_t(1), cell_value_t{"批量操作统计:"});
+    workbookSheet->setCellValue(row_t(13), column_t(2), cell_value_t{"成功设置"});
+    workbookSheet->setCellValue(row_t(13), column_t(3), cell_value_t{static_cast<double>(count)});
+    workbookSheet->setCellValue(row_t(13), column_t(4), cell_value_t{"个单元格"});
+
+    workbookSheet->setCellValue(row_t(14), column_t(2), cell_value_t{"成功获取"});
+    workbookSheet->setCellValue(row_t(14), column_t(3), cell_value_t{static_cast<double>(result.size())});
+    workbookSheet->setCellValue(row_t(14), column_t(4), cell_value_t{"个单元格值"});
+
+    saveWorkbook(workbook, "BatchOperations");
 }
 
 // ==================== 范围操作测试 ====================

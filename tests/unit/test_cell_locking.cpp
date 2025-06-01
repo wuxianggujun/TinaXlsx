@@ -1,19 +1,21 @@
 #include <gtest/gtest.h>
-#include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <memory>
 
 using namespace TinaXlsx;
 
-class CellLockingTest : public ::testing::Test {
+class CellLockingTest : public TestWithFileGeneration<CellLockingTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<CellLockingTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = workbook->addSheet("锁定测试");
     }
 
     void TearDown() override {
         workbook.reset();
+        TestWithFileGeneration<CellLockingTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -62,6 +64,44 @@ TEST_F(CellLockingTest, SetCellLockingViaSheet) {
     // 测试重新锁定
     EXPECT_TRUE(sheet->setCellLocked(row_t(1), column_t(1), true));
     EXPECT_TRUE(sheet->isCellLocked(row_t(1), column_t(1)));
+
+    // 生成测试文件
+    addTestInfo(sheet, "SetCellLockingViaSheet", "测试通过工作表接口设置单元格锁定状态");
+
+    // 创建锁定状态演示
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"单元格"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"锁定状态"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"内容"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"说明"});
+
+    // 锁定的单元格
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A8"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"锁定"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"重要数据"});
+    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"此单元格被锁定，保护时无法编辑"});
+    sheet->setCellLocked(row_t(8), column_t(3), true);
+
+    // 未锁定的单元格
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"A9"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"未锁定"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"可编辑数据"});
+    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"此单元格未锁定，保护时仍可编辑"});
+    sheet->setCellLocked(row_t(9), column_t(3), false);
+
+    // 混合状态的行
+    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"A10"});
+    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"锁定"});
+    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"标题"});
+    sheet->setCellValue(row_t(10), column_t(4), cell_value_t{"标题通常需要锁定"});
+    sheet->setCellLocked(row_t(10), column_t(3), true);
+
+    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"B10"});
+    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{"未锁定"});
+    sheet->setCellValue(row_t(11), column_t(3), cell_value_t{"输入区域"});
+    sheet->setCellValue(row_t(11), column_t(4), cell_value_t{"输入区域通常不锁定"});
+    sheet->setCellLocked(row_t(11), column_t(3), false);
+
+    saveWorkbook(workbook, "SetCellLockingViaSheet");
 }
 
 TEST_F(CellLockingTest, AutoCreateCellForLocking) {

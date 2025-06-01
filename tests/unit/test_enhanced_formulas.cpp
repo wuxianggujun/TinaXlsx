@@ -1,19 +1,21 @@
 #include <gtest/gtest.h>
-#include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <memory>
 
 using namespace TinaXlsx;
 
-class EnhancedFormulasTest : public ::testing::Test {
+class EnhancedFormulasTest : public TestWithFileGeneration<EnhancedFormulasTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<EnhancedFormulasTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = workbook->addSheet("公式测试");
     }
 
     void TearDown() override {
         workbook.reset();
+        TestWithFileGeneration<EnhancedFormulasTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -80,6 +82,40 @@ TEST_F(EnhancedFormulasTest, NamedRanges) {
     
     allRanges = sheet->getAllNamedRanges();
     EXPECT_EQ(allRanges.size(), 0);
+
+    // 生成测试文件
+    addTestInfo(sheet, "NamedRanges", "测试命名范围功能");
+
+    // 重新创建命名范围用于演示
+    TXRange demoRange1(TXCoordinate(row_t(7), column_t(1)), TXCoordinate(row_t(9), column_t(3)));
+    TXRange demoRange2(TXCoordinate(row_t(11), column_t(1)), TXCoordinate(row_t(13), column_t(2)));
+
+    sheet->addNamedRange("销售数据", demoRange1, "销售相关数据范围");
+    sheet->addNamedRange("成本数据", demoRange2, "成本相关数据范围");
+
+    // 在命名范围内添加数据
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"产品"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"销量"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"单价"});
+
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"产品A"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{100});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{25.5});
+
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"产品B"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{200});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{18.8});
+
+    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"成本项目"});
+    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{"金额"});
+
+    sheet->setCellValue(row_t(12), column_t(1), cell_value_t{"原材料"});
+    sheet->setCellValue(row_t(12), column_t(2), cell_value_t{1500.0});
+
+    sheet->setCellValue(row_t(13), column_t(1), cell_value_t{"人工费"});
+    sheet->setCellValue(row_t(13), column_t(2), cell_value_t{800.0});
+
+    saveWorkbook(workbook, "NamedRanges");
 }
 
 TEST_F(EnhancedFormulasTest, CircularReferenceDetection) {
