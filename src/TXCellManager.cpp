@@ -17,6 +17,20 @@ TXCell* TXCellManager::getCell(const Coordinate& coord) {
         return &it->second;
     }
 
+    // 不自动创建单元格，返回nullptr
+    return nullptr;
+}
+
+TXCell* TXCellManager::getOrCreateCell(const Coordinate& coord) {
+    if (!isValidCoordinate(coord)) {
+        return nullptr;
+    }
+
+    auto it = cells_.find(coord);
+    if (it != cells_.end()) {
+        return &it->second;
+    }
+
     // 创建新单元格
     cells_[coord] = TXCell();
     return &cells_[coord];
@@ -51,7 +65,7 @@ bool TXCellManager::setCellValue(const Coordinate& coord, const CellValue& value
         return false;
     }
 
-    auto* cell = getCell(coord);
+    auto* cell = getOrCreateCell(coord);
     if (cell) {
         cell->setValue(value);
         return true;
@@ -93,7 +107,9 @@ TXCellManager::getCellValues(const std::vector<Coordinate>& coords) const {
 
 TXRange TXCellManager::getUsedRange() const {
     if (cells_.empty()) {
-        return TXRange(); // 返回默认范围
+        // 返回无效范围：使用无效坐标
+        return TXRange(TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))),
+                      TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))));
     }
 
     row_t min_row = row_t::last(), max_row = row_t(1);
@@ -121,7 +137,9 @@ TXRange TXCellManager::getUsedRange() const {
     }
 
     if (!found_data) {
-        return TXRange(); // 没有有效数据
+        // 返回无效范围：使用无效坐标
+        return TXRange(TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))),
+                      TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))));
     }
 
     return TXRange(Coordinate(min_row, min_col), Coordinate(max_row, max_col));

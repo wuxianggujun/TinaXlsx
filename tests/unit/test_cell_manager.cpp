@@ -61,8 +61,8 @@ TEST_F(TXCellManagerTest, DifferentDataTypes) {
 }
 
 TEST_F(TXCellManagerTest, InvalidCoordinates) {
-    TXCoordinate invalidCoord; // 默认构造的坐标是无效的
-    
+    TXCoordinate invalidCoord(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))); // 0,0是无效坐标
+
     // 测试无效坐标操作
     EXPECT_FALSE(cellManager->setCellValue(invalidCoord, std::string("Test")));
     EXPECT_EQ(cellManager->getCell(invalidCoord), nullptr);
@@ -184,15 +184,16 @@ TEST_F(TXCellManagerTest, TransformCells) {
     
     cellManager->transformCells(transform);
     
-    // 验证变换结果
+    // 验证变换结果：原位置应该为空
     EXPECT_FALSE(cellManager->hasCell(TXCoordinate(row_t(1), column_t(1))));
     EXPECT_FALSE(cellManager->hasCell(TXCoordinate(row_t(2), column_t(1))));
-    EXPECT_FALSE(cellManager->hasCell(TXCoordinate(row_t(3), column_t(1))));
-    
+
+    // 新位置应该有数据
     EXPECT_TRUE(cellManager->hasCell(TXCoordinate(row_t(3), column_t(1))));
     EXPECT_TRUE(cellManager->hasCell(TXCoordinate(row_t(4), column_t(1))));
     EXPECT_TRUE(cellManager->hasCell(TXCoordinate(row_t(5), column_t(1))));
-    
+
+    // 验证数据内容
     EXPECT_EQ(std::get<std::string>(cellManager->getCellValue(TXCoordinate(row_t(3), column_t(1)))), "A1");
     EXPECT_EQ(std::get<std::string>(cellManager->getCellValue(TXCoordinate(row_t(4), column_t(1)))), "A2");
     EXPECT_EQ(std::get<std::string>(cellManager->getCellValue(TXCoordinate(row_t(5), column_t(1)))), "A3");

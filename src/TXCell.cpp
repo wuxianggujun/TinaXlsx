@@ -173,10 +173,23 @@ namespace TinaXlsx
     }
 
     bool TXCell::isEmpty() const {
-        // 一个单元格被认为是空的，如果它的类型是Empty，
-        // 并且它不包含一个计算结果为空字符串的公式（尽管这种情况type_应为Formula）。
-        // 最简单的是检查值是否为monostate且没有公式。
-        return std::holds_alternative<std::monostate>(value_) && !formula_object_;
+        // 一个单元格被认为是空的，如果：
+        // 1. 值为monostate，或
+        // 2. 值为空字符串
+        // 并且没有公式
+        if (formula_object_) {
+            return false; // 有公式的单元格不为空
+        }
+
+        if (std::holds_alternative<std::monostate>(value_)) {
+            return true;
+        }
+
+        if (std::holds_alternative<std::string>(value_)) {
+            return std::get<std::string>(value_).empty();
+        }
+
+        return false; // 其他类型的值不为空
     }
 
     std::string TXCell::getStringValue() const {
