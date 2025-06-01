@@ -25,6 +25,9 @@ set(UNIT_TEST_SOURCES
     test_column_width_debug.cpp
     test_column_width_decimal.cpp
     test_protection_debug.cpp
+
+    # 图表功能测试
+    test_chart_functionality.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -118,5 +121,13 @@ add_custom_target(run_integration_tests
     COMMAND TinaXlsx_UnitTests --gtest_filter="TXSheetRefactoredIntegrationTest.*"
     DEPENDS TinaXlsx_UnitTests
     COMMENT "Running integration tests for refactored sheet"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 添加图表测试目标
+add_custom_target(run_chart_tests
+    COMMAND TinaXlsx_UnitTests --gtest_filter="ChartFunctionalityTest.*"
+    DEPENDS TinaXlsx_UnitTests
+    COMMENT "Running chart functionality tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

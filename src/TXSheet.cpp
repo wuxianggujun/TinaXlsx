@@ -25,7 +25,9 @@ TXSheet::TXSheet(TXSheet&& other) noexcept
     , rowColumnManager_(std::move(other.rowColumnManager_))
     , protectionManager_(std::move(other.protectionManager_))
     , formulaManager_(std::move(other.formulaManager_))
-    , mergedCells_(std::move(other.mergedCells_)) {
+    , mergedCells_(std::move(other.mergedCells_))
+    , charts_(std::move(other.charts_))
+    , nextChartId_(other.nextChartId_) {
     other.workbook_ = nullptr;
 }
 
@@ -39,6 +41,8 @@ TXSheet& TXSheet::operator=(TXSheet&& other) noexcept {
         protectionManager_ = std::move(other.protectionManager_);
         formulaManager_ = std::move(other.formulaManager_);
         mergedCells_ = std::move(other.mergedCells_);
+        charts_ = std::move(other.charts_);
+        nextChartId_ = other.nextChartId_;
         other.workbook_ = nullptr;
     }
     return *this;
@@ -668,6 +672,8 @@ void TXSheet::clear() {
     protectionManager_.clear();
     formulaManager_.clear();
     mergedCells_.clear();
+    charts_.clear();
+    nextChartId_ = 1;
     clearError();
 }
 
@@ -706,8 +712,8 @@ bool TXSheet::setRangeValues(const Range& range, const std::vector<std::vector<C
         }
 
         for (std::size_t j = 0; j < colCount; ++j) {
-            row_t row = row_t(start.getRow().index() + i);
-            column_t col = column_t(start.getCol().index() + j);
+            row_t row = row_t(start.getRow().index() + static_cast<row_t::index_t>(i));
+            column_t col = column_t(start.getCol().index() + static_cast<column_t::index_t>(j));
 
             if (!setCellValue(row, col, values[i][j])) {
                 return false;
@@ -778,6 +784,143 @@ std::vector<TXRange> TXSheet::getAllMergeRegions() const {
 
 std::size_t TXSheet::getMergeCount() const {
     return mergedCells_.getMergeCount();
+}
+
+// ==================== 图表操作实现 ====================
+
+TXChart* TXSheet::addChart(std::unique_ptr<TXChart> chart) {
+    if (!chart) {
+        setError("Cannot add null chart");
+        return nullptr;
+    }
+
+    // 设置图表名称（如果没有设置）
+    if (chart->getName().empty()) {
+        chart->setName("Chart" + std::to_string(nextChartId_++));
+    }
+
+    TXChart* chartPtr = chart.get();
+    charts_.push_back(std::move(chart));
+
+    clearError();
+    notifyComponentChange(ExcelComponent::BasicWorkbook);
+    return chartPtr;
+}
+
+TXColumnChart* TXSheet::addColumnChart(const std::string& title, const TXRange& dataRange,
+                                       const std::pair<row_t, column_t>& position) {
+    auto chart = std::make_unique<TXColumnChart>();
+    chart->setName(title);  // 设置图表名称用于管理
+    chart->setTitle(title); // 设置图表标题用于显示
+    chart->setDataRange(this, dataRange);
+    chart->setPosition(position.first, position.second);
+
+    TXColumnChart* chartPtr = static_cast<TXColumnChart*>(chart.get());
+    if (addChart(std::move(chart))) {
+        return chartPtr;
+    }
+    return nullptr;
+}
+
+TXLineChart* TXSheet::addLineChart(const std::string& title, const TXRange& dataRange,
+                                   const std::pair<row_t, column_t>& position) {
+    auto chart = std::make_unique<TXLineChart>();
+    chart->setName(title);  // 设置图表名称用于管理
+    chart->setTitle(title); // 设置图表标题用于显示
+    chart->setDataRange(this, dataRange);
+    chart->setPosition(position.first, position.second);
+
+    TXLineChart* chartPtr = static_cast<TXLineChart*>(chart.get());
+    if (addChart(std::move(chart))) {
+        return chartPtr;
+    }
+    return nullptr;
+}
+
+TXPieChart* TXSheet::addPieChart(const std::string& title, const TXRange& dataRange,
+                                 const std::pair<row_t, column_t>& position) {
+    auto chart = std::make_unique<TXPieChart>();
+    chart->setName(title);  // 设置图表名称用于管理
+    chart->setTitle(title); // 设置图表标题用于显示
+    chart->setDataRange(this, dataRange);
+    chart->setPosition(position.first, position.second);
+
+    TXPieChart* chartPtr = static_cast<TXPieChart*>(chart.get());
+    if (addChart(std::move(chart))) {
+        return chartPtr;
+    }
+    return nullptr;
+}
+
+TXScatterChart* TXSheet::addScatterChart(const std::string& title, const TXRange& dataRange,
+                                         const std::pair<row_t, column_t>& position) {
+    auto chart = std::make_unique<TXScatterChart>();
+    chart->setName(title);  // 设置图表名称用于管理
+    chart->setTitle(title); // 设置图表标题用于显示
+    chart->setDataRange(this, dataRange);
+    chart->setPosition(position.first, position.second);
+
+    TXScatterChart* chartPtr = static_cast<TXScatterChart*>(chart.get());
+    if (addChart(std::move(chart))) {
+        return chartPtr;
+    }
+    return nullptr;
+}
+
+bool TXSheet::removeChart(const std::string& chartName) {
+    auto it = std::find_if(charts_.begin(), charts_.end(),
+                           [&chartName](const std::unique_ptr<TXChart>& chart) {
+                               return chart->getName() == chartName;
+                           });
+
+    if (it != charts_.end()) {
+        charts_.erase(it);
+        clearError();
+        return true;
+    }
+
+    setError("Chart not found: " + chartName);
+    return false;
+}
+
+TXChart* TXSheet::getChart(const std::string& chartName) {
+    auto it = std::find_if(charts_.begin(), charts_.end(),
+                           [&chartName](const std::unique_ptr<TXChart>& chart) {
+                               return chart->getName() == chartName;
+                           });
+
+    return (it != charts_.end()) ? it->get() : nullptr;
+}
+
+const TXChart* TXSheet::getChart(const std::string& chartName) const {
+    auto it = std::find_if(charts_.begin(), charts_.end(),
+                           [&chartName](const std::unique_ptr<TXChart>& chart) {
+                               return chart->getName() == chartName;
+                           });
+
+    return (it != charts_.end()) ? it->get() : nullptr;
+}
+
+std::vector<TXChart*> TXSheet::getAllCharts() {
+    std::vector<TXChart*> result;
+    result.reserve(charts_.size());
+    for (const auto& chart : charts_) {
+        result.push_back(chart.get());
+    }
+    return result;
+}
+
+std::vector<const TXChart*> TXSheet::getAllCharts() const {
+    std::vector<const TXChart*> result;
+    result.reserve(charts_.size());
+    for (const auto& chart : charts_) {
+        result.push_back(chart.get());
+    }
+    return result;
+}
+
+std::size_t TXSheet::getChartCount() const {
+    return charts_.size();
 }
 
 } // namespace TinaXlsx

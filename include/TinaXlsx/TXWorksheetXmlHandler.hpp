@@ -196,14 +196,21 @@ namespace TinaXlsx
             if (!mergeRegions.empty()) {
                 XmlNodeBuilder mergeCells("mergeCells");
                 mergeCells.addAttribute("count", std::to_string(mergeRegions.size()));
-                
+
                 for (const auto& range : mergeRegions) {
                     XmlNodeBuilder mergeCell("mergeCell");
                     mergeCell.addAttribute("ref", range.toAddress());
                     mergeCells.addChild(mergeCell);
                 }
-                
+
                 worksheet.addChild(mergeCells);
+            }
+
+            // 添加绘图引用（如果有图表）
+            if (sheet->getChartCount() > 0) {
+                XmlNodeBuilder drawing("drawing");
+                drawing.addAttribute("r:id", "rId1");
+                worksheet.addChild(drawing);
             }
 
             TXXmlWriter writer;

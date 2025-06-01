@@ -18,6 +18,7 @@
 #include "TXRowColumnManager.hpp"
 #include "TXSheetProtectionManager.hpp"
 #include "TXFormulaManager.hpp"
+#include "TXChart.hpp"
 
 namespace TinaXlsx {
 
@@ -623,6 +624,94 @@ public:
      * @return 发现循环引用返回true，否则返回false
      */
     bool detectCircularReferences() const;
+
+    // ==================== 图表操作 ====================
+
+    /**
+     * @brief 添加图表到工作表
+     * @param chart 图表对象（移动语义）
+     * @return 成功返回图表指针，失败返回nullptr
+     */
+    TXChart* addChart(std::unique_ptr<TXChart> chart);
+
+    /**
+     * @brief 创建并添加柱状图
+     * @param title 图表标题
+     * @param dataRange 数据范围
+     * @param position 图表位置（行，列）
+     * @return 图表指针
+     */
+    TXColumnChart* addColumnChart(const std::string& title, const TXRange& dataRange,
+                                  const std::pair<row_t, column_t>& position = {row_t(1), column_t(1)});
+
+    /**
+     * @brief 创建并添加折线图
+     * @param title 图表标题
+     * @param dataRange 数据范围
+     * @param position 图表位置（行，列）
+     * @return 图表指针
+     */
+    TXLineChart* addLineChart(const std::string& title, const TXRange& dataRange,
+                              const std::pair<row_t, column_t>& position = {row_t(1), column_t(1)});
+
+    /**
+     * @brief 创建并添加饼图
+     * @param title 图表标题
+     * @param dataRange 数据范围
+     * @param position 图表位置（行，列）
+     * @return 图表指针
+     */
+    TXPieChart* addPieChart(const std::string& title, const TXRange& dataRange,
+                            const std::pair<row_t, column_t>& position = {row_t(1), column_t(1)});
+
+    /**
+     * @brief 创建并添加散点图
+     * @param title 图表标题
+     * @param dataRange 数据范围
+     * @param position 图表位置（行，列）
+     * @return 图表指针
+     */
+    TXScatterChart* addScatterChart(const std::string& title, const TXRange& dataRange,
+                                    const std::pair<row_t, column_t>& position = {row_t(1), column_t(1)});
+
+    /**
+     * @brief 删除图表
+     * @param chartName 图表名称
+     * @return 成功返回true，失败返回false
+     */
+    bool removeChart(const std::string& chartName);
+
+    /**
+     * @brief 获取图表
+     * @param chartName 图表名称
+     * @return 图表指针，如果不存在返回nullptr
+     */
+    TXChart* getChart(const std::string& chartName);
+
+    /**
+     * @brief 获取图表（const版本）
+     * @param chartName 图表名称
+     * @return 图表指针，如果不存在返回nullptr
+     */
+    const TXChart* getChart(const std::string& chartName) const;
+
+    /**
+     * @brief 获取所有图表
+     * @return 图表列表
+     */
+    std::vector<TXChart*> getAllCharts();
+
+    /**
+     * @brief 获取所有图表（const版本）
+     * @return 图表列表
+     */
+    std::vector<const TXChart*> getAllCharts() const;
+
+    /**
+     * @brief 获取图表数量
+     * @return 图表数量
+     */
+    std::size_t getChartCount() const;
     
     // ==================== 哈希函数 ====================
     
@@ -742,6 +831,10 @@ private:
     TXSheetProtectionManager protectionManager_;   ///< 保护管理器
     TXFormulaManager formulaManager_;               ///< 公式管理器
     TXMergedCells mergedCells_;                     ///< 合并单元格管理器
+
+    // ==================== 图表存储 ====================
+    std::vector<std::unique_ptr<TXChart>> charts_;  ///< 图表列表
+    mutable u32 nextChartId_ = 1;                   ///< 下一个图表ID
 
     // ==================== 兼容性保留 ====================
     // 为了保持API兼容性，保留一些原有的结构定义

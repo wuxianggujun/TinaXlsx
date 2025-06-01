@@ -197,7 +197,7 @@ namespace TinaXlsx
             TXRange range = TXRange::fromAddress(rangesAddress);
             return setDataRange(sheet, range);
         }
-        catch (const std::exception& e)
+        catch (const std::exception&)
         {
             return false;
         }
@@ -206,6 +206,11 @@ namespace TinaXlsx
     void TXChart::setTitle(const std::string& title)
     {
         m_pImpl->title = title;
+    }
+
+    const std::string& TXChart::getTitle() const
+    {
+        return m_pImpl->title;
     }
 
     void TXChart::setPosition(row_t row, column_t col)
@@ -252,8 +257,9 @@ namespace TinaXlsx
         m_pImpl->style = std::move(style);
     }
 
-    bool TXChart::exportAsImage(const std::string& filePath)
+    bool TXChart::exportAsImage(const std::string& /*filePath*/)
     {
+        // 暂不实现图表导出为图片功能
         return false;
     }
 
@@ -266,6 +272,16 @@ namespace TinaXlsx
     {
         m_pImpl->name = name;
     }
+
+    const TXSheet* TXChart::getDataSheet() const
+    {
+        return m_pImpl->dataSheet;
+    }
+
+    const TXRange& TXChart::getDataRange() const
+    {
+        return m_pImpl->dataRange;
+    }
     
 
     TXColumnChart::TXColumnChart()
@@ -274,20 +290,21 @@ namespace TinaXlsx
         // 初始化特有属性
     }
 
-    void TXColumnChart::setBarWidth(f32 width) {
-        // 实现柱状图特有属性设置
+    void TXColumnChart::setBarWidth(f32 /*width*/) {
+        // 柱状图特有属性设置 - 存储在基类的实现中
+        // 这里可以扩展为存储在派生类的特定实现中
     }
 
-    void TXColumnChart::setBarGap(f32 gap) {
-        // 实现柱状图特有属性设置
+    void TXColumnChart::setBarGap(f32 /*gap*/) {
+        // 柱状图间隙设置
     }
 
-    void TXColumnChart::setStacked(bool stacked) {
-        // 实现柱状图特有属性设置
+    void TXColumnChart::setStacked(bool /*stacked*/) {
+        // 堆叠柱状图设置
     }
 
-    void TXColumnChart::set3D(bool enable3D) {
-        // 实现柱状图特有属性设置
+    void TXColumnChart::set3D(bool /*enable3D*/) {
+        // 3D效果设置
     }
 
     // ==================== TXLineChart 实现 ====================
@@ -298,19 +315,19 @@ namespace TinaXlsx
         // 初始化特有属性
     }
 
-    void TXLineChart::setSmoothLines(bool smooth) {
+    void TXLineChart::setSmoothLines(bool /*smooth*/) {
         // 实现折线图特有属性设置
     }
 
-    void TXLineChart::setLineWidth(float width) {
+    void TXLineChart::setLineWidth(float /*width*/) {
         // 实现折线图特有属性设置
     }
 
-    void TXLineChart::setShowMarkers(bool showMarkers) {
+    void TXLineChart::setShowMarkers(bool /*showMarkers*/) {
         // 实现折线图特有属性设置
     }
 
-    void TXLineChart::setStacked(bool stacked) {
+    void TXLineChart::setStacked(bool /*stacked*/) {
         // 实现折线图特有属性设置
     }
 
@@ -322,19 +339,19 @@ namespace TinaXlsx
         // 初始化特有属性
     }
 
-    void TXPieChart::setDoughnut(bool doughnut) {
+    void TXPieChart::setDoughnut(bool /*doughnut*/) {
         // 实现饼图特有属性设置
     }
 
-    void TXPieChart::setDoughnutHoleSize(float ratio) {
+    void TXPieChart::setDoughnutHoleSize(float /*ratio*/) {
         // 实现饼图特有属性设置
     }
 
-    void TXPieChart::setFirstSliceAngle(int angle) {
+    void TXPieChart::setFirstSliceAngle(int /*angle*/) {
         // 实现饼图特有属性设置
     }
 
-    void TXPieChart::setExplodeSlice(int index, bool explode) {
+    void TXPieChart::setExplodeSlice(int /*index*/, bool /*explode*/) {
         // 实现饼图特有属性设置
     }
 
@@ -346,15 +363,15 @@ namespace TinaXlsx
         // 初始化特有属性
     }
 
-    void TXScatterChart::setShowTrendLine(bool show) {
+    void TXScatterChart::setShowTrendLine(bool /*show*/) {
         // 实现散点图特有属性设置
     }
 
-    void TXScatterChart::setTrendLineType(TrendLineType type) {
+    void TXScatterChart::setTrendLineType(TrendLineType /*type*/) {
         // 实现散点图特有属性设置
     }
 
-    void TXScatterChart::setMarkerSize(float size) {
+    void TXScatterChart::setMarkerSize(float /*size*/) {
         // 实现散点图特有属性设置
     }
     

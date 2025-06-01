@@ -68,6 +68,26 @@ namespace TinaXlsx
                                .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.extended-properties+xml"));
             }
 
+            // 图表和绘图内容类型
+            u32 chartCount = 0;
+            for (u64 i = 0; i < context.sheets.size(); ++i) {
+                const TXSheet* sheet = context.sheets[i].get();
+                if (sheet->getChartCount() > 0) {
+                    // 绘图内容类型
+                    types.addChild(XmlNodeBuilder("Override")
+                                   .addAttribute("PartName", "/xl/drawings/drawing" + std::to_string(i + 1) + ".xml")
+                                   .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.drawing+xml"));
+
+                    // 图表内容类型
+                    for (size_t j = 0; j < sheet->getChartCount(); ++j) {
+                        types.addChild(XmlNodeBuilder("Override")
+                                       .addAttribute("PartName", "/xl/charts/chart" + std::to_string(chartCount + 1) + ".xml")
+                                       .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"));
+                        ++chartCount;
+                    }
+                }
+            }
+
             TXXmlWriter writer;
             auto setRootResult = writer.setRootNode(types);
             if (setRootResult.isError()) {

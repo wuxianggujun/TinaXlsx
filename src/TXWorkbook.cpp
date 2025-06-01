@@ -16,7 +16,9 @@
 #include "TinaXlsx/TXContentTypesXmlHandler.hpp"
 #include "TinaXlsx/TXMainRelsXmlHandler.hpp"
 #include "TinaXlsx/TXWorkbookRelsXmlHandler.hpp"
+#include "TinaXlsx/TXWorksheetRelsXmlHandler.hpp"
 #include "TinaXlsx/TXSharedStringsXmlHandler.hpp"
+#include "TinaXlsx/TXChartXmlHandler.hpp"
 
 namespace TinaXlsx
 {
@@ -186,6 +188,52 @@ namespace TinaXlsx
             if (worksheetResult.isError()) {
                 last_error_ = "Worksheet " + std::to_string(i) + " save failed: " + worksheetResult.error().getMessage();
                 return false;
+            }
+
+            // 保存工作表关系文件（如果有图表）
+            const TXSheet* sheet = sheets_[i].get();
+            if (sheet->getChartCount() > 0) {
+                TXWorksheetRelsXmlHandler worksheetRelsHandler(static_cast<u32>(i));
+                auto worksheetRelsResult = worksheetRelsHandler.save(zipWriter, *context_);
+                if (worksheetRelsResult.isError()) {
+                    last_error_ = "Worksheet rels " + std::to_string(i) + " save failed: " + worksheetRelsResult.error().getMessage();
+                    return false;
+                }
+
+                // 保存绘图文件
+                TXDrawingXmlHandler drawingHandler(static_cast<u32>(i));
+                auto drawingResult = drawingHandler.save(zipWriter, *context_);
+                if (drawingResult.isError()) {
+                    last_error_ = "Drawing " + std::to_string(i) + " save failed: " + drawingResult.error().getMessage();
+                    return false;
+                }
+
+                // 保存绘图关系文件
+                TXDrawingRelsXmlHandler drawingRelsHandler(static_cast<u32>(i));
+                auto drawingRelsResult = drawingRelsHandler.save(zipWriter, *context_);
+                if (drawingRelsResult.isError()) {
+                    last_error_ = "Drawing rels " + std::to_string(i) + " save failed: " + drawingRelsResult.error().getMessage();
+                    return false;
+                }
+
+                // 保存每个图表文件
+                auto charts = sheet->getAllCharts();
+                for (size_t j = 0; j < charts.size(); ++j) {
+                    TXChartXmlHandler chartHandler(charts[j], static_cast<u32>(j));
+                    auto chartResult = chartHandler.save(zipWriter, *context_);
+                    if (chartResult.isError()) {
+                        last_error_ = "Chart " + std::to_string(j) + " save failed: " + chartResult.error().getMessage();
+                        return false;
+                    }
+
+                    // 保存图表关系文件
+                    TXChartRelsXmlHandler chartRelsHandler(static_cast<u32>(j));
+                    auto chartRelsResult = chartRelsHandler.save(zipWriter, *context_);
+                    if (chartRelsResult.isError()) {
+                        last_error_ = "Chart rels " + std::to_string(j) + " save failed: " + chartRelsResult.error().getMessage();
+                        return false;
+                    }
+                }
             }
         }
 

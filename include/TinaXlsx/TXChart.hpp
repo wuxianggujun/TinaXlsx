@@ -88,7 +88,25 @@ namespace TinaXlsx
 
         bool setDataRange(const TXSheet* sheet, const std::string& rangesAddress);
 
+        /**
+         * @brief 获取数据工作表
+         * @return 数据工作表指针，如果没有设置返回nullptr
+         */
+        const TXSheet* getDataSheet() const;
+
+        /**
+         * @brief 获取数据范围
+         * @return 数据范围
+         */
+        const TXRange& getDataRange() const;
+
         void setTitle(const std::string& title);
+
+        /**
+         * @brief 获取图表标题
+         * @return 图表标题
+         */
+        const std::string& getTitle() const;
 
         void setPosition(row_t row, column_t col);
 
