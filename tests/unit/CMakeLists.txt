@@ -5,11 +5,18 @@ include(GoogleTest)
 
 # 定义测试源文件
 set(UNIT_TEST_SOURCES
+    # 原有测试
     test_basic_features.cpp
     test_column_width_row_height.cpp
     test_sheet_protection.cpp
     test_enhanced_formulas.cpp
     test_cell_locking.cpp
+
+    # 重构后的新测试
+    test_cell_manager.cpp
+    test_row_column_manager.cpp
+    test_sheet_protection_manager.cpp
+    test_sheet_refactored_integration.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -79,5 +86,29 @@ add_custom_target(run_quick_tests
     COMMAND TinaXlsx_UnitTests --gtest_filter="BasicFeaturesTest.*"
     DEPENDS TinaXlsx_UnitTests
     COMMENT "Running quick tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 添加重构测试目标（只运行重构后的测试）
+add_custom_target(run_refactored_tests
+    COMMAND TinaXlsx_UnitTests --gtest_filter="*Manager*:*Refactored*"
+    DEPENDS TinaXlsx_UnitTests
+    COMMENT "Running refactored component tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 添加管理器测试目标
+add_custom_target(run_manager_tests
+    COMMAND TinaXlsx_UnitTests --gtest_filter="TX*ManagerTest.*"
+    DEPENDS TinaXlsx_UnitTests
+    COMMENT "Running manager component tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 添加集成测试目标
+add_custom_target(run_integration_tests
+    COMMAND TinaXlsx_UnitTests --gtest_filter="TXSheetRefactoredIntegrationTest.*"
+    DEPENDS TinaXlsx_UnitTests
+    COMMENT "Running integration tests for refactored sheet"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

@@ -336,4 +336,166 @@ TXMergedCells::MergeRegion TXMergedCells::normalizeRegion(const MergeRegion& reg
     return normalized;
 }
 
-} // namespace TinaXlsx 
+// ==================== 行列调整操作 ====================
+
+void TXMergedCells::adjustForRowInsertion(row_t insertRow, row_t count) {
+    std::vector<MergeRegion> toUpdate;
+    std::vector<MergeRegion> toRemove;
+
+    for (const auto& region : mergeRegions_) {
+        if (region.startRow >= insertRow) {
+            // 整个区域在插入位置之后，需要向下移动
+            MergeRegion newRegion = region;
+            newRegion.startRow = row_t(region.startRow.index() + count.index());
+            newRegion.endRow = row_t(region.endRow.index() + count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        } else if (region.endRow >= insertRow) {
+            // 区域跨越插入位置，需要扩展
+            MergeRegion newRegion = region;
+            newRegion.endRow = row_t(region.endRow.index() + count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        }
+    }
+
+    // 批量更新
+    batchUnmergeCells(toRemove);
+    batchMergeCells(toUpdate);
+}
+
+void TXMergedCells::adjustForRowDeletion(row_t deleteRow, row_t count) {
+    std::vector<MergeRegion> toUpdate;
+    std::vector<MergeRegion> toRemove;
+
+    row_t deleteEnd = row_t(deleteRow.index() + count.index() - 1);
+
+    for (const auto& region : mergeRegions_) {
+        if (region.endRow < deleteRow) {
+            // 区域在删除范围之前，不受影响
+            continue;
+        } else if (region.startRow > deleteEnd) {
+            // 整个区域在删除范围之后，需要向上移动
+            MergeRegion newRegion = region;
+            newRegion.startRow = row_t(region.startRow.index() - count.index());
+            newRegion.endRow = row_t(region.endRow.index() - count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        } else {
+            // 区域与删除范围重叠，需要特殊处理
+            if (region.startRow >= deleteRow && region.endRow <= deleteEnd) {
+                // 整个区域被删除
+                toRemove.push_back(region);
+            } else if (region.startRow < deleteRow && region.endRow > deleteEnd) {
+                // 区域包含删除范围，需要缩小
+                MergeRegion newRegion = region;
+                newRegion.endRow = row_t(region.endRow.index() - count.index());
+                toRemove.push_back(region);
+                toUpdate.push_back(newRegion);
+            } else if (region.startRow < deleteRow) {
+                // 区域开始在删除范围之前，结束在删除范围内
+                MergeRegion newRegion = region;
+                newRegion.endRow = row_t(deleteRow.index() - 1);
+                toRemove.push_back(region);
+                if (newRegion.startRow <= newRegion.endRow) {
+                    toUpdate.push_back(newRegion);
+                }
+            } else {
+                // 区域开始在删除范围内，结束在删除范围之后
+                MergeRegion newRegion = region;
+                newRegion.startRow = deleteRow;
+                newRegion.endRow = row_t(region.endRow.index() - count.index());
+                toRemove.push_back(region);
+                if (newRegion.startRow <= newRegion.endRow) {
+                    toUpdate.push_back(newRegion);
+                }
+            }
+        }
+    }
+
+    // 批量更新
+    batchUnmergeCells(toRemove);
+    batchMergeCells(toUpdate);
+}
+
+void TXMergedCells::adjustForColumnInsertion(column_t insertCol, column_t count) {
+    std::vector<MergeRegion> toUpdate;
+    std::vector<MergeRegion> toRemove;
+
+    for (const auto& region : mergeRegions_) {
+        if (region.startCol >= insertCol) {
+            // 整个区域在插入位置之后，需要向右移动
+            MergeRegion newRegion = region;
+            newRegion.startCol = column_t(region.startCol.index() + count.index());
+            newRegion.endCol = column_t(region.endCol.index() + count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        } else if (region.endCol >= insertCol) {
+            // 区域跨越插入位置，需要扩展
+            MergeRegion newRegion = region;
+            newRegion.endCol = column_t(region.endCol.index() + count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        }
+    }
+
+    // 批量更新
+    batchUnmergeCells(toRemove);
+    batchMergeCells(toUpdate);
+}
+
+void TXMergedCells::adjustForColumnDeletion(column_t deleteCol, column_t count) {
+    std::vector<MergeRegion> toUpdate;
+    std::vector<MergeRegion> toRemove;
+
+    column_t deleteEnd = column_t(deleteCol.index() + count.index() - 1);
+
+    for (const auto& region : mergeRegions_) {
+        if (region.endCol < deleteCol) {
+            // 区域在删除范围之前，不受影响
+            continue;
+        } else if (region.startCol > deleteEnd) {
+            // 整个区域在删除范围之后，需要向左移动
+            MergeRegion newRegion = region;
+            newRegion.startCol = column_t(region.startCol.index() - count.index());
+            newRegion.endCol = column_t(region.endCol.index() - count.index());
+            toRemove.push_back(region);
+            toUpdate.push_back(newRegion);
+        } else {
+            // 区域与删除范围重叠，需要特殊处理
+            if (region.startCol >= deleteCol && region.endCol <= deleteEnd) {
+                // 整个区域被删除
+                toRemove.push_back(region);
+            } else if (region.startCol < deleteCol && region.endCol > deleteEnd) {
+                // 区域包含删除范围，需要缩小
+                MergeRegion newRegion = region;
+                newRegion.endCol = column_t(region.endCol.index() - count.index());
+                toRemove.push_back(region);
+                toUpdate.push_back(newRegion);
+            } else if (region.startCol < deleteCol) {
+                // 区域开始在删除范围之前，结束在删除范围内
+                MergeRegion newRegion = region;
+                newRegion.endCol = column_t(deleteCol.index() - 1);
+                toRemove.push_back(region);
+                if (newRegion.startCol <= newRegion.endCol) {
+                    toUpdate.push_back(newRegion);
+                }
+            } else {
+                // 区域开始在删除范围内，结束在删除范围之后
+                MergeRegion newRegion = region;
+                newRegion.startCol = deleteCol;
+                newRegion.endCol = column_t(region.endCol.index() - count.index());
+                toRemove.push_back(region);
+                if (newRegion.startCol <= newRegion.endCol) {
+                    toUpdate.push_back(newRegion);
+                }
+            }
+        }
+    }
+
+    // 批量更新
+    batchUnmergeCells(toRemove);
+    batchMergeCells(toUpdate);
+}
+
+} // namespace TinaXlsx

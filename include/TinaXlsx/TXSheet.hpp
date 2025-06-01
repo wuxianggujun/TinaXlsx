@@ -8,10 +8,16 @@
 
 #include "TXCoordinate.hpp"
 #include "TXRange.hpp"
-#include "TXCell.hpp" 
+#include "TXCell.hpp"
 #include "TXTypes.hpp"
 #include "TXMergedCells.hpp"
 #include "TXWorkbook.hpp"
+
+// 新增管理器头文件
+#include "TXCellManager.hpp"
+#include "TXRowColumnManager.hpp"
+#include "TXSheetProtectionManager.hpp"
+#include "TXFormulaManager.hpp"
 
 namespace TinaXlsx {
 
@@ -508,27 +514,9 @@ public:
     // ==================== 工作表保护功能 ====================
     
     /**
-     * @brief 工作表保护选项
+     * @brief 工作表保护选项（兼容性别名）
      */
-    struct SheetProtection {
-        bool isProtected = false;                    ///< 是否受保护
-        std::string password;                        ///< 保护密码（MD5哈希）
-        bool selectLockedCells = true;               ///< 允许选择锁定的单元格
-        bool selectUnlockedCells = true;             ///< 允许选择未锁定的单元格
-        bool formatCells = false;                    ///< 允许格式化单元格
-        bool formatColumns = false;                  ///< 允许格式化列
-        bool formatRows = false;                     ///< 允许格式化行
-        bool insertColumns = false;                  ///< 允许插入列
-        bool insertRows = false;                     ///< 允许插入行
-        bool deleteColumns = false;                  ///< 允许删除列
-        bool deleteRows = false;                     ///< 允许删除行
-        bool insertHyperlinks = false;               ///< 允许插入超链接
-        bool sort = false;                           ///< 允许排序
-        bool autoFilter = false;                     ///< 允许自动筛选
-        bool pivotTables = false;                    ///< 允许数据透视表操作
-        bool objects = false;                        ///< 允许编辑对象
-        bool scenarios = false;                      ///< 允许编辑方案
-    };
+    using SheetProtection = TXSheetProtectionManager::SheetProtection;
     
     /**
      * @brief 保护工作表
@@ -585,16 +573,9 @@ public:
     // ==================== 增强公式支持 ====================
     
     /**
-     * @brief 设置公式计算引擎选项
+     * @brief 公式计算选项（兼容性别名）
      */
-    struct FormulaCalculationOptions {
-        bool autoCalculate = true;                   ///< 自动计算
-        bool iterativeCalculation = false;           ///< 迭代计算
-        int maxIterations = 100;                     ///< 最大迭代次数
-        double maxChange = 0.001;                    ///< 最大变化值
-        bool precisionAsDisplayed = false;           ///< 以显示精度计算
-        bool use1904DateSystem = false;              ///< 使用1904日期系统
-    };
+    using FormulaCalculationOptions = TXFormulaManager::FormulaCalculationOptions;
     
     /**
      * @brief 设置公式计算选项
@@ -650,8 +631,8 @@ public:
      */
     struct CoordinateHash {
         std::size_t operator()(const TXCoordinate& coord) const {
-            return std::hash<row_t>()(coord.getRow()) ^
-                (std::hash<column_t>()(coord.getCol()) << 1);
+            return std::hash<u32>()(coord.getRow().index()) ^
+                (std::hash<u32>()(coord.getCol().index()) << 1);
         }
     };
     
@@ -711,26 +692,60 @@ public:
     */
     TXWorkbook* getWorkbook() const { return workbook_; }
 
+    // ==================== 管理器访问接口（高级用法）====================
+
+    /**
+     * @brief 获取单元格管理器
+     * @return 单元格管理器引用
+     */
+    TXCellManager& getCellManager() { return cellManager_; }
+    const TXCellManager& getCellManager() const { return cellManager_; }
+
+    /**
+     * @brief 获取行列管理器
+     * @return 行列管理器引用
+     */
+    TXRowColumnManager& getRowColumnManager() { return rowColumnManager_; }
+    const TXRowColumnManager& getRowColumnManager() const { return rowColumnManager_; }
+
+    /**
+     * @brief 获取保护管理器
+     * @return 保护管理器引用
+     */
+    TXSheetProtectionManager& getProtectionManager() { return protectionManager_; }
+    const TXSheetProtectionManager& getProtectionManager() const { return protectionManager_; }
+
+    /**
+     * @brief 获取公式管理器
+     * @return 公式管理器引用
+     */
+    TXFormulaManager& getFormulaManager() { return formulaManager_; }
+    const TXFormulaManager& getFormulaManager() const { return formulaManager_; }
+
+    /**
+     * @brief 获取合并单元格管理器
+     * @return 合并单元格管理器引用
+     */
+    TXMergedCells& getMergedCells() { return mergedCells_; }
+    const TXMergedCells& getMergedCells() const { return mergedCells_; }
+
 
 private:
-    std::string name_;
-    std::unordered_map<Coordinate, TXCell, CoordinateHash> cells_;
-    std::string lastError_;
-    TXMergedCells mergedCells_;
-    TXWorkbook* workbook_ = nullptr;
-    
-    // 列宽和行高存储
-    std::unordered_map<column_t::index_t, double> columnWidths_;
-    std::unordered_map<row_t::index_t, double> rowHeights_;
-    
-    // 工作表保护
-    SheetProtection sheetProtection_;
-    
-    // 公式计算选项
-    FormulaCalculationOptions formulaOptions_;
-    
-    // 命名范围
-    std::unordered_map<std::string, Range> namedRanges_;
+    // ==================== 基本属性 ====================
+    std::string name_;                              ///< 工作表名称
+    TXWorkbook* workbook_ = nullptr;                ///< 父工作簿指针
+    mutable std::string lastError_;                 ///< 最后的错误信息
+
+    // ==================== 管理器组件 ====================
+    TXCellManager cellManager_;                     ///< 单元格管理器
+    TXRowColumnManager rowColumnManager_;           ///< 行列管理器
+    TXSheetProtectionManager protectionManager_;   ///< 保护管理器
+    TXFormulaManager formulaManager_;               ///< 公式管理器
+    TXMergedCells mergedCells_;                     ///< 合并单元格管理器
+
+    // ==================== 兼容性保留 ====================
+    // 为了保持API兼容性，保留一些原有的结构定义
+    // 但实际数据存储在管理器中
     
     // ==================== 私有辅助方法 ====================
     
@@ -800,16 +815,7 @@ private:
      */
     bool isOperationBlocked(const std::string& operation) const;
     
-    /**
-     * @brief 循环引用检测辅助方法
-     * @param coord 当前检查的坐标
-     * @param visiting 正在访问的坐标集合
-     * @param visited 已访问的坐标集合
-     * @return 发现循环引用返回true，否则返回false
-     */
-    bool detectCircularReferencesHelper(const Coordinate& coord, 
-                                       std::unordered_set<Coordinate, CoordinateHash>& visiting,
-                                       std::unordered_set<Coordinate, CoordinateHash>& visited) const;
+
     
     /**
      * @brief 解析公式中的单元格引用
@@ -817,6 +823,23 @@ private:
      * @return 引用的单元格坐标列表
      */
     std::vector<Coordinate> parseFormulaReferences(const std::string& formula) const;
+
+    /**
+     * @brief 设置错误信息
+     * @param error 错误信息
+     */
+    void setError(const std::string& error) const { lastError_ = error; }
+
+    /**
+     * @brief 清除错误信息
+     */
+    void clearError() const { lastError_.clear(); }
+
+    /**
+     * @brief 通知组件变化
+     * @param component 变化的组件
+     */
+    void notifyComponentChange(ExcelComponent component) const;
 };
 
 } // namespace TinaXlsx 

@@ -248,6 +248,36 @@ public:
      */
     const std::string& getLastError() const;
 
+    // ==================== 行列调整操作 ====================
+
+    /**
+     * @brief 调整合并区域以适应行插入
+     * @param insertRow 插入的行位置
+     * @param count 插入的行数
+     */
+    void adjustForRowInsertion(row_t insertRow, row_t count);
+
+    /**
+     * @brief 调整合并区域以适应行删除
+     * @param deleteRow 删除的行位置
+     * @param count 删除的行数
+     */
+    void adjustForRowDeletion(row_t deleteRow, row_t count);
+
+    /**
+     * @brief 调整合并区域以适应列插入
+     * @param insertCol 插入的列位置
+     * @param count 插入的列数
+     */
+    void adjustForColumnInsertion(column_t insertCol, column_t count);
+
+    /**
+     * @brief 调整合并区域以适应列删除
+     * @param deleteCol 删除的列位置
+     * @param count 删除的列数
+     */
+    void adjustForColumnDeletion(column_t deleteCol, column_t count);
+
     // ==================== 静态工具函数 ====================
 
     /**
