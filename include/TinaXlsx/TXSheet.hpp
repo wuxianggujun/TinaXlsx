@@ -19,6 +19,7 @@
 #include "TXSheetProtectionManager.hpp"
 #include "TXFormulaManager.hpp"
 #include "TXChart.hpp"
+#include "TXDataValidation.hpp"
 
 namespace TinaXlsx {
 
@@ -625,6 +626,47 @@ public:
      */
     bool detectCircularReferences() const;
 
+    // ==================== 数据验证功能 ====================
+
+    /**
+     * @brief 添加数据验证规则
+     * @param range 验证范围
+     * @param validation 验证规则
+     * @return 成功返回true
+     */
+    bool addDataValidation(const TXRange& range, const TXDataValidation& validation);
+
+    /**
+     * @brief 移除指定范围的数据验证
+     * @param range 验证范围
+     * @return 成功返回true
+     */
+    bool removeDataValidation(const TXRange& range);
+
+    /**
+     * @brief 清除所有数据验证规则
+     */
+    void clearDataValidations();
+
+    /**
+     * @brief 获取数据验证规则数量
+     * @return 验证规则数量
+     */
+    size_t getDataValidationCount() const;
+
+    /**
+     * @brief 检查指定范围是否有数据验证
+     * @param range 检查范围
+     * @return 有验证规则返回true
+     */
+    bool hasDataValidation(const TXRange& range) const;
+
+    /**
+     * @brief 获取所有数据验证规则（用于XML生成）
+     * @return 数据验证规则列表
+     */
+    const std::vector<std::pair<TXRange, TXDataValidation>>& getDataValidations() const;
+
     // ==================== 图表操作 ====================
 
     /**
@@ -835,6 +877,9 @@ private:
     // ==================== 图表存储 ====================
     std::vector<std::unique_ptr<TXChart>> charts_;  ///< 图表列表
     mutable u32 nextChartId_ = 1;                   ///< 下一个图表ID
+
+    // ==================== 数据验证存储 ====================
+    std::vector<std::pair<TXRange, TXDataValidation>> dataValidations_;  ///< 数据验证规则列表
 
     // ==================== 兼容性保留 ====================
     // 为了保持API兼容性，保留一些原有的结构定义

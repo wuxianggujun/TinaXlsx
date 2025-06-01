@@ -145,6 +145,12 @@ public:
      * @return A1格式范围地址 (如 "A1:B5")
      */
     std::string toAddress() const;
+
+    /**
+     * @brief 转换为绝对引用地址字符串
+     * @return 绝对引用地址字符串（如"$A$1:$B$2"）
+     */
+    std::string toAbsoluteAddress() const;
     
     /**
      * @brief 获取范围内的所有坐标

@@ -786,6 +786,68 @@ std::size_t TXSheet::getMergeCount() const {
     return mergedCells_.getMergeCount();
 }
 
+// ==================== 数据验证功能实现 ====================
+
+bool TXSheet::addDataValidation(const TXRange& range, const TXDataValidation& validation) {
+    if (!range.isValid()) {
+        setError("Invalid range for data validation");
+        return false;
+    }
+
+    // 检查是否已存在相同范围的验证规则
+    for (auto& pair : dataValidations_) {
+        if (pair.first == range) {
+            // 更新现有规则
+            pair.second = validation;
+            notifyComponentChange(ExcelComponent::BasicWorkbook);
+            clearError();
+            return true;
+        }
+    }
+
+    // 添加新的验证规则
+    dataValidations_.emplace_back(range, validation);
+    notifyComponentChange(ExcelComponent::BasicWorkbook);
+    clearError();
+    return true;
+}
+
+bool TXSheet::removeDataValidation(const TXRange& range) {
+    auto it = std::find_if(dataValidations_.begin(), dataValidations_.end(),
+                          [&range](const auto& pair) { return pair.first == range; });
+
+    if (it != dataValidations_.end()) {
+        dataValidations_.erase(it);
+        notifyComponentChange(ExcelComponent::BasicWorkbook);
+        clearError();
+        return true;
+    }
+
+    setError("Data validation not found for the specified range");
+    return false;
+}
+
+void TXSheet::clearDataValidations() {
+    if (!dataValidations_.empty()) {
+        dataValidations_.clear();
+        notifyComponentChange(ExcelComponent::BasicWorkbook);
+    }
+    clearError();
+}
+
+size_t TXSheet::getDataValidationCount() const {
+    return dataValidations_.size();
+}
+
+bool TXSheet::hasDataValidation(const TXRange& range) const {
+    return std::any_of(dataValidations_.begin(), dataValidations_.end(),
+                      [&range](const auto& pair) { return pair.first == range; });
+}
+
+const std::vector<std::pair<TXRange, TXDataValidation>>& TXSheet::getDataValidations() const {
+    return dataValidations_;
+}
+
 // ==================== 图表操作实现 ====================
 
 TXChart* TXSheet::addChart(std::unique_ptr<TXChart> chart) {

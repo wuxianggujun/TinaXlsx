@@ -206,6 +206,12 @@ namespace TinaXlsx
                 worksheet.addChild(mergeCells);
             }
 
+            // 添加数据验证（如果有）
+            if (sheet->getDataValidationCount() > 0) {
+                XmlNodeBuilder dataValidations = buildDataValidationsNode(sheet);
+                worksheet.addChild(dataValidations);
+            }
+
             // 添加绘图引用（如果有图表）
             if (sheet->getChartCount() > 0) {
                 XmlNodeBuilder drawing("drawing");
@@ -248,6 +254,13 @@ namespace TinaXlsx
          * @return 单元格节点
          */
         XmlNodeBuilder buildCellNode(const TXCell* cell, const std::string& cellRef,const TXWorkbookContext& context) const;
+
+        /**
+         * @brief 构建数据验证节点
+         * @param sheet 工作表对象
+         * @return 数据验证节点
+         */
+        XmlNodeBuilder buildDataValidationsNode(const TXSheet* sheet) const;
 
         u64 m_sheetIndex;
     };

@@ -148,6 +148,38 @@ std::string TXRange::toAddress() const {
     return start_.toAddress() + ":" + end_.toAddress();
 }
 
+std::string TXRange::toAbsoluteAddress() const {
+    // 需要先检查TXCoordinate是否有toAbsoluteAddress方法
+    // 如果没有，我们手动添加$符号
+    std::string startAddr = start_.toAddress();
+    std::string endAddr = end_.toAddress();
+
+    // 为地址添加$符号
+    auto addDollarSigns = [](const std::string& addr) -> std::string {
+        std::string result;
+        bool foundLetter = false;
+        for (char c : addr) {
+            if (std::isalpha(c) && !foundLetter) {
+                result += "$";
+                foundLetter = true;
+            } else if (std::isdigit(c) && foundLetter) {
+                result += "$";
+                foundLetter = false;
+            }
+            result += c;
+        }
+        return result;
+    };
+
+    std::string absStart = addDollarSigns(startAddr);
+    std::string absEnd = addDollarSigns(endAddr);
+
+    if (start_ == end_) {
+        return absStart;
+    }
+    return absStart + ":" + absEnd;
+}
+
 std::vector<TXCoordinate> TXRange::getAllCoordinates() const {
     std::vector<TXCoordinate> coords;
     

@@ -45,8 +45,54 @@ namespace TinaXlsx
         // 获取单元格值和类型
         const cell_value_t& value = cell->getValue();
         const TXCell::CellType cellType = cell->getType();
-        
-        if (cellType == TXCell::CellType::String)
+
+        // 处理公式单元格
+        if (cellType == TXCell::CellType::Formula)
+        {
+            // 添加公式节点
+            if (cell->isFormula()) {
+                const TXFormula* formula = cell->getFormulaObject();
+                if (formula) {
+                    XmlNodeBuilder fNode("f");
+                    std::string formulaStr = formula->getFormulaString();
+                    // 确保公式不包含等号前缀
+                    if (!formulaStr.empty() && formulaStr[0] == '=') {
+                        formulaStr = formulaStr.substr(1);
+                    }
+                    fNode.setText(formulaStr);
+                    cellNode.addChild(fNode);
+
+                    // 如果有缓存的计算结果，也添加值节点
+                    if (!std::holds_alternative<std::monostate>(value)) {
+                        if (std::holds_alternative<double>(value)) {
+                            XmlNodeBuilder vNode("v");
+                            vNode.setText(std::to_string(std::get<double>(value)));
+                            cellNode.addChild(vNode);
+                        } else if (std::holds_alternative<int64_t>(value)) {
+                            XmlNodeBuilder vNode("v");
+                            vNode.setText(std::to_string(std::get<int64_t>(value)));
+                            cellNode.addChild(vNode);
+                        } else if (std::holds_alternative<std::string>(value)) {
+                            // 公式结果是字符串
+                            const std::string& str = std::get<std::string>(value);
+                            if (shouldUseInlineString(str)) {
+                                cellNode.addAttribute("t", "inlineStr");
+                                XmlNodeBuilder isNode("is");
+                                XmlNodeBuilder tNode("t");
+                                tNode.setText(str);
+                                isNode.addChild(tNode);
+                                cellNode.addChild(isNode);
+                            } else {
+                                u32 index = context.sharedStringsPool.add(str);
+                                cellNode.addAttribute("t", "s");
+                                cellNode.addChild(XmlNodeBuilder("v").setText(std::to_string(index)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else if (cellType == TXCell::CellType::String)
         {
             const std::string& str = cell->getStringValue();
             
@@ -92,5 +138,151 @@ namespace TinaXlsx
 
 
         return cellNode;
+    }
+
+    XmlNodeBuilder TXWorksheetXmlHandler::buildDataValidationsNode(const TXSheet* sheet) const {
+        XmlNodeBuilder dataValidations("dataValidations");
+
+        const auto& validations = sheet->getDataValidations();
+        dataValidations.addAttribute("count", std::to_string(validations.size()));
+
+        for (const auto& pair : validations) {
+            const TXRange& range = pair.first;
+            const TXDataValidation& validation = pair.second;
+
+            XmlNodeBuilder dataValidation("dataValidation");
+
+            // 设置验证类型（必须在前面）
+            switch (validation.getType()) {
+                case DataValidationType::Whole:
+                    dataValidation.addAttribute("type", "whole");
+                    break;
+                case DataValidationType::Decimal:
+                    dataValidation.addAttribute("type", "decimal");
+                    break;
+                case DataValidationType::List:
+                    dataValidation.addAttribute("type", "list");
+                    break;
+                case DataValidationType::Date:
+                    dataValidation.addAttribute("type", "date");
+                    break;
+                case DataValidationType::Time:
+                    dataValidation.addAttribute("type", "time");
+                    break;
+                case DataValidationType::TextLength:
+                    dataValidation.addAttribute("type", "textLength");
+                    break;
+                case DataValidationType::Custom:
+                    dataValidation.addAttribute("type", "custom");
+                    break;
+                default:
+                    continue; // 跳过无效类型
+            }
+
+            // 设置允许空白（Excel默认行为）
+            dataValidation.addAttribute("allowBlank", "1");
+
+            // 设置范围
+            dataValidation.addAttribute("sqref", range.toAddress());
+
+            // 设置操作符（列表验证不需要操作符）
+            if (validation.getType() != DataValidationType::List) {
+                switch (validation.getOperator()) {
+                    case DataValidationOperator::Between:
+                        dataValidation.addAttribute("operator", "between");
+                        break;
+                    case DataValidationOperator::NotBetween:
+                        dataValidation.addAttribute("operator", "notBetween");
+                        break;
+                    case DataValidationOperator::Equal:
+                        dataValidation.addAttribute("operator", "equal");
+                        break;
+                    case DataValidationOperator::NotEqual:
+                        dataValidation.addAttribute("operator", "notEqual");
+                        break;
+                    case DataValidationOperator::GreaterThan:
+                        dataValidation.addAttribute("operator", "greaterThan");
+                        break;
+                    case DataValidationOperator::LessThan:
+                        dataValidation.addAttribute("operator", "lessThan");
+                        break;
+                    case DataValidationOperator::GreaterThanOrEqual:
+                        dataValidation.addAttribute("operator", "greaterThanOrEqual");
+                        break;
+                    case DataValidationOperator::LessThanOrEqual:
+                        dataValidation.addAttribute("operator", "lessThanOrEqual");
+                        break;
+                }
+            }
+
+            // 对于列表验证，保持最简单的设置
+            if (validation.getType() == DataValidationType::List) {
+                // 不设置 showDropDown 属性，让Excel使用默认行为
+                // 根据搜索结果，showDropDown=false 或不设置表示显示下拉箭头
+            } else {
+                // 非列表验证使用完整的属性设置
+
+                // 设置下拉箭头显示
+                // 注意：Excel中 showDropDown="1" 表示隐藏下拉箭头
+                if (!validation.getShowDropDown()) {
+                    dataValidation.addAttribute("showDropDown", "1");
+                }
+
+                // 设置错误警告
+                if (validation.getShowErrorMessage()) {
+                    dataValidation.addAttribute("showErrorMessage", "1");
+
+                    // 设置错误样式
+                    switch (validation.getErrorStyle()) {
+                        case DataValidationErrorStyle::Stop:
+                            dataValidation.addAttribute("errorStyle", "stop");
+                            break;
+                        case DataValidationErrorStyle::Warning:
+                            dataValidation.addAttribute("errorStyle", "warning");
+                            break;
+                        case DataValidationErrorStyle::Information:
+                            dataValidation.addAttribute("errorStyle", "information");
+                            break;
+                    }
+
+                    // 添加错误标题和消息
+                    if (!validation.getErrorTitle().empty()) {
+                        dataValidation.addAttribute("errorTitle", validation.getErrorTitle());
+                    }
+                    if (!validation.getErrorMessage().empty()) {
+                        dataValidation.addAttribute("error", validation.getErrorMessage());
+                    }
+                }
+
+                // 设置输入提示
+                if (validation.getShowInputMessage()) {
+                    dataValidation.addAttribute("showInputMessage", "1");
+
+                    if (!validation.getPromptTitle().empty()) {
+                        dataValidation.addAttribute("promptTitle", validation.getPromptTitle());
+                    }
+                    if (!validation.getPromptMessage().empty()) {
+                        dataValidation.addAttribute("prompt", validation.getPromptMessage());
+                    }
+                }
+            }
+
+            // 添加公式节点
+            if (!validation.getFormula1().empty()) {
+                XmlNodeBuilder formula1("formula1");
+                formula1.setText(validation.getFormula1());
+                dataValidation.addChild(formula1);
+            }
+
+            if (!validation.getFormula2().empty()) {
+                XmlNodeBuilder formula2("formula2");
+                formula2.setText(validation.getFormula2());
+                dataValidation.addChild(formula2);
+            }
+
+            dataValidations.addChild(dataValidation);
+        }
+
+        return dataValidations;
     }
 }
