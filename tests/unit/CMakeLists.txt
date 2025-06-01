@@ -29,6 +29,7 @@ set(UNIT_TEST_SOURCES
     # 图表功能测试
     test_chart_functionality.cpp
     test_chart_refactoring.cpp
+    test_chart_phase2.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -138,5 +139,13 @@ add_custom_target(run_chart_refactoring_tests
     COMMAND TinaXlsx_UnitTests --gtest_filter="ChartRefactoringTest.*"
     DEPENDS TinaXlsx_UnitTests
     COMMENT "Running chart refactoring tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 添加图表第二阶段测试目标
+add_custom_target(run_chart_phase2_tests
+    COMMAND TinaXlsx_UnitTests --gtest_filter="ChartPhase2Test.*"
+    DEPENDS TinaXlsx_UnitTests
+    COMMENT "Running chart phase 2 tests (styles and multi-series)"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
