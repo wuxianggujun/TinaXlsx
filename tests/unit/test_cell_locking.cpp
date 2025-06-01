@@ -54,63 +54,51 @@ TEST_F(CellLockingTest, SetCellLocking) {
 }
 
 TEST_F(CellLockingTest, SetCellLockingViaSheet) {
-    // 通过工作表接口设置锁定状态
-    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{"测试数据"});
-    
-    // 测试解锁
-    EXPECT_TRUE(sheet->setCellLocked(row_t(1), column_t(1), false));
-    EXPECT_FALSE(sheet->isCellLocked(row_t(1), column_t(1)));
-    
-    // 测试重新锁定
-    EXPECT_TRUE(sheet->setCellLocked(row_t(1), column_t(1), true));
-    EXPECT_TRUE(sheet->isCellLocked(row_t(1), column_t(1)));
+    // ==================== 第一个工作表：基本锁定测试 ====================
+    sheet->setName("基本锁定测试");
 
-    // 生成测试文件
-    addTestInfo(sheet, "SetCellLockingViaSheet", "测试通过工作表接口设置单元格锁定状态");
+    // 添加标题行
+    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表1: 基本单元格锁定功能测试"});
+    sheet->setCellValue(row_t(2), column_t(1), cell_value_t{"测试日期: 2024-01-15"});
+    sheet->setCellValue(row_t(3), column_t(1), cell_value_t{"保护密码: test123"});
 
-    // 创建锁定状态演示
-    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"单元格"});
-    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"锁定状态"});
-    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"内容"});
-    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"说明"});
+    // 添加测试数据
+    sheet->setCellValue(row_t(5), column_t(1), cell_value_t{"单元格"});
+    sheet->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定状态"});
+    sheet->setCellValue(row_t(5), column_t(3), cell_value_t{"内容"});
+    sheet->setCellValue(row_t(5), column_t(4), cell_value_t{"说明"});
 
     // 锁定的单元格
-    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A8"});
-    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"锁定"});
-    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"重要数据"});
-    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"此单元格被锁定，保护时无法编辑"});
-    sheet->setCellLocked(row_t(8), column_t(3), true);
+    sheet->setCellValue(row_t(6), column_t(1), cell_value_t{"C6"});
+    sheet->setCellValue(row_t(6), column_t(2), cell_value_t{"锁定"});
+    sheet->setCellValue(row_t(6), column_t(3), cell_value_t{"重要数据"});
+    sheet->setCellValue(row_t(6), column_t(4), cell_value_t{"此单元格被锁定，保护时无法编辑"});
+    sheet->setCellLocked(row_t(6), column_t(3), true);
 
     // 未锁定的单元格
-    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"A9"});
-    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"未锁定"});
-    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"可编辑数据"});
-    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"此单元格未锁定，保护时仍可编辑"});
-    sheet->setCellLocked(row_t(9), column_t(3), false);
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"C7"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"未锁定"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"可编辑数据"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"此单元格未锁定，保护时仍可编辑"});
+    sheet->setCellLocked(row_t(7), column_t(3), false);
 
     // 混合状态的行
-    sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"A10"});
-    sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"锁定"});
-    sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"标题"});
-    sheet->setCellValue(row_t(10), column_t(4), cell_value_t{"标题通常需要锁定"});
-    sheet->setCellLocked(row_t(10), column_t(3), true);
+    sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"C8"});
+    sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"锁定"});
+    sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"标题"});
+    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"标题通常需要锁定"});
+    sheet->setCellLocked(row_t(8), column_t(3), true);
 
-    sheet->setCellValue(row_t(11), column_t(1), cell_value_t{"B10"});
-    sheet->setCellValue(row_t(11), column_t(2), cell_value_t{"未锁定"});
-    sheet->setCellValue(row_t(11), column_t(3), cell_value_t{"输入区域"});
-    sheet->setCellValue(row_t(11), column_t(4), cell_value_t{"输入区域通常不锁定"});
-    sheet->setCellLocked(row_t(11), column_t(3), false);
-
-    // 添加保护说明
-    sheet->setCellValue(row_t(13), column_t(1), cell_value_t{"重要说明:"});
-    sheet->setCellValue(row_t(14), column_t(1), cell_value_t{"1. 单元格锁定只有在工作表保护时才生效"});
-    sheet->setCellValue(row_t(15), column_t(1), cell_value_t{"2. 此工作表已启用保护，密码为: test123"});
-    sheet->setCellValue(row_t(16), column_t(1), cell_value_t{"3. 锁定的单元格无法编辑，未锁定的可以编辑"});
+    sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"C9"});
+    sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"未锁定"});
+    sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"输入区域"});
+    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"输入区域通常不锁定"});
+    sheet->setCellLocked(row_t(9), column_t(3), false);
 
     // 保护工作表以使锁定生效
     sheet->protectSheet("test123");
 
-    saveWorkbook(workbook, "SetCellLockingViaSheet");
+    saveWorkbook(workbook, "MultiSheetLockingTest");
 }
 
 TEST_F(CellLockingTest, AutoCreateCellForLocking) {
@@ -170,13 +158,174 @@ TEST_F(CellLockingTest, HasFormulaMethod) {
     // 创建普通单元格
     TXCell normalCell(cell_value_t{"普通数据"});
     EXPECT_FALSE(normalCell.hasFormula());
-    
+
     // 创建公式单元格
     TXCell formulaCell;
     formulaCell.setFormula("A1+B1");
     EXPECT_TRUE(formulaCell.hasFormula());
-    
+
     // 清除公式
     formulaCell.setFormula("");
     EXPECT_FALSE(formulaCell.hasFormula());
+}
+
+TEST_F(CellLockingTest, MultiSheetProtectionTest) {
+    // ==================== 第一个工作表：基本锁定测试 ====================
+    sheet->setName("基本锁定测试");
+
+    // 添加标题行
+    sheet->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表1: 基本单元格锁定功能测试"});
+    sheet->setCellValue(row_t(2), column_t(1), cell_value_t{"测试日期: 2024-01-15"});
+    sheet->setCellValue(row_t(3), column_t(1), cell_value_t{"保护密码: test123"});
+
+    // 添加测试数据
+    sheet->setCellValue(row_t(5), column_t(1), cell_value_t{"单元格"});
+    sheet->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定状态"});
+    sheet->setCellValue(row_t(5), column_t(3), cell_value_t{"内容"});
+    sheet->setCellValue(row_t(5), column_t(4), cell_value_t{"说明"});
+
+    // 锁定的单元格
+    sheet->setCellValue(row_t(6), column_t(1), cell_value_t{"C6"});
+    sheet->setCellValue(row_t(6), column_t(2), cell_value_t{"锁定"});
+    sheet->setCellValue(row_t(6), column_t(3), cell_value_t{"重要数据"});
+    sheet->setCellValue(row_t(6), column_t(4), cell_value_t{"此单元格被锁定，保护时无法编辑"});
+    sheet->setCellLocked(row_t(6), column_t(3), true);
+
+    // 未锁定的单元格
+    sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"C7"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"未锁定"});
+    sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"可编辑数据"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"此单元格未锁定，保护时仍可编辑"});
+    sheet->setCellLocked(row_t(7), column_t(3), false);
+
+    // 保护工作表以使锁定生效
+    sheet->protectSheet("test123");
+
+    // ==================== 第二个工作表：不同密码的保护测试 ====================
+    auto* sheet2 = workbook->addSheet("不同密码保护");
+
+    sheet2->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表2: 不同密码保护测试"});
+    sheet2->setCellValue(row_t(2), column_t(1), cell_value_t{"保护密码: password456"});
+    sheet2->setCellValue(row_t(3), column_t(1), cell_value_t{"测试目的: 验证不同工作表可以使用不同密码"});
+
+    // 添加测试数据
+    sheet2->setCellValue(row_t(5), column_t(1), cell_value_t{"数据类型"});
+    sheet2->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定状态"});
+    sheet2->setCellValue(row_t(5), column_t(3), cell_value_t{"值"});
+
+    // 财务数据（锁定）
+    sheet2->setCellValue(row_t(6), column_t(1), cell_value_t{"收入"});
+    sheet2->setCellValue(row_t(6), column_t(2), cell_value_t{"锁定"});
+    sheet2->setCellValue(row_t(6), column_t(3), cell_value_t{"100000"});
+    sheet2->setCellLocked(row_t(6), column_t(3), true);
+
+    sheet2->setCellValue(row_t(7), column_t(1), cell_value_t{"支出"});
+    sheet2->setCellValue(row_t(7), column_t(2), cell_value_t{"锁定"});
+    sheet2->setCellValue(row_t(7), column_t(3), cell_value_t{"75000"});
+    sheet2->setCellLocked(row_t(7), column_t(3), true);
+
+    // 备注区域（未锁定）
+    sheet2->setCellValue(row_t(8), column_t(1), cell_value_t{"备注"});
+    sheet2->setCellValue(row_t(8), column_t(2), cell_value_t{"未锁定"});
+    sheet2->setCellValue(row_t(8), column_t(3), cell_value_t{"可以修改此备注"});
+    sheet2->setCellLocked(row_t(8), column_t(3), false);
+
+    // 保护工作表
+    sheet2->protectSheet("password456");
+
+    // ==================== 第三个工作表：无密码保护测试 ====================
+    auto* sheet3 = workbook->addSheet("无密码保护");
+
+    sheet3->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表3: 无密码保护测试"});
+    sheet3->setCellValue(row_t(2), column_t(1), cell_value_t{"保护密码: 无"});
+    sheet3->setCellValue(row_t(3), column_t(1), cell_value_t{"测试目的: 验证无密码保护功能"});
+
+    // 添加测试数据
+    sheet3->setCellValue(row_t(5), column_t(1), cell_value_t{"配置项"});
+    sheet3->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定状态"});
+    sheet3->setCellValue(row_t(5), column_t(3), cell_value_t{"值"});
+
+    // 系统配置（锁定）
+    sheet3->setCellValue(row_t(6), column_t(1), cell_value_t{"系统版本"});
+    sheet3->setCellValue(row_t(6), column_t(2), cell_value_t{"锁定"});
+    sheet3->setCellValue(row_t(6), column_t(3), cell_value_t{"v1.0.0"});
+    sheet3->setCellLocked(row_t(6), column_t(3), true);
+
+    // 用户设置（未锁定）
+    sheet3->setCellValue(row_t(7), column_t(1), cell_value_t{"用户名"});
+    sheet3->setCellValue(row_t(7), column_t(2), cell_value_t{"未锁定"});
+    sheet3->setCellValue(row_t(7), column_t(3), cell_value_t{"admin"});
+    sheet3->setCellLocked(row_t(7), column_t(3), false);
+
+    // 无密码保护
+    sheet3->protectSheet("");
+
+    // ==================== 第四个工作表：未保护测试 ====================
+    auto* sheet4 = workbook->addSheet("未保护工作表");
+
+    sheet4->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表4: 未保护测试"});
+    sheet4->setCellValue(row_t(2), column_t(1), cell_value_t{"保护状态: 未保护"});
+    sheet4->setCellValue(row_t(3), column_t(1), cell_value_t{"测试目的: 验证未保护工作表中锁定设置不生效"});
+
+    // 添加测试数据
+    sheet4->setCellValue(row_t(5), column_t(1), cell_value_t{"数据项"});
+    sheet4->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定设置"});
+    sheet4->setCellValue(row_t(5), column_t(3), cell_value_t{"值"});
+    sheet4->setCellValue(row_t(5), column_t(4), cell_value_t{"实际效果"});
+
+    // 设置了锁定但工作表未保护
+    sheet4->setCellValue(row_t(6), column_t(1), cell_value_t{"测试数据1"});
+    sheet4->setCellValue(row_t(6), column_t(2), cell_value_t{"设置为锁定"});
+    sheet4->setCellValue(row_t(6), column_t(3), cell_value_t{"数据1"});
+    sheet4->setCellValue(row_t(6), column_t(4), cell_value_t{"仍可编辑（工作表未保护）"});
+    sheet4->setCellLocked(row_t(6), column_t(3), true);
+
+    sheet4->setCellValue(row_t(7), column_t(1), cell_value_t{"测试数据2"});
+    sheet4->setCellValue(row_t(7), column_t(2), cell_value_t{"设置为未锁定"});
+    sheet4->setCellValue(row_t(7), column_t(3), cell_value_t{"数据2"});
+    sheet4->setCellValue(row_t(7), column_t(4), cell_value_t{"可编辑（工作表未保护）"});
+    sheet4->setCellLocked(row_t(7), column_t(3), false);
+
+    // 注意：这个工作表故意不调用protectSheet()
+
+    // ==================== 第五个工作表：总结测试 ====================
+    auto* sheet5 = workbook->addSheet("测试总结");
+
+    sheet5->setCellValue(row_t(1), column_t(1), cell_value_t{"多工作表保护功能测试总结"});
+    sheet5->setCellValue(row_t(2), column_t(1), cell_value_t{"测试日期: 2024-01-15"});
+
+    // 添加测试总结
+    sheet5->setCellValue(row_t(4), column_t(1), cell_value_t{"工作表名称"});
+    sheet5->setCellValue(row_t(4), column_t(2), cell_value_t{"保护状态"});
+    sheet5->setCellValue(row_t(4), column_t(3), cell_value_t{"密码"});
+    sheet5->setCellValue(row_t(4), column_t(4), cell_value_t{"测试目的"});
+
+    sheet5->setCellValue(row_t(5), column_t(1), cell_value_t{"基本锁定测试"});
+    sheet5->setCellValue(row_t(5), column_t(2), cell_value_t{"已保护"});
+    sheet5->setCellValue(row_t(5), column_t(3), cell_value_t{"test123"});
+    sheet5->setCellValue(row_t(5), column_t(4), cell_value_t{"基本锁定功能验证"});
+
+    sheet5->setCellValue(row_t(6), column_t(1), cell_value_t{"不同密码保护"});
+    sheet5->setCellValue(row_t(6), column_t(2), cell_value_t{"已保护"});
+    sheet5->setCellValue(row_t(6), column_t(3), cell_value_t{"password456"});
+    sheet5->setCellValue(row_t(6), column_t(4), cell_value_t{"不同密码验证"});
+
+    sheet5->setCellValue(row_t(7), column_t(1), cell_value_t{"无密码保护"});
+    sheet5->setCellValue(row_t(7), column_t(2), cell_value_t{"已保护"});
+    sheet5->setCellValue(row_t(7), column_t(3), cell_value_t{"无"});
+    sheet5->setCellValue(row_t(7), column_t(4), cell_value_t{"无密码保护验证"});
+
+    sheet5->setCellValue(row_t(8), column_t(1), cell_value_t{"未保护工作表"});
+    sheet5->setCellValue(row_t(8), column_t(2), cell_value_t{"未保护"});
+    sheet5->setCellValue(row_t(8), column_t(3), cell_value_t{"无"});
+    sheet5->setCellValue(row_t(8), column_t(4), cell_value_t{"未保护状态验证"});
+
+    sheet5->setCellValue(row_t(9), column_t(1), cell_value_t{"测试总结"});
+    sheet5->setCellValue(row_t(9), column_t(2), cell_value_t{"未保护"});
+    sheet5->setCellValue(row_t(9), column_t(3), cell_value_t{"无"});
+    sheet5->setCellValue(row_t(9), column_t(4), cell_value_t{"总结页面"});
+
+    // 这个工作表不保护，方便查看总结信息
+
+    saveWorkbook(workbook, "MultiSheetProtectionTest");
 }
