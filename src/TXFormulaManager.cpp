@@ -16,12 +16,12 @@ bool TXFormulaManager::setCellFormula(const TXCoordinate& coord, const std::stri
     if (!validateFormula(formula)) {
         return false;
     }
-    
-    auto* cell = cellManager.getCell(coord);
+
+    auto* cell = cellManager.getOrCreateCell(coord);
     if (!cell) {
         return false;
     }
-    
+
     cell->setFormula(formula);
     return true;
 }
@@ -100,13 +100,13 @@ std::size_t TXFormulaManager::calculateFormulasInRange(const TXRange& range, TXC
 }
 
 bool TXFormulaManager::calculateFormula(const TXCoordinate& coord, TXCellManager& cellManager) {
-    auto* cell = cellManager.getCell(coord);
+    auto* cell = cellManager.getOrCreateCell(coord);
     if (!cell || !cell->hasFormula()) {
         return false;
     }
-    
+
     std::string formula = cell->getFormula();
-    
+
     try {
         // 计算公式结果
         cell_value_t result = evaluateFormula(formula, cellManager);
@@ -254,7 +254,12 @@ bool TXFormulaManager::removeNamedRange(const std::string& name) {
 
 TXRange TXFormulaManager::getNamedRange(const std::string& name) const {
     auto it = namedRanges_.find(name);
-    return (it != namedRanges_.end()) ? it->second : TXRange();
+    if (it != namedRanges_.end()) {
+        return it->second;
+    }
+    // 返回无效范围：使用无效坐标
+    return TXRange(TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))),
+                  TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))));
 }
 
 bool TXFormulaManager::hasNamedRange(const std::string& name) const {
@@ -540,16 +545,27 @@ bool TXFormulaManager::isValidNamedRangeName(const std::string& name) const {
         return false;
     }
 
-    // 名称不能以数字开头
-    if (std::isdigit(name[0])) {
+    // 名称不能以数字开头（只检查ASCII数字）
+    if (name[0] >= '0' && name[0] <= '9') {
         return false;
     }
 
-    // 名称只能包含字母、数字、下划线和点
-    for (char c : name) {
-        if (!std::isalnum(c) && c != '_' && c != '.') {
-            return false;
+    // 允许字母、数字、下划线、点和中文字符
+    for (unsigned char c : name) {
+        // ASCII字母和数字
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+            continue;
         }
+        // 下划线和点
+        if (c == '_' || c == '.') {
+            continue;
+        }
+        // 中文字符和其他多字节字符（UTF-8编码）
+        if (c > 127) {
+            continue;
+        }
+        // 其他字符不允许
+        return false;
     }
 
     return true;

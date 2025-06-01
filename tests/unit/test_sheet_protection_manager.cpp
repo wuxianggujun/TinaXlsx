@@ -280,7 +280,9 @@ TEST_F(TXSheetProtectionManagerTest, InvalidOperations) {
     // 无效坐标的操作应该失败或返回默认值
     EXPECT_TRUE(protectionManager->isCellLocked(invalidCoord, *cellManager));  // 默认锁定
     
-    TXRange invalidRange;  // 无效范围
+    // 创建真正的无效范围
+    TXRange invalidRange(TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))),
+                        TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))));
     EXPECT_EQ(protectionManager->setRangeLocked(invalidRange, false, *cellManager), 0);
 }
 

@@ -426,19 +426,33 @@ void TXRowColumnManager::clear() {
 
 double TXRowColumnManager::calculateTextWidth(const std::string& text, double fontSize,
                                              const std::string& fontName) const {
-    // 简化的文本宽度计算
-    // 实际实现应该考虑字体度量
-    double charWidth = fontSize * 0.6; // 近似值
+    // 改进的文本宽度计算
+    // 考虑中文字符和英文字符的不同宽度
+    double totalWidth = 0.0;
 
-    // 根据字体名称调整宽度系数（简化处理）
-    double fontFactor = 1.0;
-    if (fontName == "Arial" || fontName == "Calibri") {
-        fontFactor = 0.9;
-    } else if (fontName == "Times New Roman") {
-        fontFactor = 0.8;
+    for (char c : text) {
+        if (static_cast<unsigned char>(c) > 127) {
+            // 中文字符或其他多字节字符，宽度约为英文字符的2倍
+            totalWidth += fontSize * 1.2;
+        } else {
+            // 英文字符
+            totalWidth += fontSize * 0.6;
+        }
     }
 
-    return text.length() * charWidth * fontFactor / 7.0; // 转换为Excel字符单位
+    // 根据字体名称调整宽度系数
+    double fontFactor = 1.0;
+    if (fontName == "Arial" || fontName == "Calibri") {
+        fontFactor = 1.0;
+    } else if (fontName == "Times New Roman") {
+        fontFactor = 0.9;
+    }
+
+    // 转换为Excel字符单位，并确保有合理的最小宽度
+    double excelWidth = totalWidth * fontFactor / 7.0;
+    // 确保最小宽度，特别是对于中文字符，并且至少为8.5个字符单位
+    double minWidth = std::max(static_cast<double>(text.length()) * 1.5, 8.5);
+    return std::max(excelWidth, minWidth);
 }
 
 double TXRowColumnManager::calculateTextHeight(const std::string& text, double fontSize,

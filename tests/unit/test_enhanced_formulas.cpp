@@ -91,9 +91,9 @@ TEST_F(EnhancedFormulasTest, CircularReferenceDetection) {
     // 此时应该没有循环引用
     EXPECT_FALSE(sheet->detectCircularReferences());
     
-    // 创建循环引用
-    sheet->setCellFormula(row_t(2), column_t(1), "B2+1");
-    sheet->setCellFormula(row_t(2), column_t(2), "A2+1");
+    // 创建循环引用：A2引用B2，B2引用A2
+    sheet->setCellFormula(row_t(2), column_t(1), "=B2+1");  // A2 = B2+1
+    sheet->setCellFormula(row_t(2), column_t(2), "=A2+1");  // B2 = A2+1
     
     // 现在应该检测到循环引用
     EXPECT_TRUE(sheet->detectCircularReferences());
@@ -103,8 +103,8 @@ TEST_F(EnhancedFormulasTest, FormulaDependencies) {
     // 设置一些有依赖关系的公式
     sheet->setCellValue(row_t(1), column_t(1), cell_value_t{10.0});
     sheet->setCellValue(row_t(1), column_t(2), cell_value_t{20.0});
-    sheet->setCellFormula(row_t(1), column_t(3), "A1+B1");
-    sheet->setCellFormula(row_t(2), column_t(1), "C1*2");
+    sheet->setCellFormula(row_t(1), column_t(3), "=A1+B1");  // C1 = A1+B1
+    sheet->setCellFormula(row_t(2), column_t(1), "=C1*2");   // A2 = C1*2
     
     // 获取公式依赖关系
     auto dependencies = sheet->getFormulaDependencies();
@@ -122,7 +122,8 @@ TEST_F(EnhancedFormulasTest, FormulaDependencies) {
 
 TEST_F(EnhancedFormulasTest, InvalidNamedRanges) {
     // 测试无效的命名范围
-    TXRange invalidRange; // 默认构造的无效范围
+    TXRange invalidRange(TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0))),
+                        TXCoordinate(row_t(static_cast<row_t::index_t>(0)), column_t(static_cast<column_t::index_t>(0)))); // 真正的无效范围
     EXPECT_FALSE(sheet->addNamedRange("", invalidRange)); // 空名称
     EXPECT_FALSE(sheet->addNamedRange("测试", invalidRange)); // 无效范围
     
