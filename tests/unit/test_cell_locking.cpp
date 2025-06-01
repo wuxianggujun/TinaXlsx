@@ -146,7 +146,9 @@ TEST_F(CellLockingTest, SetCellLockingViaSheet) {
     std::cout << "工作表保护状态: " << (protection.isProtected ? "已保护" : "未保护") << std::endl;
     std::cout << "=== 密码哈希调试信息结束 ===" << std::endl;
 
-    saveWorkbook(workbook, "PasswordHashTest");
+    // 保存文件
+    bool saved = saveWorkbook(workbook, "PasswordHashTest");
+    std::cout << "\n✅Generated test file: " << (saved ? "成功" : "失败") << std::endl;
 }
 
 TEST_F(CellLockingTest, AutoCreateCellForLocking) {
@@ -375,5 +377,59 @@ TEST_F(CellLockingTest, MultiSheetProtectionTest) {
 
     // 这个工作表不保护，方便查看总结信息
 
-    saveWorkbook(workbook, "MultiSheetProtectionTest");
+    // 保存文件
+    bool saved = saveWorkbook(workbook, "MultiSheetProtectionTest");
+    std::cout << "\n✅Generated test file: " << (saved ? "成功" : "失败") << std::endl;
+}
+
+// 测试工作簿保护功能
+TEST_F(CellLockingTest, WorkbookProtectionTest) {
+    std::cout << "\n=== 工作簿保护测试 ===" << std::endl;
+
+    // 创建工作簿
+    auto testWorkbook = std::make_unique<TXWorkbook>();
+
+    // 添加多个工作表
+    auto sheet1 = testWorkbook->addSheet("工作表1");
+    auto sheet2 = testWorkbook->addSheet("工作表2");
+    auto sheet3 = testWorkbook->addSheet("工作表3");
+
+    // 在工作表中添加一些数据
+    sheet1->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表1数据"});
+    sheet2->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表2数据"});
+    sheet3->setCellValue(row_t(1), column_t(1), cell_value_t{"工作表3数据"});
+
+    // 测试工作簿保护功能
+    std::cout << "\n--- 工作簿保护测试 ---" << std::endl;
+
+    // 1. 测试结构保护
+    std::cout << "保护工作簿结构..." << std::endl;
+    bool structureProtected = testWorkbook->protectStructure("workbook123");
+    std::cout << "结构保护结果: " << (structureProtected ? "成功" : "失败") << std::endl;
+    std::cout << "工作簿保护状态: " << (testWorkbook->isWorkbookProtected() ? "已保护" : "未保护") << std::endl;
+
+    // 2. 测试自定义保护配置
+    std::cout << "\n保护工作簿（自定义配置）..." << std::endl;
+    TXWorkbookProtectionManager::WorkbookProtection customProtection;
+    customProtection.lockStructure = true;
+    customProtection.lockWindows = true;
+    customProtection.lockRevision = false;
+
+    bool customProtected = testWorkbook->protectWorkbook("custom456", customProtection);
+    std::cout << "自定义保护结果: " << (customProtected ? "成功" : "失败") << std::endl;
+
+    // 3. 获取保护配置信息
+    const auto& protection = testWorkbook->getWorkbookProtectionManager().getWorkbookProtection();
+    std::cout << "\n保护配置信息:" << std::endl;
+    std::cout << "- 算法名称: " << protection.algorithmName << std::endl;
+    std::cout << "- 迭代次数: " << protection.spinCount << std::endl;
+    std::cout << "- 结构锁定: " << (protection.lockStructure ? "是" : "否") << std::endl;
+    std::cout << "- 窗口锁定: " << (protection.lockWindows ? "是" : "否") << std::endl;
+    std::cout << "- 修订锁定: " << (protection.lockRevision ? "是" : "否") << std::endl;
+    std::cout << "- 盐值: " << protection.saltValue.substr(0, 10) << "..." << std::endl;
+    std::cout << "- 哈希值: " << protection.passwordHash.substr(0, 20) << "..." << std::endl;
+
+    // 保存文件
+    bool saved = saveWorkbook(testWorkbook, "WorkbookProtectionTest");
+    std::cout << "\n✅Generated test file: " << (saved ? "成功" : "失败") << std::endl;
 }

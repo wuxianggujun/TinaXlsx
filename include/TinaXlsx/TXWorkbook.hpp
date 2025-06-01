@@ -8,6 +8,7 @@
 #include "TXComponentManager.hpp"
 #include "TXStyleManager.hpp"
 #include "TXSharedStringsPool.hpp"
+#include "TXWorkbookProtectionManager.hpp"
 
 namespace TinaXlsx
 {
@@ -228,6 +229,56 @@ namespace TinaXlsx
          */
         TXSheet* storeSheet(std::unique_ptr<TXSheet> sheet_uptr);
 
+        // ==================== 工作簿保护功能 ====================
+
+        /**
+         * @brief 获取工作簿保护管理器
+         * @return 工作簿保护管理器引用
+         */
+        TXWorkbookProtectionManager& getWorkbookProtectionManager();
+
+        /**
+         * @brief 获取工作簿保护管理器（常量版本）
+         * @return 工作簿保护管理器常量引用
+         */
+        const TXWorkbookProtectionManager& getWorkbookProtectionManager() const;
+
+        /**
+         * @brief 保护工作簿（便捷方法）
+         * @param password 保护密码
+         * @param protection 保护配置（可选）
+         * @return 成功返回true
+         */
+        bool protectWorkbook(const std::string& password,
+                           const TXWorkbookProtectionManager::WorkbookProtection& protection = TXWorkbookProtectionManager::WorkbookProtection{});
+
+        /**
+         * @brief 解除工作簿保护（便捷方法）
+         * @param password 保护密码
+         * @return 成功返回true
+         */
+        bool unprotectWorkbook(const std::string& password);
+
+        /**
+         * @brief 检查工作簿是否受保护（便捷方法）
+         * @return 受保护返回true
+         */
+        bool isWorkbookProtected() const;
+
+        /**
+         * @brief 保护工作簿结构（便捷方法）
+         * @param password 保护密码
+         * @return 成功返回true
+         */
+        bool protectStructure(const std::string& password);
+
+        /**
+         * @brief 保护工作簿窗口（便捷方法）
+         * @param password 保护密码
+         * @return 成功返回true
+         */
+        bool protectWindows(const std::string& password);
+
     private:
         std::vector<std::unique_ptr<TXSheet>> sheets_;
         std::size_t active_sheet_index_;
@@ -237,5 +288,6 @@ namespace TinaXlsx
         TXStyleManager style_manager_;
         TXSharedStringsPool shared_strings_pool_;
         std::unique_ptr<TXWorkbookContext> context_;
+        TXWorkbookProtectionManager workbook_protection_manager_;  ///< 工作簿保护管理器
     };
 } // namespace TinaXlsx 

@@ -30,7 +30,8 @@ namespace TinaXlsx
         , auto_component_detection_(true)
         , style_manager_()
         , shared_strings_pool_()
-        , context_(std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_)) {
+        , context_(std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_))
+        , workbook_protection_manager_() {
         // 默认注册基础组件
         component_manager_.registerComponent(ExcelComponent::BasicWorkbook);
         // 默认注册SharedStrings组件，避免Content Types问题
@@ -47,7 +48,8 @@ namespace TinaXlsx
         , auto_component_detection_(other.auto_component_detection_)
         , style_manager_(std::move(other.style_manager_))
         , shared_strings_pool_(std::move(other.shared_strings_pool_))
-        , context_(std::move(other.context_)) {
+        , context_(std::move(other.context_))
+        , workbook_protection_manager_(std::move(other.workbook_protection_manager_)) {
     }
 
     TXWorkbook& TXWorkbook::operator=(TXWorkbook&& other) noexcept {
@@ -60,6 +62,7 @@ namespace TinaXlsx
             style_manager_ = std::move(other.style_manager_);
             shared_strings_pool_ = std::move(other.shared_strings_pool_);
             context_ = std::move(other.context_);
+            workbook_protection_manager_ = std::move(other.workbook_protection_manager_);
         }
         return *this;
     }
@@ -362,7 +365,7 @@ namespace TinaXlsx
         component_manager_.reset();
         style_manager_ = std::move(TXStyleManager());
         shared_strings_pool_ = TXSharedStringsPool();
-        context_ = std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_);
+        context_ = std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_);
     }
 
     ComponentManager& TXWorkbook::getComponentManager() {
@@ -460,6 +463,37 @@ namespace TinaXlsx
         if (hasStyledCells) {
             component_manager_.registerComponent(ExcelComponent::Styles);
         }
+    }
+
+    // ==================== 工作簿保护功能实现 ====================
+
+    TXWorkbookProtectionManager& TXWorkbook::getWorkbookProtectionManager() {
+        return workbook_protection_manager_;
+    }
+
+    const TXWorkbookProtectionManager& TXWorkbook::getWorkbookProtectionManager() const {
+        return workbook_protection_manager_;
+    }
+
+    bool TXWorkbook::protectWorkbook(const std::string& password,
+                                   const TXWorkbookProtectionManager::WorkbookProtection& protection) {
+        return workbook_protection_manager_.protectWorkbook(password, protection);
+    }
+
+    bool TXWorkbook::unprotectWorkbook(const std::string& password) {
+        return workbook_protection_manager_.unprotectWorkbook(password);
+    }
+
+    bool TXWorkbook::isWorkbookProtected() const {
+        return workbook_protection_manager_.isWorkbookProtected();
+    }
+
+    bool TXWorkbook::protectStructure(const std::string& password) {
+        return workbook_protection_manager_.protectStructure(password);
+    }
+
+    bool TXWorkbook::protectWindows(const std::string& password) {
+        return workbook_protection_manager_.protectWindows(password);
     }
 
 } // namespace TinaXlsx

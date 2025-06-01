@@ -59,6 +59,34 @@ namespace TinaXlsx
             workbook.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
                     .addAttribute("xmlns:r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
 
+            // 添加工作簿保护信息
+            auto& workbookProtectionManager = context.workbookProtectionManager;
+            if (workbookProtectionManager.isWorkbookProtected()) {
+                const auto& protection = workbookProtectionManager.getWorkbookProtection();
+                XmlNodeBuilder workbookProtection("workbookProtection");
+
+                // 添加现代Excel的SHA-512密码保护属性
+                if (!protection.passwordHash.empty()) {
+                    workbookProtection.addAttribute("workbookAlgorithmName", protection.algorithmName);
+                    workbookProtection.addAttribute("workbookHashValue", protection.passwordHash);
+                    workbookProtection.addAttribute("workbookSaltValue", protection.saltValue);
+                    workbookProtection.addAttribute("workbookSpinCount", std::to_string(protection.spinCount));
+                }
+
+                // 添加保护选项属性
+                if (protection.lockStructure) {
+                    workbookProtection.addAttribute("lockStructure", "1");
+                }
+                if (protection.lockWindows) {
+                    workbookProtection.addAttribute("lockWindows", "1");
+                }
+                if (protection.lockRevision) {
+                    workbookProtection.addAttribute("lockRevision", "1");
+                }
+
+                workbook.addChild(workbookProtection);
+            }
+
             // 创建sheets节点
             XmlNodeBuilder sheetNode("sheets");
             for (std::size_t i = 0; i < context.sheets.size(); ++i)
