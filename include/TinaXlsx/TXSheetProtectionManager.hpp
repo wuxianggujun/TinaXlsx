@@ -29,6 +29,9 @@ public:
     struct SheetProtection {
         bool isProtected = false;                    ///< 是否受保护
         std::string passwordHash;                    ///< 保护密码（哈希值）
+        std::string algorithmName = "SHA-512";      ///< 哈希算法名称
+        std::string saltValue;                       ///< 盐值（Base64编码）
+        uint32_t spinCount = 100000;                ///< 迭代次数
         bool selectLockedCells = true;               ///< 允许选择锁定的单元格
         bool selectUnlockedCells = true;             ///< 允许选择未锁定的单元格
         bool formatCells = false;                    ///< 允许格式化单元格

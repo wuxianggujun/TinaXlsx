@@ -1,7 +1,12 @@
 #include "TinaXlsx/TXSheetProtectionManager.hpp"
 #include "TinaXlsx/TXCellManager.hpp"
+#include "TinaXlsx/TXSha512.hpp"
 #include <functional>
 #include <algorithm>
+#include <cstdint>
+#include <random>
+#include <sstream>
+#include <iomanip>
 
 namespace TinaXlsx {
 
@@ -10,11 +15,26 @@ namespace TinaXlsx {
 bool TXSheetProtectionManager::protectSheet(const std::string& password, const SheetProtection& protection) {
     protection_ = protection;
     protection_.isProtected = true;
-    
+
     if (!password.empty()) {
-        protection_.passwordHash = generatePasswordHash(password);
+        // 生成随机盐值
+        protection_.saltValue = TXExcelPasswordHash::generateSalt(16);
+
+        // 使用SHA-512算法计算密码哈希
+        protection_.passwordHash = TXExcelPasswordHash::calculateHash(
+            password,
+            protection_.saltValue,
+            protection_.spinCount
+        );
+
+        // 设置算法信息
+        protection_.algorithmName = "SHA-512";
+    } else {
+        // 无密码保护
+        protection_.passwordHash.clear();
+        protection_.saltValue.clear();
     }
-    
+
     return true;
 }
 
@@ -39,8 +59,14 @@ bool TXSheetProtectionManager::verifyPassword(const std::string& password) const
     if (protection_.passwordHash.empty()) {
         return true; // 没有密码保护
     }
-    
-    return generatePasswordHash(password) == protection_.passwordHash;
+
+    // 使用SHA-512算法验证密码
+    return TXExcelPasswordHash::verifyPassword(
+        password,
+        protection_.saltValue,
+        protection_.passwordHash,
+        protection_.spinCount
+    );
 }
 
 // ==================== 单元格锁定 ====================
@@ -257,9 +283,40 @@ void TXSheetProtectionManager::reset() {
 // ==================== 私有辅助方法 ====================
 
 std::string TXSheetProtectionManager::generatePasswordHash(const std::string& password) const {
-    // 简化的哈希实现（实际应使用MD5或更安全的算法）
-    std::hash<std::string> hasher;
-    return std::to_string(hasher(password));
+    // 现代Excel使用SHA-512算法，但由于我们没有加密库，
+    // 我们暂时使用Legacy Password Hash Algorithm作为后备
+    // TODO: 实现完整的SHA-512算法以完全兼容现代Excel
+
+    if (password.empty()) {
+        return "";
+    }
+
+    // 为了兼容性，我们先使用Legacy算法
+    uint16_t passwordLength = static_cast<uint16_t>(password.length());
+    uint16_t passwordHash = 0;
+
+    // 从密码的最后一个字符开始，向前遍历
+    const char* pch = &password[passwordLength];
+    while (pch-- != password.c_str()) {
+        // 循环左移1位，保持16位
+        passwordHash = ((passwordHash >> 14) & 0x01) |
+                      ((passwordHash << 1) & 0x7fff);
+        // 与当前字符异或
+        passwordHash ^= static_cast<uint8_t>(*pch);
+    }
+
+    // 最后一次循环左移
+    passwordHash = ((passwordHash >> 14) & 0x01) |
+                  ((passwordHash << 1) & 0x7fff);
+
+    // 与特殊常量异或
+    passwordHash ^= (0x8000 | ('N' << 8) | 'K');
+
+    // 与密码长度异或
+    passwordHash ^= passwordLength;
+
+    // 转换为字符串（十进制格式）
+    return std::to_string(passwordHash);
 }
 
 std::string TXSheetProtectionManager::operationTypeToString(OperationType operation) const {

@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "TinaXlsx/TXSha512.hpp"
 #include "test_file_generator.hpp"
 #include <memory>
+#include <iomanip>
 
 using namespace TinaXlsx;
 
@@ -62,6 +64,44 @@ TEST_F(CellLockingTest, SetCellLockingViaSheet) {
     sheet->setCellValue(row_t(2), column_t(1), cell_value_t{"测试日期: 2024-01-15"});
     sheet->setCellValue(row_t(3), column_t(1), cell_value_t{"保护密码: test123"});
 
+    // 调试：显示密码哈希信息
+    auto& protectionManager = sheet->getProtectionManager();
+    std::cout << "\n=== 密码哈希调试信息 ===" << std::endl;
+
+    // 测试Base64编码/解码
+    std::cout << "\n--- Base64测试 ---" << std::endl;
+    std::string testData = "Hello World";
+    std::vector<uint8_t> testBytes(testData.begin(), testData.end());
+    std::string encoded = TinaXlsx::TXBase64::encode(testBytes);
+    std::vector<uint8_t> decoded = TinaXlsx::TXBase64::decode(encoded);
+    std::string decodedStr(decoded.begin(), decoded.end());
+    std::cout << "原始: " << testData << std::endl;
+    std::cout << "编码: " << encoded << std::endl;
+    std::cout << "解码: " << decodedStr << std::endl;
+    std::cout << "Base64测试: " << (testData == decodedStr ? "通过" : "失败") << std::endl;
+
+    // 测试UTF-16编码
+    std::cout << "\n--- UTF-16编码测试 ---" << std::endl;
+    std::string testPassword = "test";
+    auto utf16Bytes = TinaXlsx::TXExcelPasswordHash::passwordToUtf16(testPassword);
+    std::cout << "密码: " << testPassword << std::endl;
+    std::cout << "UTF-16字节: ";
+    for (auto byte : utf16Bytes) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
+    }
+    std::cout << std::dec << std::endl;
+
+    // 测试多个密码的哈希值
+    std::cout << "\n--- 密码哈希测试 ---" << std::endl;
+    std::vector<std::string> testPasswords = {"test", "test123", "password", "123456", "abc"};
+    for (const auto& pwd : testPasswords) {
+        // 创建临时保护管理器来测试哈希
+        TXSheetProtectionManager tempManager;
+        tempManager.protectSheet(pwd);
+        const auto& tempProtection = tempManager.getSheetProtection();
+        std::cout << "密码: '" << pwd << "' -> 哈希: " << tempProtection.passwordHash << std::endl;
+    }
+
     // 添加测试数据
     sheet->setCellValue(row_t(5), column_t(1), cell_value_t{"单元格"});
     sheet->setCellValue(row_t(5), column_t(2), cell_value_t{"锁定状态"});
@@ -96,9 +136,17 @@ TEST_F(CellLockingTest, SetCellLockingViaSheet) {
     sheet->setCellLocked(row_t(9), column_t(3), false);
 
     // 保护工作表以使锁定生效
-    sheet->protectSheet("test123");
+    std::cout << "保护工作表前..." << std::endl;
+    bool protectResult = sheet->protectSheet("test123");
+    std::cout << "保护工作表结果: " << (protectResult ? "成功" : "失败") << std::endl;
 
-    saveWorkbook(workbook, "MultiSheetLockingTest");
+    // 获取密码哈希信息
+    const auto& protection = protectionManager.getSheetProtection();
+    std::cout << "密码哈希: " << protection.passwordHash << std::endl;
+    std::cout << "工作表保护状态: " << (protection.isProtected ? "已保护" : "未保护") << std::endl;
+    std::cout << "=== 密码哈希调试信息结束 ===" << std::endl;
+
+    saveWorkbook(workbook, "PasswordHashTest");
 }
 
 TEST_F(CellLockingTest, AutoCreateCellForLocking) {

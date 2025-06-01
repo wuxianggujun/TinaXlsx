@@ -150,9 +150,13 @@ namespace TinaXlsx
                 // 重要：添加sheet="1"属性表示工作表本身被保护
                 sheetProtection.addAttribute("sheet", "1");
 
-                // 添加密码哈希（如果有）
+                // 添加现代Excel的SHA-512密码保护属性
                 if (!protection.passwordHash.empty()) {
-                    sheetProtection.addAttribute("password", protection.passwordHash);
+                    // 现代Excel格式：使用algorithmName, hashValue, saltValue, spinCount
+                    sheetProtection.addAttribute("algorithmName", protection.algorithmName);
+                    sheetProtection.addAttribute("hashValue", protection.passwordHash);
+                    sheetProtection.addAttribute("saltValue", protection.saltValue);
+                    sheetProtection.addAttribute("spinCount", std::to_string(protection.spinCount));
                 }
 
                 // 添加保护选项属性（只有当值为false时才添加，因为默认值通常是true）
