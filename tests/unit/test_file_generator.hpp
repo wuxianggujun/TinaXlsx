@@ -99,13 +99,25 @@ private:
     std::string getTestSuiteName() const {
         // 从类型名中提取测试套件名称
         std::string typeName = typeid(TestClass).name();
-        
-        // 简化处理：查找"Test"并去掉前缀
+
+        // 处理MSVC的"class ClassName"格式
+        size_t classPos = typeName.find("class ");
+        if (classPos == 0) {
+            typeName = typeName.substr(6); // 去掉"class "前缀
+        }
+
+        // 处理其他编译器可能的前缀
+        size_t structPos = typeName.find("struct ");
+        if (structPos == 0) {
+            typeName = typeName.substr(7); // 去掉"struct "前缀
+        }
+
+        // 查找"Test"并截取到Test结尾
         size_t testPos = typeName.find("Test");
         if (testPos != std::string::npos) {
             return typeName.substr(0, testPos + 4); // 包含"Test"
         }
-        
+
         return typeName;
     }
 };

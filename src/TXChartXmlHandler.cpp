@@ -6,6 +6,8 @@
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXError.hpp"
 #include "TinaXlsx/TXXmlWriter.hpp"
+#include "TinaXlsx/TXChartSeriesBuilder.hpp"
+#include "TinaXlsx/TXAxisBuilder.hpp"
 #include <sstream>
 
 namespace TinaXlsx
@@ -267,206 +269,19 @@ namespace TinaXlsx
 
     XmlNodeBuilder TXChartXmlHandler::generateSeriesXml() const
     {
-        XmlNodeBuilder ser("c:ser");
-
-        // 系列索引
-        XmlNodeBuilder idx("c:idx");
-        idx.addAttribute("val", "0");
-        ser.addChild(idx);
-
-        // 系列顺序
-        XmlNodeBuilder order("c:order");
-        order.addAttribute("val", "0");
-        ser.addChild(order);
-
-        // 系列文本（使用图表标题）
-        XmlNodeBuilder tx("c:tx");
-        XmlNodeBuilder v("c:v");
-        v.setText(m_chart->getTitle().empty() ? "系列1" : m_chart->getTitle());
-        tx.addChild(v);
-        ser.addChild(tx);
-
-        // 获取实际的数据范围和工作表名称
-        const TXRange& dataRange = m_chart->getDataRange();
-        std::string sheetName = m_chart->getDataSheet() ? m_chart->getDataSheet()->getName() : "Sheet1";
-        auto startCoord = dataRange.getStart();
-        auto endCoord = dataRange.getEnd();
-
-        // 根据图表类型生成不同的数据引用
-        if (m_chart->getType() == ChartType::Scatter) {
-            // 散点图使用 xVal 和 yVal
-            // X值（第一列，跳过标题行）
-            XmlNodeBuilder xVal("c:xVal");
-            XmlNodeBuilder numRefX("c:numRef");
-            XmlNodeBuilder fX("c:f");
-            std::string xRange = sheetName + "!$" +
-                               startCoord.getCol().column_string() + "$" +
-                               std::to_string(startCoord.getRow().index() + 1) + ":$" +
-                               startCoord.getCol().column_string() + "$" +
-                               std::to_string(endCoord.getRow().index());
-            fX.setText(xRange);
-            numRefX.addChild(fX);
-            xVal.addChild(numRefX);
-            ser.addChild(xVal);
-
-            // Y值（第二列，跳过标题行）
-            XmlNodeBuilder yVal("c:yVal");
-            XmlNodeBuilder numRefY("c:numRef");
-            XmlNodeBuilder fY("c:f");
-            column_t valueColumn(startCoord.getCol().index() + 1);
-            std::string yRange = sheetName + "!$" +
-                               valueColumn.column_string() + "$" +
-                               std::to_string(startCoord.getRow().index() + 1) + ":$" +
-                               valueColumn.column_string() + "$" +
-                               std::to_string(endCoord.getRow().index());
-            fY.setText(yRange);
-            numRefY.addChild(fY);
-            yVal.addChild(numRefY);
-            ser.addChild(yVal);
-        } else {
-            // 其他图表类型使用 cat 和 val
-            // 类别轴数据（标签）
-            XmlNodeBuilder cat("c:cat");
-            XmlNodeBuilder strRef("c:strRef");
-            XmlNodeBuilder catF("c:f");
-            std::string catRange = sheetName + "!$" +
-                                 startCoord.getCol().column_string() + "$" +
-                                 std::to_string(startCoord.getRow().index() + 1) + ":$" +
-                                 startCoord.getCol().column_string() + "$" +
-                                 std::to_string(endCoord.getRow().index());
-            catF.setText(catRange);
-            strRef.addChild(catF);
-            cat.addChild(strRef);
-            ser.addChild(cat);
-
-            // 数据值
-            XmlNodeBuilder val("c:val");
-            XmlNodeBuilder numRef("c:numRef");
-            XmlNodeBuilder f("c:f");
-            column_t valueColumn(startCoord.getCol().index() + 1);
-            std::string valRange = sheetName + "!$" +
-                                 valueColumn.column_string() + "$" +
-                                 std::to_string(startCoord.getRow().index() + 1) + ":$" +
-                                 valueColumn.column_string() + "$" +
-                                 std::to_string(endCoord.getRow().index());
-            f.setText(valRange);
-            numRef.addChild(f);
-            val.addChild(numRef);
-            ser.addChild(val);
-        }
-
-        // 为柱状图和折线图添加必要的格式化元素
-        if (m_chart->getType() == ChartType::Column) {
-            // 柱状图需要形状属性
-            XmlNodeBuilder spPr("c:spPr");
-            XmlNodeBuilder solidFill("a:solidFill");
-            XmlNodeBuilder srgbClr("a:srgbClr");
-            srgbClr.addAttribute("val", "4F81BD");
-            solidFill.addChild(srgbClr);
-            spPr.addChild(solidFill);
-            ser.addChild(spPr);
-        } else if (m_chart->getType() == ChartType::Line) {
-            // 折线图需要线条属性
-            XmlNodeBuilder spPr("c:spPr");
-            XmlNodeBuilder ln("a:ln");
-            ln.addAttribute("w", "25400");
-            XmlNodeBuilder solidFill("a:solidFill");
-            XmlNodeBuilder srgbClr("a:srgbClr");
-            srgbClr.addAttribute("val", "4F81BD");
-            solidFill.addChild(srgbClr);
-            ln.addChild(solidFill);
-            spPr.addChild(ln);
-            ser.addChild(spPr);
-        }
-
-        return ser;
+        // 使用工厂创建相应的系列构建器
+        auto seriesBuilder = TXSeriesBuilderFactory::createBuilder(m_chart->getType());
+        return seriesBuilder->buildSeries(m_chart, 0);
     }
 
     XmlNodeBuilder TXChartXmlHandler::generateCategoryAxisXml() const
     {
-        // 类别轴（X轴）
-        XmlNodeBuilder catAx("c:catAx");
-
-        XmlNodeBuilder axId1("c:axId");
-        axId1.addAttribute("val", "1");
-        catAx.addChild(axId1);
-
-        XmlNodeBuilder scaling1("c:scaling");
-        XmlNodeBuilder orientation1("c:orientation");
-        orientation1.addAttribute("val", "minMax");
-        scaling1.addChild(orientation1);
-        catAx.addChild(scaling1);
-
-        XmlNodeBuilder axPos1("c:axPos");
-        axPos1.addAttribute("val", "b");
-        catAx.addChild(axPos1);
-
-        XmlNodeBuilder tickLblPos1("c:tickLblPos");
-        tickLblPos1.addAttribute("val", "nextTo");
-        catAx.addChild(tickLblPos1);
-
-        XmlNodeBuilder crossAx1("c:crossAx");
-        crossAx1.addAttribute("val", "2");
-        catAx.addChild(crossAx1);
-
-        XmlNodeBuilder crosses1("c:crosses");
-        crosses1.addAttribute("val", "autoZero");
-        catAx.addChild(crosses1);
-
-        XmlNodeBuilder auto1("c:auto");
-        auto1.addAttribute("val", "1");
-        catAx.addChild(auto1);
-
-        XmlNodeBuilder lblAlgn1("c:lblAlgn");
-        lblAlgn1.addAttribute("val", "ctr");
-        catAx.addChild(lblAlgn1);
-
-        XmlNodeBuilder lblOffset1("c:lblOffset");
-        lblOffset1.addAttribute("val", "100");
-        catAx.addChild(lblOffset1);
-
-        return catAx;
+        return TXAxisBuilder::buildCategoryAxis(1, 2);
     }
 
     XmlNodeBuilder TXChartXmlHandler::generateValueAxisXml() const
     {
-        // 数值轴（Y轴）
-        XmlNodeBuilder valAx("c:valAx");
-
-        XmlNodeBuilder axId2("c:axId");
-        axId2.addAttribute("val", "2");
-        valAx.addChild(axId2);
-
-        XmlNodeBuilder scaling2("c:scaling");
-        XmlNodeBuilder orientation2("c:orientation");
-        orientation2.addAttribute("val", "minMax");
-        scaling2.addChild(orientation2);
-        valAx.addChild(scaling2);
-
-        XmlNodeBuilder axPos2("c:axPos");
-        axPos2.addAttribute("val", "l");
-        valAx.addChild(axPos2);
-
-        XmlNodeBuilder majorGridlines("c:majorGridlines");
-        valAx.addChild(majorGridlines);
-
-        XmlNodeBuilder tickLblPos2("c:tickLblPos");
-        tickLblPos2.addAttribute("val", "nextTo");
-        valAx.addChild(tickLblPos2);
-
-        XmlNodeBuilder crossAx2("c:crossAx");
-        crossAx2.addAttribute("val", "1");
-        valAx.addChild(crossAx2);
-
-        XmlNodeBuilder crosses2("c:crosses");
-        crosses2.addAttribute("val", "autoZero");
-        valAx.addChild(crosses2);
-
-        XmlNodeBuilder crossBetween("c:crossBetween");
-        crossBetween.addAttribute("val", "between");
-        valAx.addChild(crossBetween);
-
-        return valAx;
+        return TXAxisBuilder::buildValueAxis(2, 1, true);
     }
 
     std::string TXChartXmlHandler::getChartTypeString() const
