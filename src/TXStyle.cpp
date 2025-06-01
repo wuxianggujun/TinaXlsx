@@ -86,14 +86,15 @@ bool TXFill::operator==(const TXFill& other) const {
 
 // ==================== TXCellStyle 实现 ====================
 
-TXCellStyle::TXCellStyle() = default;
+TXCellStyle::TXCellStyle() : locked_(true) {} // Excel默认单元格是锁定的
 
-TXCellStyle::TXCellStyle(const TXCellStyle& other) 
+TXCellStyle::TXCellStyle(const TXCellStyle& other)
     : font_(other.font_)
     , alignment_(other.alignment_)
     , border_(other.border_)
     , fill_(other.fill_)
-    , numberFormatDefinition_(other.numberFormatDefinition_) {}
+    , numberFormatDefinition_(other.numberFormatDefinition_)
+    , locked_(other.locked_) {}
 
 TXCellStyle& TXCellStyle::operator=(const TXCellStyle& other) {
     if (this != &other) {
@@ -102,16 +103,18 @@ TXCellStyle& TXCellStyle::operator=(const TXCellStyle& other) {
         border_ = other.border_;
         fill_ = other.fill_;
         numberFormatDefinition_ = other.numberFormatDefinition_;
+        locked_ = other.locked_;
     }
     return *this;
 }
 
-TXCellStyle::TXCellStyle(TXCellStyle&& other) noexcept 
+TXCellStyle::TXCellStyle(TXCellStyle&& other) noexcept
     : font_(std::move(other.font_))
     , alignment_(std::move(other.alignment_))
     , border_(std::move(other.border_))
     , fill_(std::move(other.fill_))
-    , numberFormatDefinition_(std::move(other.numberFormatDefinition_)) {}
+    , numberFormatDefinition_(std::move(other.numberFormatDefinition_))
+    , locked_(other.locked_) {}
 
 TXCellStyle& TXCellStyle::operator=(TXCellStyle&& other) noexcept {
     if (this != &other) {
@@ -120,6 +123,7 @@ TXCellStyle& TXCellStyle::operator=(TXCellStyle&& other) noexcept {
         border_ = std::move(other.border_);
         fill_ = std::move(other.fill_);
         numberFormatDefinition_ = std::move(other.numberFormatDefinition_);
+        locked_ = other.locked_;
     }
     return *this;
 }
@@ -249,13 +253,20 @@ TXCellStyle& TXCellStyle::setBottomBorder(BorderStyle style, const TXColor& colo
     return *this;
 }
 
+// 保护设置方法
+TXCellStyle& TXCellStyle::setLocked(bool locked) {
+    locked_ = locked;
+    return *this;
+}
+
 // 比较操作符
 bool TXCellStyle::operator==(const TXCellStyle& other) const {
     return font_ == other.font_ &&
            alignment_ == other.alignment_ &&
            border_ == other.border_ &&
            fill_ == other.fill_ &&
-           numberFormatDefinition_ == other.numberFormatDefinition_;
+           numberFormatDefinition_ == other.numberFormatDefinition_ &&
+           locked_ == other.locked_;
 }
 
 // 工具方法
@@ -265,6 +276,7 @@ void TXCellStyle::reset() {
     border_ = TXBorder();
     fill_ = TXFill();
     numberFormatDefinition_ = NumberFormatDefinition();
+    locked_ = true; // Excel默认单元格是锁定的
 }
 
 bool TXCellStyle::isDefault() const {
@@ -277,7 +289,8 @@ bool TXCellStyle::isDefault() const {
            alignment_.indent == 0 &&
            border_.leftStyle == BorderStyle::None &&
            fill_.pattern == FillPattern::None &&
-           numberFormatDefinition_.isGeneral();
+           numberFormatDefinition_.isGeneral() &&
+           locked_ == true; // Excel默认单元格是锁定的
 }
 
 std::string TXCellStyle::getUniqueKey() const {
@@ -287,7 +300,8 @@ std::string TXCellStyle::getUniqueKey() const {
            std::to_string(alignment_.wrapText) + "|" +
            std::to_string(static_cast<int>(border_.leftStyle)) + "|" +
            std::to_string(static_cast<int>(fill_.pattern)) + "|" +
-           numberFormatDefinition_.generateExcelFormatCode();
+           numberFormatDefinition_.generateExcelFormatCode() + "|" +
+           std::to_string(locked_);
 }
 
 // ==================== TXCellStyle::NumberFormatDefinition 实现 ====================

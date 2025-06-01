@@ -101,6 +101,15 @@ TEST_F(CellLockingTest, SetCellLockingViaSheet) {
     sheet->setCellValue(row_t(11), column_t(4), cell_value_t{"输入区域通常不锁定"});
     sheet->setCellLocked(row_t(11), column_t(3), false);
 
+    // 添加保护说明
+    sheet->setCellValue(row_t(13), column_t(1), cell_value_t{"重要说明:"});
+    sheet->setCellValue(row_t(14), column_t(1), cell_value_t{"1. 单元格锁定只有在工作表保护时才生效"});
+    sheet->setCellValue(row_t(15), column_t(1), cell_value_t{"2. 此工作表已启用保护，密码为: test123"});
+    sheet->setCellValue(row_t(16), column_t(1), cell_value_t{"3. 锁定的单元格无法编辑，未锁定的可以编辑"});
+
+    // 保护工作表以使锁定生效
+    sheet->protectSheet("test123");
+
     saveWorkbook(workbook, "SetCellLockingViaSheet");
 }
 

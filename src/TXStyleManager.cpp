@@ -396,6 +396,7 @@ namespace TinaXlsx
             if (xf_data.apply_border_) xf_node.addAttribute("applyBorder", "1");
             if (xf_data.apply_number_format_) xf_node.addAttribute("applyNumberFormat", "1");
             if (xf_data.apply_alignment_) xf_node.addAttribute("applyAlignment", "1");
+            if (xf_data.apply_protection_) xf_node.addAttribute("applyProtection", "1");
 
 
             // Alignment (only add <alignment> element if any non-default alignment is set)
@@ -442,6 +443,19 @@ namespace TinaXlsx
                 // If specific alignment attributes are present, applyAlignment should be set.
                 // The check for xf_data.apply_alignment_ above already handles this.
             }
+
+            // Protection (只有当锁定状态不是默认值时才添加protection元素)
+            if (xf_data.apply_protection_)
+            {
+                XmlNodeBuilder protection_node("protection");
+                if (!xf_data.locked_)
+                {
+                    protection_node.addAttribute("locked", "0");
+                }
+                // 可以在这里添加其他保护属性，如hidden等
+                xf_node.addChild(protection_node);
+            }
+
             cellXfs_node.addChild(xf_node);
         }
         styleSheet_node.addChild(cellXfs_node);
@@ -583,7 +597,11 @@ namespace TinaXlsx
         );
         
         xf_data.alignment_ = style.getAlignment();
-        
+
+        // 设置保护信息
+        xf_data.locked_ = style.isLocked();
+        xf_data.apply_protection_ = (style.isLocked() != true); // 只有当锁定状态不是默认值时才应用保护
+
         // 检查是否已存在
         std::string key = xf_data.generateKey();
         auto it = cell_xf_lookup_.find(key);
@@ -669,7 +687,10 @@ namespace TinaXlsx
         }
         
         style.setNumberFormatDefinition(numFmtDef);
-        
+
+        // 设置锁定状态
+        style.setLocked(xf.locked_);
+
         // 缓存结果
         style_cache_[xfIndex] = style;
         

@@ -20,6 +20,11 @@ set(UNIT_TEST_SOURCES
 
     # 测试文件生成器
     test_file_generator.cpp
+
+    # 调试测试
+    test_column_width_debug.cpp
+    test_column_width_decimal.cpp
+    test_protection_debug.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）

@@ -97,8 +97,10 @@ namespace TinaXlsx
             bool apply_border_ = false;
             bool apply_alignment_ = false;
             bool apply_number_format_ = false;
+            bool apply_protection_ = false;
 
             TXAlignment alignment_; // 对齐信息直接存储在XF中
+            bool locked_ = true; // 单元格锁定状态，Excel默认为true
 
             // 用于比较和去重
             bool operator==(const CellXF& other) const
@@ -113,7 +115,9 @@ namespace TinaXlsx
                     apply_border_ == other.apply_border_ &&
                     apply_alignment_ == other.apply_alignment_ &&
                     apply_number_format_ == other.apply_number_format_ &&
-                    alignment_ == other.alignment_; // TXAlignment 需要实现 operator==
+                    apply_protection_ == other.apply_protection_ &&
+                    alignment_ == other.alignment_ &&
+                    locked_ == other.locked_;
             }
 
             // 生成唯一键用于去重
@@ -123,13 +127,14 @@ namespace TinaXlsx
                 oss << "f:" << font_id_ << ";fi:" << fill_id_ << ";b:" << border_id_
                     << ";n:" << num_fmt_id_ << ";xfid:" << xf_id_
                     << ";apF:" << apply_font_ << ";apFi:" << apply_fill_ << ";apB:" << apply_border_
-                    << ";apA:" << apply_alignment_ << ";apN:" << apply_number_format_
+                    << ";apA:" << apply_alignment_ << ";apN:" << apply_number_format_ << ";apP:" << apply_protection_
                     << ";alH:" << static_cast<int>(alignment_.horizontal)
                     << ";alV:" << static_cast<int>(alignment_.vertical)
                     << ";alWrap:" << alignment_.wrapText
                     << ";alShrink:" << alignment_.shrinkToFit
                     << ";alRot:" << alignment_.textRotation
-                    << ";alIndent:" << alignment_.indent;
+                    << ";alIndent:" << alignment_.indent
+                    << ";locked:" << locked_;
                 return oss.str();
             }
         };

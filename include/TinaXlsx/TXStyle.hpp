@@ -462,6 +462,21 @@ public:
      */
     std::unique_ptr<TXNumberFormat> createNumberFormatObject() const;
 
+    // ==================== 保护设置 ====================
+
+    /**
+     * @brief 设置单元格锁定状态
+     * @param locked 是否锁定
+     * @return 自身引用，支持链式调用
+     */
+    TXCellStyle& setLocked(bool locked = true);
+
+    /**
+     * @brief 获取单元格锁定状态
+     * @return 锁定返回true，否则返回false
+     */
+    [[nodiscard]] bool isLocked() const { return locked_; }
+
     // ==================== 比较操作符 ====================
     
     bool operator==(const TXCellStyle& other) const;
@@ -494,6 +509,7 @@ private:
     TXBorder border_;                    ///< 边框样式
     TXFill fill_;                        ///< 填充样式
     NumberFormatDefinition numberFormatDefinition_;  ///< 数字格式定义
+    bool locked_;                        ///< 单元格锁定状态
 };
 
 } // namespace TinaXlsx 

@@ -84,23 +84,34 @@ TEST_F(BasicFeaturesTest, ColumnWidthBasic) {
 
     // 设置不同的列宽并添加内容
     sheet->setCellValue(row_t(7), column_t(1), cell_value_t{"列"});
-    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"宽度"});
+    sheet->setCellValue(row_t(7), column_t(2), cell_value_t{"宽度(字符单位)"});
     sheet->setCellValue(row_t(7), column_t(3), cell_value_t{"内容示例"});
+    sheet->setCellValue(row_t(7), column_t(4), cell_value_t{"说明"});
 
     sheet->setColumnWidth(column_t(1), 8.0);
     sheet->setCellValue(row_t(8), column_t(1), cell_value_t{"A"});
     sheet->setCellValue(row_t(8), column_t(2), cell_value_t{"8.0"});
     sheet->setCellValue(row_t(8), column_t(3), cell_value_t{"窄列"});
+    sheet->setCellValue(row_t(8), column_t(4), cell_value_t{"Excel可能显示为不同数值"});
 
     sheet->setColumnWidth(column_t(2), 15.0);
     sheet->setCellValue(row_t(9), column_t(1), cell_value_t{"B"});
     sheet->setCellValue(row_t(9), column_t(2), cell_value_t{"15.0"});
     sheet->setCellValue(row_t(9), column_t(3), cell_value_t{"中等宽度列"});
+    sheet->setCellValue(row_t(9), column_t(4), cell_value_t{"字符单位与像素不同"});
 
     sheet->setColumnWidth(column_t(3), 25.0);
     sheet->setCellValue(row_t(10), column_t(1), cell_value_t{"C"});
     sheet->setCellValue(row_t(10), column_t(2), cell_value_t{"25.0"});
     sheet->setCellValue(row_t(10), column_t(3), cell_value_t{"这是一个比较宽的列，用于显示更多内容"});
+    sheet->setCellValue(row_t(10), column_t(4), cell_value_t{"宽列可容纳更多文字"});
+
+    // 添加重要说明
+    sheet->setCellValue(row_t(12), column_t(1), cell_value_t{"重要说明:"});
+    sheet->setCellValue(row_t(13), column_t(1), cell_value_t{"1. TinaXlsx使用字符单位设置列宽"});
+    sheet->setCellValue(row_t(14), column_t(1), cell_value_t{"2. Excel可能显示为像素或其他单位"});
+    sheet->setCellValue(row_t(15), column_t(1), cell_value_t{"3. 实际显示宽度取决于字体和DPI设置"});
+    sheet->setCellValue(row_t(16), column_t(1), cell_value_t{"4. 列宽设置功能正常，显示差异属正常现象"});
 
     saveWorkbook(workbook, "03_ColumnWidthBasic");
 }

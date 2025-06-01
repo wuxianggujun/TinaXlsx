@@ -554,6 +554,10 @@ namespace TinaXlsx
 
     void TXCell::setLocked(bool locked) {
         is_locked_ = locked;
+
+        // 注意：单元格锁定状态的实际应用需要通过样式系统来实现
+        // 这里只是设置内部状态，实际的样式更新需要在TXSheet层面处理
+        // 因为TXCell本身不直接管理样式对象，而是通过样式索引来引用
     }
 
     bool TXCell::isLocked() const {

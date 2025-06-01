@@ -11,6 +11,8 @@
 #include "TXCell.hpp"
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
+#include <sstream>
+#include <iomanip>
 
 namespace TinaXlsx
 {
@@ -75,6 +77,39 @@ namespace TinaXlsx
             }
             worksheet.addChild(dimension);
 
+            // 添加列宽信息
+            auto& rowColManager = sheet->getRowColumnManager();
+            const auto& customColumnWidths = rowColManager.getCustomColumnWidths();
+            if (!customColumnWidths.empty()) {
+                XmlNodeBuilder cols("cols");
+
+                for (const auto& pair : customColumnWidths) {
+                    column_t::index_t colIndex = pair.first;
+                    double width = pair.second;
+
+                    XmlNodeBuilder col("col");
+
+                    // 格式化宽度值，保留合理的小数位数
+                    std::ostringstream widthStream;
+                    widthStream << std::fixed << std::setprecision(2) << width;
+                    std::string widthStr = widthStream.str();
+                    // 移除尾随的零和小数点
+                    widthStr.erase(widthStr.find_last_not_of('0') + 1, std::string::npos);
+                    if (widthStr.back() == '.') {
+                        widthStr.pop_back();
+                    }
+
+                    col.addAttribute("min", std::to_string(colIndex))
+                       .addAttribute("max", std::to_string(colIndex))
+                       .addAttribute("width", widthStr)
+                       .addAttribute("customWidth", "1");
+
+                    cols.addChild(col);
+                }
+
+                worksheet.addChild(cols);
+            }
+
             // 构建工作表数据
             XmlNodeBuilder sheetData("sheetData");
             
@@ -105,6 +140,52 @@ namespace TinaXlsx
             }
             
             worksheet.addChild(sheetData);
+
+            // 添加工作表保护信息
+            auto& protectionManager = sheet->getProtectionManager();
+            if (protectionManager.isSheetProtected()) {
+                const auto& protection = protectionManager.getSheetProtection();
+                XmlNodeBuilder sheetProtection("sheetProtection");
+
+                // 重要：添加sheet="1"属性表示工作表本身被保护
+                sheetProtection.addAttribute("sheet", "1");
+
+                // 添加密码哈希（如果有）
+                if (!protection.passwordHash.empty()) {
+                    sheetProtection.addAttribute("password", protection.passwordHash);
+                }
+
+                // 添加保护选项属性（只有当值为false时才添加，因为默认值通常是true）
+                if (!protection.selectLockedCells) {
+                    sheetProtection.addAttribute("selectLockedCells", "0");
+                }
+                if (!protection.selectUnlockedCells) {
+                    sheetProtection.addAttribute("selectUnlockedCells", "0");
+                }
+                if (!protection.formatCells) {
+                    sheetProtection.addAttribute("formatCells", "0");
+                }
+                if (!protection.formatColumns) {
+                    sheetProtection.addAttribute("formatColumns", "0");
+                }
+                if (!protection.formatRows) {
+                    sheetProtection.addAttribute("formatRows", "0");
+                }
+                if (!protection.insertColumns) {
+                    sheetProtection.addAttribute("insertColumns", "0");
+                }
+                if (!protection.insertRows) {
+                    sheetProtection.addAttribute("insertRows", "0");
+                }
+                if (!protection.deleteColumns) {
+                    sheetProtection.addAttribute("deleteColumns", "0");
+                }
+                if (!protection.deleteRows) {
+                    sheetProtection.addAttribute("deleteRows", "0");
+                }
+
+                worksheet.addChild(sheetProtection);
+            }
 
             // 添加合并单元格（如果有）
             auto mergeRegions = sheet->getAllMergeRegions();

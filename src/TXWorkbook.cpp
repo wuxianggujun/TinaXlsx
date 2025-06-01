@@ -126,12 +126,15 @@ namespace TinaXlsx
     }
 
     bool TXWorkbook::saveToFile(const std::string& filename) {
+        // 在保存前准备组件检测
+        prepareForSaving();
+
         TXZipArchiveWriter zipWriter;
         if (!zipWriter.open(filename, false)) {
             last_error_ = "无法创建文件: " + filename;
             return false;
         }
-        
+
         // 保存 [Content_Types].xml
         TXContentTypesXmlHandler contentTypesHandler;
         auto contentTypesResult = contentTypesHandler.save(zipWriter, *context_);

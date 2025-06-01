@@ -316,7 +316,35 @@ const TXSheet::SheetProtection& TXSheet::getSheetProtection() const {
 }
 
 bool TXSheet::setCellLocked(row_t row, column_t col, bool locked) {
-    return protectionManager_.setCellLocked(TXCoordinate(row, col), locked, cellManager_);
+    TXCoordinate coord(row, col);
+
+    // 首先通过保护管理器设置锁定状态
+    bool result = protectionManager_.setCellLocked(coord, locked, cellManager_);
+
+    if (result && workbook_) {
+        // 然后更新单元格样式以反映锁定状态
+        TXCell* cell = cellManager_.getCell(coord);
+        if (cell) {
+            // 获取当前样式
+            auto& styleManager = workbook_->getStyleManager();
+            TXCellStyle currentStyle;
+
+            u32 currentStyleIndex = cell->getStyleIndex();
+            if (currentStyleIndex > 0) {
+                // 如果有现有样式，获取它
+                currentStyle = styleManager.getStyleObjectFromXfIndex(currentStyleIndex);
+            }
+
+            // 更新锁定状态
+            currentStyle.setLocked(locked);
+
+            // 注册新样式并应用到单元格
+            u32 newStyleIndex = styleManager.registerCellStyleXF(currentStyle);
+            cell->setStyleIndex(newStyleIndex);
+        }
+    }
+
+    return result;
 }
 
 bool TXSheet::isCellLocked(row_t row, column_t col) const {

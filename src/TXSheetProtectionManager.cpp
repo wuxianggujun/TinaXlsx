@@ -52,12 +52,18 @@ bool TXSheetProtectionManager::setCellLocked(const TXCoordinate& coord, bool loc
         cellManager.setCellValue(coord, std::string(""));
         cell = cellManager.getCell(coord);
     }
-    
+
     if (cell) {
         cell->setLocked(locked);
+
+        // 重要：需要通过样式系统来实际应用锁定状态
+        // 这里需要获取工作簿的样式管理器来更新单元格样式
+        // 但是TXSheetProtectionManager没有直接访问TXWorkbook的权限
+        // 所以这个功能需要在TXSheet层面来实现
+
         return true;
     }
-    
+
     return false;
 }
 
