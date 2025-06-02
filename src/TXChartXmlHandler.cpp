@@ -8,7 +8,9 @@
 #include "TinaXlsx/TXXmlWriter.hpp"
 #include "TinaXlsx/TXChartSeriesBuilder.hpp"
 #include "TinaXlsx/TXAxisBuilder.hpp"
+#include "TinaXlsx/TXPugiStreamWriter.hpp"  // 流式写入器
 #include <sstream>
+#include <cstring>  // for strlen
 
 namespace TinaXlsx
 {
@@ -500,32 +502,31 @@ namespace TinaXlsx
         const TXSheet* sheet = context.sheets[m_sheetIndex].get();
         auto charts = sheet->getAllCharts();
 
-        XmlNodeBuilder relationships("Relationships");
-        relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
+        // 使用流式写入器生成XML
+        TXBufferedXmlWriter writer(4096); // 小文件，4KB缓冲区足够
 
-        // 为每个图表添加关系
+        // 写入XML声明
+        const char* xmlDecl = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+        writer.write(xmlDecl, strlen(xmlDecl));
+
+        // 写入根元素开始标签
+        const char* rootStart = "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">";
+        writer.write(rootStart, strlen(rootStart));
+
+        // 为每个图表写入关系
         for (size_t i = 0; i < charts.size(); ++i) {
-            relationships.addChild(XmlNodeBuilder("Relationship")
-                                  .addAttribute("Id", "rId" + std::to_string(i + 1))
-                                  .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart")
-                                  .addAttribute("Target", "../charts/chart" + std::to_string(i + 1) + ".xml"));
+            std::string relationship = "<Relationship Id=\"rId" + std::to_string(i + 1) +
+                                     "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\"" +
+                                     " Target=\"../charts/chart" + std::to_string(i + 1) + ".xml\"/>";
+            writer.write(relationship.c_str(), relationship.length());
         }
 
-        TXXmlWriter writer;
-        auto setRootResult = writer.setRootNode(relationships);
-        if (setRootResult.isError()) {
-            return Err<void>(setRootResult.error().getCode(),
-                           "Failed to set root node: " + setRootResult.error().getMessage());
-        }
+        // 写入根元素结束标签
+        const char* rootEnd = "</Relationships>";
+        writer.write(rootEnd, strlen(rootEnd));
 
-        auto xmlContentResult = writer.generateXmlString();
-        if (xmlContentResult.isError()) {
-            return Err<void>(xmlContentResult.error().getCode(),
-                           "Failed to generate XML: " + xmlContentResult.error().getMessage());
-        }
-
-        std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
-        auto writeResult = zipWriter.write(partName(), xmlData);
+        // 写入到ZIP文件
+        auto writeResult = zipWriter.write(partName(), writer.getBuffer());
         if (writeResult.isError()) {
             return Err<void>(writeResult.error().getCode(),
                            "Failed to write " + partName() + ": " + writeResult.error().getMessage());
