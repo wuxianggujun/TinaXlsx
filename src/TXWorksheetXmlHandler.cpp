@@ -45,47 +45,58 @@ namespace TinaXlsx
         writer->startSheetData();
 
         if (usedRange.isValid()) {
-            // 按行流式写入单元格数据
-            for (row_t row = usedRange.getStart().getRow(); row <= usedRange.getEnd().getRow(); ++row) {
-                bool hasRowData = false;
+            // 🚀 性能优化：使用迭代器直接遍历存在的单元格，避免大量哈希查找
+            const auto& cellManager = sheet->getCellManager();
 
-                // 先检查这一行是否有数据
-                for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
-                    const TXCompactCell* cell = sheet->getCell(row, col);
+            // 按行分组单元格数据
+            std::map<u32, std::vector<std::pair<u32, const TXCompactCell*>>> cellsByRow;
 
-                    if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
-                        if (!hasRowData) {
-                            hasRowData = true;
-                            writer->startRow(row.index());
+            // 只遍历实际存在的单元格
+            for (auto it = cellManager.cbegin(); it != cellManager.cend(); ++it) {
+                const auto& coord = it->first;
+                const TXCompactCell* cell = &it->second;
+
+                // 检查单元格是否在使用范围内
+                if (coord.getRow() >= usedRange.getStart().getRow() &&
+                    coord.getRow() <= usedRange.getEnd().getRow() &&
+                    coord.getCol() >= usedRange.getStart().getCol() &&
+                    coord.getCol() <= usedRange.getEnd().getCol()) {
+
+                    // 只处理非空单元格或有样式的单元格
+                    if (!cell->isEmpty() || cell->getStyleIndex() != 0) {
+                        cellsByRow[coord.getRow().index()].emplace_back(coord.getCol().index(), cell);
+                    }
+                }
+            }
+
+            // 按行写入数据
+            for (const auto& [rowIndex, rowCells] : cellsByRow) {
+                writer->startRow(rowIndex);
+
+                for (const auto& [colIndex, cell] : rowCells) {
+                    std::string cellRef = column_t::column_string_from_index(colIndex) + std::to_string(rowIndex);
+                    u32 styleIndex = cell->getStyleIndex();
+
+                    // 根据单元格类型写入数据
+                    TXCompactCell::CellType type = cell->getType();
+                    if (type == TXCompactCell::CellType::String) {
+                        const std::string& str = cell->getStringValue();
+                        if (shouldUseInlineString(str)) {
+                            writer->writeCellInlineString(cellRef, str, styleIndex);
+                        } else {
+                            u32 index = context.sharedStringsPool.add(str);
+                            writer->writeCellSharedString(cellRef, index, styleIndex);
                         }
-
-                        std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
-                        u32 styleIndex = cell->getStyleIndex();
-
-                        // 根据单元格类型写入数据
-                        TXCompactCell::CellType type = cell->getType();
-                        if (type == TXCompactCell::CellType::String) {
-                            const std::string& str = cell->getStringValue();
-                            if (shouldUseInlineString(str)) {
-                                writer->writeCellInlineString(cellRef, str, styleIndex);
-                            } else {
-                                u32 index = context.sharedStringsPool.add(str);
-                                writer->writeCellSharedString(cellRef, index, styleIndex);
-                            }
-                        } else if (type == TXCompactCell::CellType::Number) {
-                            writer->writeCellNumber(cellRef, cell->getNumberValue(), styleIndex);
-                        } else if (type == TXCompactCell::CellType::Integer) {
-                            writer->writeCellInteger(cellRef, cell->getIntegerValue(), styleIndex);
-                        } else if (type == TXCompactCell::CellType::Boolean) {
-                            writer->writeCellBoolean(cellRef, cell->getBooleanValue(), styleIndex);
-                        }
-                        // 注意：空单元格但有样式的情况在上面的类型判断中会被处理
+                    } else if (type == TXCompactCell::CellType::Number) {
+                        writer->writeCellNumber(cellRef, cell->getNumberValue(), styleIndex);
+                    } else if (type == TXCompactCell::CellType::Integer) {
+                        writer->writeCellInteger(cellRef, cell->getIntegerValue(), styleIndex);
+                    } else if (type == TXCompactCell::CellType::Boolean) {
+                        writer->writeCellBoolean(cellRef, cell->getBooleanValue(), styleIndex);
                     }
                 }
 
-                if (hasRowData) {
-                    writer->endRow();
-                }
+                writer->endRow();
             }
         }
 

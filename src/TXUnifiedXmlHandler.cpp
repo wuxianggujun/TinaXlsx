@@ -129,26 +129,29 @@ TXResult<void> TXUnifiedXmlHandler::generateWorkbookRelsStream(TXZipArchiveWrite
 
     // 工作表关系
     for (u64 i = 0; i < context.sheets.size(); ++i) {
-        std::string worksheetRel = "<Relationship Id=\"rId" + std::to_string(relationshipId++) +
-                                  "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\"" +
-                                  " Target=\"worksheets/sheet" + std::to_string(i + 1) + ".xml\"/>";
-        writer.write(worksheetRel.c_str(), worksheetRel.length());
+        char worksheetRel[256];
+        int len = snprintf(worksheetRel, sizeof(worksheetRel),
+                          "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet%llu.xml\"/>",
+                          relationshipId++, i + 1);
+        writer.write(worksheetRel, len);
     }
 
     // 样式关系（如果启用）
     if (context.componentManager.hasComponent(ExcelComponent::Styles)) {
-        std::string stylesRel = "<Relationship Id=\"rId" + std::to_string(relationshipId++) +
-                               "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\"" +
-                               " Target=\"styles.xml\"/>";
-        writer.write(stylesRel.c_str(), stylesRel.length());
+        char stylesRel[256];
+        int len = snprintf(stylesRel, sizeof(stylesRel),
+                          "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>",
+                          relationshipId++);
+        writer.write(stylesRel, len);
     }
 
     // 共享字符串关系（如果启用）
     if (context.componentManager.hasComponent(ExcelComponent::SharedStrings)) {
-        std::string sharedStringsRel = "<Relationship Id=\"rId" + std::to_string(relationshipId++) +
-                                      "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings\"" +
-                                      " Target=\"sharedStrings.xml\"/>";
-        writer.write(sharedStringsRel.c_str(), sharedStringsRel.length());
+        char sharedStringsRel[256];
+        int len = snprintf(sharedStringsRel, sizeof(sharedStringsRel),
+                          "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings\" Target=\"sharedStrings.xml\"/>",
+                          relationshipId++);
+        writer.write(sharedStringsRel, len);
     }
 
     // 透视表缓存关系（如果有透视表）
@@ -156,10 +159,11 @@ TXResult<void> TXUnifiedXmlHandler::generateWorkbookRelsStream(TXZipArchiveWrite
         u32 cacheId = 1;
         for (const auto& [sheetName, pivotTables] : all_pivot_tables_) {
             for (const auto& pivotTable : pivotTables) {
-                std::string pivotCacheRel = "<Relationship Id=\"rId" + std::to_string(relationshipId++) +
-                                           "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition\"" +
-                                           " Target=\"pivotCache/pivotCacheDefinition" + std::to_string(cacheId++) + ".xml\"/>";
-                writer.write(pivotCacheRel.c_str(), pivotCacheRel.length());
+                char pivotCacheRel[256];
+                int len = snprintf(pivotCacheRel, sizeof(pivotCacheRel),
+                                  "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition\" Target=\"pivotCache/pivotCacheDefinition%u.xml\"/>",
+                                  relationshipId++, cacheId++);
+                writer.write(pivotCacheRel, len);
             }
         }
     }
@@ -201,19 +205,21 @@ TXResult<void> TXUnifiedXmlHandler::generateWorksheetRelsStream(TXZipArchiveWrit
         // 先添加透视表关系（如果有透视表）
         if (hasPivotTables) {
             for (size_t i = 0; i < pivot_tables_.size(); ++i) {
-                std::string pivotTableRel = "<Relationship Id=\"rId" + std::to_string(relationshipId++) +
-                                           "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable\"" +
-                                           " Target=\"../pivotTables/pivotTable" + std::to_string(i + 1) + ".xml\"/>";
-                writer.write(pivotTableRel.c_str(), pivotTableRel.length());
+                char pivotTableRel[256];
+                int len = snprintf(pivotTableRel, sizeof(pivotTableRel),
+                                  "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable\" Target=\"../pivotTables/pivotTable%zu.xml\"/>",
+                                  relationshipId++, i + 1);
+                writer.write(pivotTableRel, len);
             }
         }
 
         // 再添加绘图关系（如果有图表）
         if (hasCharts) {
-            std::string drawingRel = "<Relationship Id=\"rId" + std::to_string(relationshipId) +
-                                    "\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\"" +
-                                    " Target=\"../drawings/drawing" + std::to_string(index_ + 1) + ".xml\"/>";
-            writer.write(drawingRel.c_str(), drawingRel.length());
+            char drawingRel[256];
+            int len = snprintf(drawingRel, sizeof(drawingRel),
+                              "<Relationship Id=\"rId%u\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing%u.xml\"/>",
+                              relationshipId, index_ + 1);
+            writer.write(drawingRel, len);
         }
     }
 
@@ -244,9 +250,11 @@ TXResult<void> TXUnifiedXmlHandler::generatePivotTableRelsStream(TXZipArchiveWri
 
     // 透视表到缓存定义的关系
     int workbookRId = static_cast<int>(context.sheets.size()) + 1 + 1 + index_; // 工作表 + 样式 + 共享字符串 + 缓存ID
-    std::string cacheRel = "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition\"" +
-                          std::string(" Target=\"../_rels/workbook.xml.rels#rId") + std::to_string(workbookRId) + "\"/>";
-    writer.write(cacheRel.c_str(), cacheRel.length());
+    char cacheRel[256];
+    int len = snprintf(cacheRel, sizeof(cacheRel),
+                      "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition\" Target=\"../_rels/workbook.xml.rels#rId%d\"/>",
+                      workbookRId);
+    writer.write(cacheRel, len);
 
     // 写入根元素结束标签
     const char* rootEnd = "</Relationships>";
@@ -274,9 +282,11 @@ TXResult<void> TXUnifiedXmlHandler::generatePivotCacheRelsStream(TXZipArchiveWri
     writer.write(rootStart, strlen(rootStart));
 
     // 缓存定义到缓存记录的关系
-    std::string recordsRel = "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords\"" +
-                            std::string(" Target=\"pivotCacheRecords") + std::to_string(index_) + ".xml\"/>";
-    writer.write(recordsRel.c_str(), recordsRel.length());
+    char recordsRel[256];
+    int len = snprintf(recordsRel, sizeof(recordsRel),
+                      "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords\" Target=\"pivotCacheRecords%u.xml\"/>",
+                      index_);
+    writer.write(recordsRel, len);
 
     // 写入根元素结束标签
     const char* rootEnd = "</Relationships>";
@@ -314,18 +324,19 @@ TXResult<void> TXUnifiedXmlHandler::generateDocumentPropertiesStream(TXZipArchiv
         const char* lastModifiedBy = "<cp:lastModifiedBy>TinaXlsx</cp:lastModifiedBy>";
         writer.write(lastModifiedBy, strlen(lastModifiedBy));
 
-        // 当前时间
+        // 当前时间 - 使用高效格式化
         auto now = std::time(nullptr);
         auto tm = *std::gmtime(&now);
-        std::ostringstream timeStream;
-        timeStream << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
-        std::string timeStr = timeStream.str();
+        char timeStr[32];
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%dT%H:%M:%SZ", &tm);
 
-        std::string created = "<dcterms:created xsi:type=\"dcterms:W3CDTF\">" + timeStr + "</dcterms:created>";
-        writer.write(created.c_str(), created.length());
+        char created[128];
+        int createdLen = snprintf(created, sizeof(created), "<dcterms:created xsi:type=\"dcterms:W3CDTF\">%s</dcterms:created>", timeStr);
+        writer.write(created, createdLen);
 
-        std::string modified = "<dcterms:modified xsi:type=\"dcterms:W3CDTF\">" + timeStr + "</dcterms:modified>";
-        writer.write(modified.c_str(), modified.length());
+        char modified[128];
+        int modifiedLen = snprintf(modified, sizeof(modified), "<dcterms:modified xsi:type=\"dcterms:W3CDTF\">%s</dcterms:modified>", timeStr);
+        writer.write(modified, modifiedLen);
 
         const char* coreEnd = "</cp:coreProperties>";
         writer.write(coreEnd, strlen(coreEnd));
@@ -385,16 +396,6 @@ TXResult<void> TXUnifiedXmlHandler::generateDocumentPropertiesStream(TXZipArchiv
 
     return Ok();
 }
-
-// ==================== 辅助方法 ===================="
-
-
-
-
-
-
-
-
 
 // ==================== 辅助方法 ====================
 
