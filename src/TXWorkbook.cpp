@@ -557,11 +557,11 @@ namespace TinaXlsx
                 
                 for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
                     for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
-                        const TXCell* cell = sheet->getCell(row, col);
+                        const TXCompactCell* cell = sheet->getCell(row, col);
                         if (!cell || cell->isEmpty()) continue;
-                        
+
                         // 检查是否有字符串值
-                        if (cell->getType() == TXCell::CellType::String) {
+                        if (cell->getType() == TXCompactCell::CellType::String) {
                             hasStringCells = true;
                         }
                         

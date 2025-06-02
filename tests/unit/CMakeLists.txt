@@ -34,6 +34,9 @@ set(UNIT_TEST_SOURCES
     # 数据功能测试
     test_data_features.cpp
     test_data_filter.cpp
+
+    # 内存优化测试
+    test_compact_cell.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -235,6 +238,46 @@ target_include_directories(UnifiedPivotTableTests PRIVATE
 # 配置测试目标的UTF-8编码
 configure_test_target(UnifiedPivotTableTests)
 
+# 8. 紧凑单元格测试（内存优化）
+add_executable(CompactCellTests
+    test_compact_cell.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(CompactCellTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(CompactCellTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(CompactCellTests)
+
+# 9. 单元格替换测试（渐进式迁移）
+add_executable(CellReplacementTests
+    test_cell_replacement.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(CellReplacementTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(CellReplacementTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(CellReplacementTests)
+
 # ==================== 注册测试到CTest ====================
 
 # 注册独立测试到CTest
@@ -251,6 +294,14 @@ set_tests_properties(AdvancedFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINAR
 # 统一透视表测试
 add_test(NAME UnifiedPivotTable COMMAND UnifiedPivotTableTests)
 set_tests_properties(UnifiedPivotTable PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# 紧凑单元格测试
+add_test(NAME CompactCell COMMAND CompactCellTests)
+set_tests_properties(CompactCell PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# 单元格替换测试
+add_test(NAME CellReplacement COMMAND CellReplacementTests)
+set_tests_properties(CellReplacement PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # 设置测试工作目录
 set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -333,5 +384,21 @@ add_custom_target(RunUnifiedPivotTableTest
     COMMAND UnifiedPivotTableTests
     DEPENDS UnifiedPivotTableTests
     COMMENT "Running unified pivot table tests (all pivot table functionality)"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 紧凑单元格测试目标
+add_custom_target(RunCompactCellTest
+    COMMAND CompactCellTests
+    DEPENDS CompactCellTests
+    COMMENT "Running compact cell tests (memory optimization)"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 单元格替换测试目标
+add_custom_target(RunCellReplacementTest
+    COMMAND CellReplacementTests
+    DEPENDS CellReplacementTests
+    COMMENT "Running cell replacement tests (progressive migration)"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

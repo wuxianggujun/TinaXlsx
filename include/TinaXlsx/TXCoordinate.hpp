@@ -235,4 +235,17 @@ private:
     column_t col_;
 };
 
-} // namespace TinaXlsx 
+} // namespace TinaXlsx
+
+// 为TXCoordinate提供std::hash支持
+namespace std {
+    template<>
+    struct hash<TinaXlsx::TXCoordinate> {
+        std::size_t operator()(const TinaXlsx::TXCoordinate& coord) const {
+            // 使用行列索引计算哈希值
+            uint64_t combined = (static_cast<uint64_t>(coord.getRow().index()) << 32) |
+                               coord.getCol().index();
+            return std::hash<uint64_t>()(combined);
+        }
+    };
+}

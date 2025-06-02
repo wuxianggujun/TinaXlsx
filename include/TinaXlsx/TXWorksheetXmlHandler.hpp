@@ -141,7 +141,7 @@ namespace TinaXlsx
                     bool hasData = false;
                     // 遍历这一行的所有列
                     for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
-                        const TXCell* cell = sheet->getCell(row, col);
+                        const TXCompactCell* cell = sheet->getCell(row, col);
                         
                         if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
                             std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
@@ -311,7 +311,7 @@ namespace TinaXlsx
          * @param context 工作簿上下文
          * @return 单元格节点
          */
-        XmlNodeBuilder buildCellNode(const TXCell* cell, const std::string& cellRef,const TXWorkbookContext& context) const;
+        XmlNodeBuilder buildCellNode(const TXCompactCell* cell, const std::string& cellRef,const TXWorkbookContext& context) const;
 
         /**
          * @brief 构建数据验证节点

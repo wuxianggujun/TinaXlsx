@@ -8,7 +8,7 @@
 
 #include "TXCoordinate.hpp"
 #include "TXRange.hpp"
-#include "TXCell.hpp"
+#include "TXCompactCell.hpp"
 #include "TXTypes.hpp"
 #include "TXMergedCells.hpp"
 #include "TXWorkbook.hpp"
@@ -150,7 +150,7 @@ public:
      * @param col 列号（1开始）
      * @return 单元格指针，如果不存在返回nullptr
      */
-    TXCell* getCell(row_t row, column_t col);
+    TXCompactCell* getCell(row_t row, column_t col);
 
     /**
      * @brief 获取单元格（const版本）
@@ -158,35 +158,35 @@ public:
      * @param col 列号（1开始）
      * @return 单元格指针，如果不存在返回nullptr
      */
-    const TXCell* getCell(row_t row, column_t col) const;
+    const TXCompactCell* getCell(row_t row, column_t col) const;
 
     /**
      * @brief 获取单元格
      * @param coord 单元格坐标
      * @return 单元格指针，如果不存在返回nullptr
      */
-    TXCell* getCell(const Coordinate& coord);
+    TXCompactCell* getCell(const Coordinate& coord);
 
     /**
      * @brief 获取单元格（const版本）
      * @param coord 单元格坐标
      * @return 单元格指针，如果不存在返回nullptr
      */
-    const TXCell* getCell(const Coordinate& coord) const;
+    const TXCompactCell* getCell(const Coordinate& coord) const;
 
     /**
      * @brief 获取单元格（使用A1格式）
      * @param address 单元格地址，如"A1", "B2"
      * @return 单元格指针，如果不存在返回nullptr
      */
-    TXCell* getCell(const std::string& address);
+    TXCompactCell* getCell(const std::string& address);
 
     /**
      * @brief 获取单元格（const版本，使用A1格式）
      * @param address 单元格地址，如"A1", "B2"
      * @return 单元格指针，如果不存在返回nullptr
      */
-    const TXCell* getCell(const std::string& address) const;
+    const TXCompactCell* getCell(const std::string& address) const;
 
     // ==================== 行列操作 ====================
 
@@ -948,8 +948,8 @@ private:
     /**
      * @brief 获取单元格（内部实现）
      */
-    TXCell* getCellInternal(const Coordinate& coord);
-    const TXCell* getCellInternal(const Coordinate& coord) const;
+    TXCompactCell* getCellInternal(const Coordinate& coord);
+    const TXCompactCell* getCellInternal(const Coordinate& coord) const;
     
     /**
      * @brief 应用数字格式到单元格（内部辅助方法）
@@ -957,14 +957,14 @@ private:
      * @param numFmtId 数字格式ID
      * @return 成功返回true，失败返回false
      */
-    bool applyCellNumberFormat(TXCell* cell, u32 numFmtId);
-    
+    bool applyCellNumberFormat(TXCompactCell* cell, u32 numFmtId);
+
     /**
      * @brief 获取单元格当前的有效样式
      * @param cell 目标单元格
      * @return 当前的完整样式对象
      */
-    TXCellStyle getCellEffectiveStyle(TXCell* cell);
+    TXCellStyle getCellEffectiveStyle(TXCompactCell* cell);
     
     /**
      * @brief 更新已使用范围

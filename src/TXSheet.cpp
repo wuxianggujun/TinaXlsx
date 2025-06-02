@@ -102,35 +102,35 @@ bool TXSheet::setCellValue(const std::string& address, const CellValue& value) {
     return setCellValue(Coordinate::fromAddress(address), value);
 }
 
-TXCell* TXSheet::getCell(row_t row, column_t col) {
+TXCompactCell* TXSheet::getCell(row_t row, column_t col) {
     return cellManager_.getCell(TXCoordinate(row, col));
 }
 
-const TXCell* TXSheet::getCell(row_t row, column_t col) const {
+const TXCompactCell* TXSheet::getCell(row_t row, column_t col) const {
     return cellManager_.getCell(TXCoordinate(row, col));
 }
 
-TXCell* TXSheet::getCell(const Coordinate& coord) {
+TXCompactCell* TXSheet::getCell(const Coordinate& coord) {
     return cellManager_.getCell(coord);
 }
 
-const TXCell* TXSheet::getCell(const Coordinate& coord) const {
+const TXCompactCell* TXSheet::getCell(const Coordinate& coord) const {
     return cellManager_.getCell(coord);
 }
 
-TXCell* TXSheet::getCell(const std::string& address) {
+TXCompactCell* TXSheet::getCell(const std::string& address) {
     return cellManager_.getCell(Coordinate::fromAddress(address));
 }
 
-const TXCell* TXSheet::getCell(const std::string& address) const {
+const TXCompactCell* TXSheet::getCell(const std::string& address) const {
     return cellManager_.getCell(Coordinate::fromAddress(address));
 }
 
-TXCell* TXSheet::getCellInternal(const Coordinate& coord) {
+TXCompactCell* TXSheet::getCellInternal(const Coordinate& coord) {
     return cellManager_.getCell(coord);
 }
 
-const TXCell* TXSheet::getCellInternal(const Coordinate& coord) const {
+const TXCompactCell* TXSheet::getCellInternal(const Coordinate& coord) const {
     return cellManager_.getCell(coord);
 }
 
@@ -362,7 +362,7 @@ bool TXSheet::setCellLocked(row_t row, column_t col, bool locked) {
 
     if (result && workbook_) {
         // 然后更新单元格样式以反映锁定状态
-        TXCell* cell = cellManager_.getCell(coord);
+        TXCompactCell* cell = cellManager_.getCell(coord);
         if (cell) {
             // 获取当前样式
             auto& styleManager = workbook_->getStyleManager();
@@ -470,7 +470,7 @@ TXSheet::getFormulaDependencies() const {
 // ==================== 格式化操�?====================
 
 bool TXSheet::setCellNumberFormat(row_t row, column_t col, TXNumberFormat::FormatType formatType, int decimalPlaces) {
-    TXCell* cell = getCell(row, col);
+    TXCompactCell* cell = getCell(row, col);
     if (!cell || !workbook_) {
         return false;
     }
@@ -490,7 +490,7 @@ bool TXSheet::setCellNumberFormat(row_t row, column_t col, TXNumberFormat::Forma
 }
 
 bool TXSheet::setCellCustomFormat(row_t row, column_t col, const std::string& formatString) {
-    TXCell* cell = getCell(row, col);
+    TXCompactCell* cell = getCell(row, col);
     if (!cell || !workbook_) {
         return false;
     }
@@ -524,7 +524,7 @@ std::size_t TXSheet::setRangeNumberFormat(const Range& range, TXNumberFormat::Fo
 }
 
 std::string TXSheet::getCellFormattedValue(row_t row, column_t col) const {
-    const TXCell* cell = getCell(row, col);
+    const TXCompactCell* cell = getCell(row, col);
     if (!cell) {
         return "";
     }
@@ -560,7 +560,7 @@ bool TXSheet::setCellStyle(row_t row, column_t col, const TXCellStyle& style) {
     auto& styleManager = workbook_->getStyleManager();
     u32 styleId = styleManager.registerCellStyleXF(style);
 
-    TXCell* cell = getCell(row, col);
+    TXCompactCell* cell = getCell(row, col);
     if (!cell) {
         setError("Failed to get cell");
         return false;
@@ -621,7 +621,7 @@ std::size_t TXSheet::setBatchNumberFormats(const std::vector<std::pair<Coordinat
         const auto& coord = pair.first;
         const auto& formatDef = pair.second;
 
-        TXCell* cell = getCell(coord.getRow(), coord.getCol());
+        TXCompactCell* cell = getCell(coord.getRow(), coord.getCol());
         if (!cell) continue;
 
         // 获取当前样式
@@ -641,7 +641,7 @@ std::size_t TXSheet::setBatchNumberFormats(const std::vector<std::pair<Coordinat
 
 // ==================== 私有辅助方法 ====================
 
-bool TXSheet::applyCellNumberFormat(TXCell* cell, u32 numFmtId) {
+bool TXSheet::applyCellNumberFormat(TXCompactCell* cell, u32 numFmtId) {
     if (!cell || !workbook_) {
         return false;
     }
@@ -672,7 +672,7 @@ bool TXSheet::applyCellNumberFormat(TXCell* cell, u32 numFmtId) {
     return true;
 }
 
-TXCellStyle TXSheet::getCellEffectiveStyle(TXCell* cell) {
+TXCellStyle TXSheet::getCellEffectiveStyle(TXCompactCell* cell) {
     if (!cell || !workbook_) {
         return TXCellStyle(); // 默认样式
     }

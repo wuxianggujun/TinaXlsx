@@ -5,7 +5,7 @@
 #include <memory>
 #include <functional>
 #include "TXCoordinate.hpp"
-#include "TXCell.hpp"
+#include "TXCompactCell.hpp"
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
 
@@ -36,7 +36,7 @@ public:
         }
     };
 
-    using CellContainer = std::unordered_map<Coordinate, TXCell, CoordinateHash>;
+    using CellContainer = std::unordered_map<Coordinate, TXCompactCell, CoordinateHash>;
 
     TXCellManager() = default;
     ~TXCellManager() = default;
@@ -54,21 +54,21 @@ public:
      * @param coord 坐标
      * @return 单元格指针，不存在返回nullptr
      */
-    TXCell* getCell(const Coordinate& coord);
+    TXCompactCell* getCell(const Coordinate& coord);
 
     /**
      * @brief 获取单元格（只读）
      * @param coord 坐标
      * @return 单元格指针，不存在返回nullptr
      */
-    const TXCell* getCell(const Coordinate& coord) const;
+    const TXCompactCell* getCell(const Coordinate& coord) const;
 
     /**
      * @brief 获取或创建单元格
      * @param coord 坐标
      * @return 单元格指针，不存在则创建新的
      */
-    TXCell* getOrCreateCell(const Coordinate& coord);
+    TXCompactCell* getOrCreateCell(const Coordinate& coord);
 
     /**
      * @brief 检查单元格是否存在

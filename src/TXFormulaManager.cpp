@@ -31,8 +31,8 @@ std::string TXFormulaManager::getCellFormula(const TXCoordinate& coord, const TX
     if (!cell) {
         return "";
     }
-    
-    return cell->getFormula();
+
+    return cell->getFormulaText();
 }
 
 std::size_t TXFormulaManager::setCellFormulas(const std::vector<std::pair<TXCoordinate, std::string>>& formulas, 
@@ -105,7 +105,7 @@ bool TXFormulaManager::calculateFormula(const TXCoordinate& coord, TXCellManager
         return false;
     }
 
-    std::string formula = cell->getFormula();
+    std::string formula = cell->getFormulaText();
 
     try {
         // 计算公式结果
@@ -150,7 +150,7 @@ TXFormulaManager::DependencyGraph TXFormulaManager::getFormulaDependencies(const
         const auto& cell = it->second;
         
         if (cell.hasFormula()) {
-            std::vector<TXCoordinate> refs = parseFormulaReferences(cell.getFormula());
+            std::vector<TXCoordinate> refs = parseFormulaReferences(cell.getFormulaText());
             dependencies[coord] = refs;
         }
     }
@@ -165,7 +165,7 @@ std::vector<TXCoordinate> TXFormulaManager::getDirectDependencies(const TXCoordi
         return {};
     }
     
-    return parseFormulaReferences(cell->getFormula());
+    return parseFormulaReferences(cell->getFormulaText());
 }
 
 std::vector<TXCoordinate> TXFormulaManager::getDependents(const TXCoordinate& coord, 
@@ -178,7 +178,7 @@ std::vector<TXCoordinate> TXFormulaManager::getDependents(const TXCoordinate& co
         const auto& cell = it->second;
         
         if (cell.hasFormula()) {
-            std::vector<TXCoordinate> refs = parseFormulaReferences(cell.getFormula());
+            std::vector<TXCoordinate> refs = parseFormulaReferences(cell.getFormulaText());
             if (std::find(refs.begin(), refs.end(), coord) != refs.end()) {
                 dependents.push_back(cellCoord);
             }
@@ -404,7 +404,7 @@ TXFormulaManager::FormulaStats TXFormulaManager::getFormulaStats(const TXCellMan
         if (cell.hasFormula()) {
             ++stats.totalFormulas;
 
-            std::string formula = cell.getFormula();
+            std::string formula = cell.getFormulaText();
             if (validateFormula(formula)) {
                 ++stats.validFormulas;
             } else {
@@ -445,7 +445,7 @@ bool TXFormulaManager::detectCircularReferencesHelper(const TXCoordinate& coord,
 
     const auto* cell = cellManager.getCell(coord);
     if (cell && cell->hasFormula()) {
-        std::vector<TXCoordinate> refs = parseFormulaReferences(cell->getFormula());
+        std::vector<TXCoordinate> refs = parseFormulaReferences(cell->getFormulaText());
         for (const TXCoordinate& ref : refs) {
             if (detectCircularReferencesHelper(ref, visiting, visited, cellManager)) {
                 return true;
@@ -482,7 +482,7 @@ bool TXFormulaManager::findCircularReferencePath(const TXCoordinate& coord,
 
     const auto* cell = cellManager.getCell(coord);
     if (cell && cell->hasFormula()) {
-        std::vector<TXCoordinate> refs = parseFormulaReferences(cell->getFormula());
+        std::vector<TXCoordinate> refs = parseFormulaReferences(cell->getFormulaText());
         for (const TXCoordinate& ref : refs) {
             if (findCircularReferencePath(ref, visiting, visited, path, cellManager)) {
                 return true;

@@ -50,7 +50,7 @@ namespace TinaXlsx
 
                 // 先检查这一行是否有数据
                 for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
-                    const TXCell* cell = sheet->getCell(row, col);
+                    const TXCompactCell* cell = sheet->getCell(row, col);
 
                     if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
                         if (!hasRowData) {
@@ -62,8 +62,8 @@ namespace TinaXlsx
                         u32 styleIndex = cell->getStyleIndex();
 
                         // 根据单元格类型写入数据
-                        TXCell::CellType type = cell->getType();
-                        if (type == TXCell::CellType::String) {
+                        TXCompactCell::CellType type = cell->getType();
+                        if (type == TXCompactCell::CellType::String) {
                             const std::string& str = cell->getStringValue();
                             if (shouldUseInlineString(str)) {
                                 writer->writeCellInlineString(cellRef, str, styleIndex);
@@ -71,11 +71,11 @@ namespace TinaXlsx
                                 u32 index = context.sharedStringsPool.add(str);
                                 writer->writeCellSharedString(cellRef, index, styleIndex);
                             }
-                        } else if (type == TXCell::CellType::Number) {
+                        } else if (type == TXCompactCell::CellType::Number) {
                             writer->writeCellNumber(cellRef, cell->getNumberValue(), styleIndex);
-                        } else if (type == TXCell::CellType::Integer) {
+                        } else if (type == TXCompactCell::CellType::Integer) {
                             writer->writeCellInteger(cellRef, cell->getIntegerValue(), styleIndex);
-                        } else if (type == TXCell::CellType::Boolean) {
+                        } else if (type == TXCompactCell::CellType::Boolean) {
                             writer->writeCellBoolean(cellRef, cell->getBooleanValue(), styleIndex);
                         }
                         // 注意：空单元格但有样式的情况在上面的类型判断中会被处理
@@ -119,7 +119,7 @@ namespace TinaXlsx
         return false;
     }
 
-    XmlNodeBuilder TXWorksheetXmlHandler::buildCellNode(const TXCell* cell, const std::string& cellRef,
+    XmlNodeBuilder TXWorksheetXmlHandler::buildCellNode(const TXCompactCell* cell, const std::string& cellRef,
                                                         const TXWorkbookContext& context) const
     {
         XmlNodeBuilder cellNode("c");
@@ -135,10 +135,10 @@ namespace TinaXlsx
         
         // 获取单元格值和类型
         const cell_value_t& value = cell->getValue();
-        const TXCell::CellType cellType = cell->getType();
+        const TXCompactCell::CellType cellType = cell->getType();
 
         // 处理公式单元格
-        if (cellType == TXCell::CellType::Formula)
+        if (cellType == TXCompactCell::CellType::Formula)
         {
             // 添加公式节点
             if (cell->isFormula()) {
@@ -183,7 +183,7 @@ namespace TinaXlsx
                 }
             }
         }
-        else if (cellType == TXCell::CellType::String)
+        else if (cellType == TXCompactCell::CellType::String)
         {
             const std::string& str = cell->getStringValue();
             

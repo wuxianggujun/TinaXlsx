@@ -7,7 +7,7 @@ namespace TinaXlsx {
 
 // ==================== 单元格访问 ====================
 
-TXCell* TXCellManager::getCell(const Coordinate& coord) {
+TXCompactCell* TXCellManager::getCell(const Coordinate& coord) {
     if (!isValidCoordinate(coord)) {
         return nullptr;
     }
@@ -21,7 +21,7 @@ TXCell* TXCellManager::getCell(const Coordinate& coord) {
     return nullptr;
 }
 
-TXCell* TXCellManager::getOrCreateCell(const Coordinate& coord) {
+TXCompactCell* TXCellManager::getOrCreateCell(const Coordinate& coord) {
     if (!isValidCoordinate(coord)) {
         return nullptr;
     }
@@ -32,11 +32,11 @@ TXCell* TXCellManager::getOrCreateCell(const Coordinate& coord) {
     }
 
     // 创建新单元格
-    cells_[coord] = TXCell();
+    cells_[coord] = TXCompactCell();
     return &cells_[coord];
 }
 
-const TXCell* TXCellManager::getCell(const Coordinate& coord) const {
+const TXCompactCell* TXCellManager::getCell(const Coordinate& coord) const {
     if (!isValidCoordinate(coord)) {
         return nullptr;
     }
@@ -92,7 +92,7 @@ std::size_t TXCellManager::setCellValues(const std::vector<std::pair<Coordinate,
         }
 
         // 直接插入或更新，避免重复的哈希查找
-        auto [it, inserted] = cells_.try_emplace(pair.first, TXCell(pair.second));
+        auto [it, inserted] = cells_.try_emplace(pair.first, TXCompactCell(pair.second));
         if (!inserted) {
             // 如果已存在，更新值
             it->second.setValue(pair.second);
@@ -127,7 +127,7 @@ std::size_t TXCellManager::setRangeValues(row_t startRow, column_t startCol,
             }
 
             // 高效插入
-            auto [it, inserted] = cells_.try_emplace(coord, TXCell(rowData[colIdx]));
+            auto [it, inserted] = cells_.try_emplace(coord, TXCompactCell(rowData[colIdx]));
             if (!inserted) {
                 it->second.setValue(rowData[colIdx]);
             }
@@ -153,7 +153,7 @@ std::size_t TXCellManager::setRowValues(row_t row, column_t startCol, const std:
         }
 
         // 高效插入
-        auto [it, inserted] = cells_.try_emplace(coord, TXCell(values[colIdx]));
+        auto [it, inserted] = cells_.try_emplace(coord, TXCompactCell(values[colIdx]));
         if (!inserted) {
             it->second.setValue(values[colIdx]);
         }
