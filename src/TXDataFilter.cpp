@@ -1,4 +1,5 @@
 #include "TinaXlsx/TXDataFilter.hpp"
+#include "TinaXlsx/TXNumberUtils.hpp"
 #include <algorithm>
 #include <cctype>
 
@@ -42,18 +43,27 @@ void TXAutoFilter::setTextFilter(u32 columnIndex, const std::string& text,
 }
 
 void TXAutoFilter::setNumberFilter(u32 columnIndex, double value, FilterOperator operator_) {
-    FilterCondition condition(columnIndex, operator_, std::to_string(value));
+    // 使用高性能工具类格式化数值，确保与Excel XML兼容
+    std::string valueStr = TXNumberUtils::formatForExcelXml(value);
+
+    FilterCondition condition(columnIndex, operator_, valueStr);
     addFilterCondition(condition);
 }
 
 void TXAutoFilter::setRangeFilter(u32 columnIndex, double minValue, double maxValue) {
-    FilterCondition condition(columnIndex, FilterOperator::GreaterThanOrEqual, 
-                            std::to_string(minValue), std::to_string(maxValue));
-    addFilterCondition(condition);
-    
-    // 添加第二个条件（小于等于最大值）
-    FilterCondition condition2(columnIndex, FilterOperator::LessThanOrEqual, 
-                              std::to_string(maxValue));
+    // 使用高性能工具类格式化数值，确保与Excel XML兼容
+    std::string minValueStr = TXNumberUtils::formatForExcelXml(minValue);
+    std::string maxValueStr = TXNumberUtils::formatForExcelXml(maxValue);
+
+    // 移除该列的现有条件
+    removeFilterCondition(columnIndex);
+
+    // 添加大于等于最小值的条件
+    FilterCondition condition1(columnIndex, FilterOperator::GreaterThanOrEqual, minValueStr);
+    filterConditions_.push_back(condition1);
+
+    // 添加小于等于最大值的条件
+    FilterCondition condition2(columnIndex, FilterOperator::LessThanOrEqual, maxValueStr);
     filterConditions_.push_back(condition2);
 }
 

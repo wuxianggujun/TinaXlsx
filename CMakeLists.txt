@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(TinaXlsx VERSION 2.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# 添加cmake模块路径
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# 加载编译器配置（包含UTF-8编码设置）
+include(CompilerConfig)
 
 # ------------ 项目配置选项 ------------
 option(BUILD_TESTS "Build the unit tests" ON)
@@ -47,6 +50,10 @@ set(MZ_ZLIB ON CACHE BOOL "" FORCE)
 add_subdirectory(third_party/minizip-ng)
 # minizip 提供 minizip 目标
 
+# -------------- 配置 fast_float --------------
+# fast_float 是 header-only 库
+add_subdirectory(third_party/fast_float)
+
 # -----------------------------------------
 
 # 搜索 TinaXlsx 项目源文件
@@ -56,22 +63,14 @@ file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.cpp
 # 创建 TinaXlsx 静态库
 add_library(${PROJECT_NAME} STATIC ${CORE_SOURCES})
 
-# 设置编译器特定选项
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE 
-        /W4 
-        /utf-8  # 设置源和执行字符集为UTF-8
-        /wd4819  # 禁用C4819编码警告
-    )
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+# 编译器特定选项已在CompilerConfig.cmake中配置
 
-# 链接 pugixml 和 minizip 库到项目
+# 链接 pugixml、minizip 和 fast_float 库到项目
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
         pugixml::pugixml
         minizip-ng
+        fast_float
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

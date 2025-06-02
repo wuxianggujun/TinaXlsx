@@ -4,12 +4,14 @@
 
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
 #include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXNumberUtils.hpp"
 #include <variant>
 
 #include "TinaXlsx/TXSharedStringsPool.hpp"
 
 namespace TinaXlsx
 {
+
     bool TXWorksheetXmlHandler::shouldUseInlineString(const std::string& str) const
     {
         // 策略1: 极短字符串（1个字符）使用内联，节省共享字符串池空间
@@ -66,7 +68,7 @@ namespace TinaXlsx
                     if (!std::holds_alternative<std::monostate>(value)) {
                         if (std::holds_alternative<double>(value)) {
                             XmlNodeBuilder vNode("v");
-                            vNode.setText(std::to_string(std::get<double>(value)));
+                            vNode.setText(TXNumberUtils::formatForExcelXml(std::get<double>(value)));
                             cellNode.addChild(vNode);
                         } else if (std::holds_alternative<int64_t>(value)) {
                             XmlNodeBuilder vNode("v");
@@ -117,7 +119,7 @@ namespace TinaXlsx
         {
             // 浮点数类型
             XmlNodeBuilder vNode("v");
-            vNode.setText(std::to_string(std::get<double>(value)));
+            vNode.setText(TXNumberUtils::formatForExcelXml(std::get<double>(value)));
             cellNode.addChild(vNode);
         }
         else if (std::holds_alternative<int64_t>(value))
@@ -284,5 +286,112 @@ namespace TinaXlsx
         }
 
         return dataValidations;
+    }
+
+    XmlNodeBuilder TXWorksheetXmlHandler::buildAutoFilterNode(const TXSheet* sheet) const {
+        const TXAutoFilter* autoFilter = sheet->getAutoFilter();
+        if (!autoFilter) {
+            return XmlNodeBuilder("autoFilter");  // 返回空节点
+        }
+
+        XmlNodeBuilder autoFilterNode("autoFilter");
+
+        // 设置筛选范围
+        autoFilterNode.addAttribute("ref", autoFilter->getRange().toAbsoluteAddress());
+
+        // 添加筛选条件（如果有）
+        const auto& conditions = autoFilter->getFilterConditions();
+
+        // 按列分组筛选条件
+        std::map<u32, std::vector<FilterCondition>> conditionsByColumn;
+        for (const auto& condition : conditions) {
+            conditionsByColumn[condition.columnIndex].push_back(condition);
+        }
+
+        // 为每列生成筛选XML
+        for (const auto& [columnIndex, columnConditions] : conditionsByColumn) {
+            XmlNodeBuilder filterColumn("filterColumn");
+            filterColumn.addAttribute("colId", std::to_string(columnIndex));
+
+            if (columnConditions.size() == 1) {
+                // 单个条件
+                const auto& condition = columnConditions[0];
+
+                switch (condition.operator_) {
+                    case FilterOperator::Equal:
+                    case FilterOperator::NotEqual:
+                    case FilterOperator::GreaterThan:
+                    case FilterOperator::LessThan:
+                    case FilterOperator::GreaterThanOrEqual:
+                    case FilterOperator::LessThanOrEqual:
+                    case FilterOperator::Contains:
+                    case FilterOperator::NotContains:
+                    case FilterOperator::BeginsWith:
+                    case FilterOperator::EndsWith: {
+                        XmlNodeBuilder customFilters("customFilters");
+                        XmlNodeBuilder customFilter("customFilter");
+
+                        // 设置操作符
+                        std::string op;
+                        switch (condition.operator_) {
+                            case FilterOperator::Equal: op = "equal"; break;
+                            case FilterOperator::NotEqual: op = "notEqual"; break;
+                            case FilterOperator::GreaterThan: op = "greaterThan"; break;
+                            case FilterOperator::LessThan: op = "lessThan"; break;
+                            case FilterOperator::GreaterThanOrEqual: op = "greaterThanOrEqual"; break;
+                            case FilterOperator::LessThanOrEqual: op = "lessThanOrEqual"; break;
+                            default: op = "equal"; break;
+                        }
+                        customFilter.addAttribute("operator", op);
+                        customFilter.addAttribute("val", condition.value1);
+
+                        customFilters.addChild(customFilter);
+                        filterColumn.addChild(customFilters);
+                        break;
+                    }
+                    case FilterOperator::Top10:
+                    case FilterOperator::Bottom10: {
+                        XmlNodeBuilder top10("top10");
+                        top10.addAttribute("top", condition.operator_ == FilterOperator::Top10 ? "1" : "0");
+                        top10.addAttribute("val", condition.value1);
+                        filterColumn.addChild(top10);
+                        break;
+                    }
+                    default:
+                        // 其他类型暂不支持
+                        continue;
+                }
+            } else if (columnConditions.size() == 2) {
+                // 多个条件（通常是范围筛选）
+                XmlNodeBuilder customFilters("customFilters");
+                customFilters.addAttribute("and", "1");  // AND逻辑
+
+                for (const auto& condition : columnConditions) {
+                    XmlNodeBuilder customFilter("customFilter");
+
+                    // 设置操作符
+                    std::string op;
+                    switch (condition.operator_) {
+                        case FilterOperator::Equal: op = "equal"; break;
+                        case FilterOperator::NotEqual: op = "notEqual"; break;
+                        case FilterOperator::GreaterThan: op = "greaterThan"; break;
+                        case FilterOperator::LessThan: op = "lessThan"; break;
+                        case FilterOperator::GreaterThanOrEqual: op = "greaterThanOrEqual"; break;
+                        case FilterOperator::LessThanOrEqual: op = "lessThanOrEqual"; break;
+                        default: op = "equal"; break;
+                    }
+                    customFilter.addAttribute("operator", op);
+                    customFilter.addAttribute("val", condition.value1);
+
+                    customFilters.addChild(customFilter);
+                }
+
+                filterColumn.addChild(customFilters);
+            }
+
+            autoFilterNode.addChild(filterColumn);
+        }
+
+        return autoFilterNode;
     }
 }

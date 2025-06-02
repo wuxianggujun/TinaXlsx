@@ -20,6 +20,7 @@
 #include "TXFormulaManager.hpp"
 #include "TXChart.hpp"
 #include "TXDataValidation.hpp"
+#include "TXDataFilter.hpp"
 
 namespace TinaXlsx {
 
@@ -667,6 +668,32 @@ public:
      */
     const std::vector<std::pair<TXRange, TXDataValidation>>& getDataValidations() const;
 
+    // ==================== 数据筛选功能 ====================
+
+    /**
+     * @brief 启用自动筛选
+     * @param range 筛选范围
+     * @return 自动筛选对象指针
+     */
+    TXAutoFilter* enableAutoFilter(const TXRange& range);
+
+    /**
+     * @brief 禁用自动筛选
+     */
+    void disableAutoFilter();
+
+    /**
+     * @brief 获取自动筛选对象
+     * @return 自动筛选对象指针，如果未启用则返回nullptr
+     */
+    TXAutoFilter* getAutoFilter() const;
+
+    /**
+     * @brief 检查是否启用了自动筛选
+     * @return 是否启用
+     */
+    bool hasAutoFilter() const;
+
     // ==================== 图表操作 ====================
 
     /**
@@ -880,6 +907,9 @@ private:
 
     // ==================== 数据验证存储 ====================
     std::vector<std::pair<TXRange, TXDataValidation>> dataValidations_;  ///< 数据验证规则列表
+
+    // ==================== 数据筛选存储 ====================
+    std::unique_ptr<TXAutoFilter> autoFilter_;  ///< 自动筛选器
 
     // ==================== 兼容性保留 ====================
     // 为了保持API兼容性，保留一些原有的结构定义

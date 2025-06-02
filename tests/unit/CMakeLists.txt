@@ -33,6 +33,7 @@ set(UNIT_TEST_SOURCES
 
     # 数据功能测试
     test_data_features.cpp
+    test_data_filter.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -89,74 +90,184 @@ if(BUILD_INDIVIDUAL_TESTS)
     endforeach()
 endif()
 
-# 添加自定义目标来运行所有单元测试
-add_custom_target(run_unit_tests
-    COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running all unit tests"
+# ==================== 创建独立的测试可执行文件 ====================
+
+# 1. 数据筛选测试（独立可执行文件）
+add_executable(DataFilterTests
+    test_data_filter.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(DataFilterTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(DataFilterTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(DataFilterTests)
+
+# 2. 数值工具测试（独立可执行文件）
+add_executable(NumberUtilsTests
+    test_number_utils.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(NumberUtilsTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(NumberUtilsTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(NumberUtilsTests)
+
+# 3. 数据功能测试（独立可执行文件）
+add_executable(DataFeaturesTests
+    test_data_features.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(DataFeaturesTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(DataFeaturesTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(DataFeaturesTests)
+
+# 4. 图表功能测试（独立可执行文件）
+add_executable(ChartTests
+    test_chart_functionality.cpp
+    test_chart_refactoring.cpp
+    test_chart_phase2.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(ChartTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(ChartTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(ChartTests)
+
+# 5. 基础功能测试（独立可执行文件）
+add_executable(BasicTests
+    test_basic_features.cpp
+    test_cell_formatting.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(BasicTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(BasicTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(BasicTests)
+
+# ==================== 注册测试到CTest ====================
+
+# 注册独立测试到CTest
+add_test(NAME DataFilter COMMAND DataFilterTests)
+add_test(NAME NumberUtils COMMAND NumberUtilsTests)
+add_test(NAME DataFeatures COMMAND DataFeaturesTests)
+add_test(NAME Charts COMMAND ChartTests)
+add_test(NAME Basic COMMAND BasicTests)
+
+# 设置测试工作目录
+set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(NumberUtils PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(DataFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(Charts PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(Basic PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# ==================== IDE 友好的目标 ====================
+
+# 创建一个运行所有独立测试的目标
+add_custom_target(RunAllIndependentTests
+    COMMAND echo "Running all independent tests..."
+    COMMAND DataFilterTests
+    COMMAND NumberUtilsTests
+    COMMAND DataFeaturesTests
+    COMMAND ChartTests
+    COMMAND BasicTests
+    DEPENDS DataFilterTests NumberUtilsTests DataFeaturesTests ChartTests BasicTests
+    COMMENT "Running all independent test executables"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加一个快速测试目标（只运行基本测试）
-add_custom_target(run_quick_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="BasicFeaturesTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running quick tests"
+# 创建快速测试目标（只运行关键测试）
+add_custom_target(RunQuickTests
+    COMMAND echo "Running quick tests..."
+    COMMAND DataFilterTests
+    COMMAND NumberUtilsTests
+    DEPENDS DataFilterTests NumberUtilsTests
+    COMMENT "Running quick tests (DataFilter + NumberUtils)"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加重构测试目标（只运行重构后的测试）
-add_custom_target(run_refactored_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="*Manager*:*Refactored*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running refactored component tests"
+# 为每个测试创建单独的运行目标
+add_custom_target(RunDataFilterTest
+    COMMAND DataFilterTests
+    DEPENDS DataFilterTests
+    COMMENT "Running data filter tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加管理器测试目标
-add_custom_target(run_manager_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="TX*ManagerTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running manager component tests"
+add_custom_target(RunNumberUtilsTest
+    COMMAND NumberUtilsTests
+    DEPENDS NumberUtilsTests
+    COMMENT "Running number utils tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加集成测试目标
-add_custom_target(run_integration_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="TXSheetRefactoredIntegrationTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running integration tests for refactored sheet"
+add_custom_target(RunDataFeaturesTest
+    COMMAND DataFeaturesTests
+    DEPENDS DataFeaturesTests
+    COMMENT "Running data features tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加图表测试目标
-add_custom_target(run_chart_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="ChartFunctionalityTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running chart functionality tests"
+add_custom_target(RunChartTest
+    COMMAND ChartTests
+    DEPENDS ChartTests
+    COMMENT "Running chart tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 添加图表重构测试目标
-add_custom_target(run_chart_refactoring_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="ChartRefactoringTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running chart refactoring tests"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-
-# 添加图表第二阶段测试目标
-add_custom_target(run_chart_phase2_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="ChartPhase2Test.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running chart phase 2 tests (styles and multi-series)"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-
-# 添加数据功能测试目标
-add_custom_target(run_data_features_tests
-    COMMAND TinaXlsx_UnitTests --gtest_filter="DataFeaturesTest.*"
-    DEPENDS TinaXlsx_UnitTests
-    COMMENT "Running data features tests (formulas, validation, filtering)"
+add_custom_target(RunBasicTest
+    COMMAND BasicTests
+    DEPENDS BasicTests
+    COMMENT "Running basic tests"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

@@ -848,6 +848,25 @@ const std::vector<std::pair<TXRange, TXDataValidation>>& TXSheet::getDataValidat
     return dataValidations_;
 }
 
+// ==================== 数据筛选功能实现 ====================
+
+TXAutoFilter* TXSheet::enableAutoFilter(const TXRange& range) {
+    autoFilter_ = std::make_unique<TXAutoFilter>(range);
+    return autoFilter_.get();
+}
+
+void TXSheet::disableAutoFilter() {
+    autoFilter_.reset();
+}
+
+TXAutoFilter* TXSheet::getAutoFilter() const {
+    return autoFilter_.get();
+}
+
+bool TXSheet::hasAutoFilter() const {
+    return autoFilter_ != nullptr;
+}
+
 // ==================== 图表操作实现 ====================
 
 TXChart* TXSheet::addChart(std::unique_ptr<TXChart> chart) {

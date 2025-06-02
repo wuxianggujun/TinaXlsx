@@ -212,6 +212,12 @@ namespace TinaXlsx
                 worksheet.addChild(dataValidations);
             }
 
+            // 添加自动筛选（如果有）
+            if (sheet->hasAutoFilter()) {
+                XmlNodeBuilder autoFilter = buildAutoFilterNode(sheet);
+                worksheet.addChild(autoFilter);
+            }
+
             // 添加绘图引用（如果有图表）
             if (sheet->getChartCount() > 0) {
                 XmlNodeBuilder drawing("drawing");
@@ -261,6 +267,13 @@ namespace TinaXlsx
          * @return 数据验证节点
          */
         XmlNodeBuilder buildDataValidationsNode(const TXSheet* sheet) const;
+
+        /**
+         * @brief 构建自动筛选节点
+         * @param sheet 工作表对象
+         * @return 自动筛选节点
+         */
+        XmlNodeBuilder buildAutoFilterNode(const TXSheet* sheet) const;
 
         u64 m_sheetIndex;
     };

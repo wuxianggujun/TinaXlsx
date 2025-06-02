@@ -1,5 +1,6 @@
 #include "TinaXlsx/TXCell.hpp"
 #include "TinaXlsx/TXSheet.hpp" // For evaluateFormula context
+#include "TinaXlsx/TXNumberUtils.hpp" // For high-performance number parsing
 // TXFormula.hpp and TXNumberFormat.hpp are included via TXCell.hpp
 #include <sstream>
 #include <algorithm> // For std::transform
@@ -222,9 +223,11 @@ namespace TinaXlsx
             return std::get<bool>(value_) ? 1.0 : 0.0;
         }
         if (std::holds_alternative<std::string>(value_)) {
-            try {
-                return std::stod(std::get<std::string>(value_));
-            } catch (...) { /* 转换失败 */ }
+            // 使用高性能数值解析
+            auto result = TXNumberUtils::parseDouble(std::get<std::string>(value_));
+            if (result.has_value()) {
+                return result.value();
+            }
         }
         return 0.0;
     }
@@ -240,9 +243,11 @@ namespace TinaXlsx
             return std::get<bool>(value_) ? 1 : 0;
         }
         if (std::holds_alternative<std::string>(value_)) {
-            try {
-                return std::stoll(std::get<std::string>(value_));
-            } catch (...) { /* 转换失败 */ }
+            // 使用高性能数值解析
+            auto result = TXNumberUtils::parseInt64(std::get<std::string>(value_));
+            if (result.has_value()) {
+                return result.value();
+            }
         }
         return 0;
     }
@@ -456,27 +461,20 @@ namespace TinaXlsx
             return true;
         }
 
-        // 尝试解析为整数
-        try {
-            size_t parsed_chars = 0;
-            int64_t i_val = std::stoll(str, &parsed_chars);
-            if (parsed_chars == str.length()) { // 确保整个字符串都被解析为整数
-                setValue(i_val);
-                return true;
-            }
-        } catch (const std::invalid_argument&) {
-        } catch (const std::out_of_range&) {}
+        // 使用高性能数值解析
+        // 首先尝试解析为整数
+        auto intResult = TXNumberUtils::parseInt64(str);
+        if (intResult.has_value()) {
+            setValue(intResult.value());
+            return true;
+        }
 
-        // 尝试解析为浮点数
-        try {
-            size_t parsed_chars = 0;
-            double d_val = std::stod(str, &parsed_chars);
-            if (parsed_chars == str.length()) { // 确保整个字符串都被解析为浮点数
-                setValue(d_val);
-                return true;
-            }
-        } catch (const std::invalid_argument&) {
-        } catch (const std::out_of_range&) {}
+        // 然后尝试解析为浮点数
+        auto doubleResult = TXNumberUtils::parseDouble(str);
+        if (doubleResult.has_value()) {
+            setValue(doubleResult.value());
+            return true;
+        }
 
         // 默认设为字符串
         setValue(str);
