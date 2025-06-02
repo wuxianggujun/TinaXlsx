@@ -1,6 +1,6 @@
 #include "TinaXlsx/TXFormulaManager.hpp"
 #include "TinaXlsx/TXCellManager.hpp"
-#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"
 #include <regex>
 #include <algorithm>
 #include <queue>

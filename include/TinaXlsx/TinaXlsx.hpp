@@ -26,7 +26,7 @@
 #include "TXStyleTemplate.hpp" ///< 样式模板系统（预设主题）
 
 // ==================== 核心业务类 ====================
-#include "TXCell.hpp"          ///< 单元格类
+#include "TXCompactCell.hpp"   ///< 紧凑单元格类（内存优化版）
 #include "TXSheet.hpp"         ///< 工作表类
 #include "TXWorkbook.hpp"      ///< 工作簿类
 
@@ -77,7 +77,7 @@ namespace Features {
  */
 using Workbook = TXWorkbook;
 using Sheet = TXSheet;
-using Cell = TXCell;
+using Cell = TXCompactCell;  // 使用内存优化的紧凑单元格
 using Style = TXCellStyle;
 using Color = TXColor;
 using Coordinate = TXCoordinate;

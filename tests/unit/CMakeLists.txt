@@ -258,25 +258,7 @@ target_include_directories(CompactCellTests PRIVATE
 # 配置测试目标的UTF-8编码
 configure_test_target(CompactCellTests)
 
-# 9. 单元格替换测试（渐进式迁移）
-add_executable(CellReplacementTests
-    test_cell_replacement.cpp
-    test_file_generator.cpp
-)
-
-target_link_libraries(CellReplacementTests
-    PRIVATE
-    ${PROJECT_NAME}
-    gtest_main
-    gtest
-)
-
-target_include_directories(CellReplacementTests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# 配置测试目标的UTF-8编码
-configure_test_target(CellReplacementTests)
+# 注意：TXCell已完全替换为TXCompactCell，相关测试已移除
 
 # ==================== 注册测试到CTest ====================
 
@@ -299,9 +281,7 @@ set_tests_properties(UnifiedPivotTable PROPERTIES WORKING_DIRECTORY ${CMAKE_BINA
 add_test(NAME CompactCell COMMAND CompactCellTests)
 set_tests_properties(CompactCell PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-# 单元格替换测试
-add_test(NAME CellReplacement COMMAND CellReplacementTests)
-set_tests_properties(CellReplacement PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+# 注意：TXCell替换测试已移除，TXCompactCell已完全集成
 
 # 设置测试工作目录
 set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -395,10 +375,4 @@ add_custom_target(RunCompactCellTest
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# 单元格替换测试目标
-add_custom_target(RunCellReplacementTest
-    COMMAND CellReplacementTests
-    DEPENDS CellReplacementTests
-    COMMENT "Running cell replacement tests (progressive migration)"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
+# 注意：TXCell替换相关的自定义目标已移除

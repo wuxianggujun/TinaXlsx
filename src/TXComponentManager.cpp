@@ -1,6 +1,6 @@
 #include "TinaXlsx/TXComponentManager.hpp"
 #include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"
 #include <algorithm>
 
 namespace TinaXlsx {

@@ -3,7 +3,8 @@
 //
 
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
-#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"
+#include "TinaXlsx/TXFormula.hpp"
 #include "TinaXlsx/TXNumberUtils.hpp"
 #include "TinaXlsx/TXPugiStreamWriter.hpp"
 #include <variant>

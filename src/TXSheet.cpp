@@ -1,5 +1,5 @@
 #include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"
 #include "TinaXlsx/TXMergedCells.hpp"
 #include "TinaXlsx/TXStyle.hpp"
 #include "TinaXlsx/TXWorkbook.hpp"

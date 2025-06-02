@@ -1,6 +1,6 @@
 #include "TinaXlsx/TXFormula.hpp"
 #include "TinaXlsx/TXSheet.hpp"
-#include "TinaXlsx/TXCell.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
 #include <algorithm>
 #include <cmath>

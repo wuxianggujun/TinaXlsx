@@ -8,7 +8,7 @@
 #include "TXXmlReader.hpp"
 #include "TXXmlWriter.hpp"
 #include "TXSheet.hpp"
-#include "TXCell.hpp"
+#include "TXCompactCell.hpp"
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
 #include <sstream>
