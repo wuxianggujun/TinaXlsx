@@ -5,8 +5,8 @@
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
 #include "TinaXlsx/TXCell.hpp"
 #include "TinaXlsx/TXNumberUtils.hpp"
+#include "TinaXlsx/TXPugiStreamWriter.hpp"
 #include <variant>
-#include <sstream>
 
 #include "TinaXlsx/TXSharedStringsPool.hpp"
 
@@ -17,102 +17,85 @@ namespace TinaXlsx
         const TXSheet* sheet = context.sheets[m_sheetIndex].get();
         TXRange usedRange = sheet->getUsedRange();
 
-        // 使用字符串流进行高效XML生成
-        std::ostringstream xmlStream;
-        // 注意：ostringstream没有reserve方法，但我们可以通过str()预分配
-        std::string buffer;
-        buffer.reserve(1024 * 1024); // 预分配1MB缓冲区
-
-        // XML声明和工作表开始
-        xmlStream << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-        xmlStream << "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" "
-                     "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\n";
-
-        // 维度信息
-        std::string rangeRef = usedRange.isValid() ? usedRange.toAddress() : "A1:A1";
-        xmlStream << "<dimension ref=\"" << rangeRef << "\"/>\n";
-
-        // 列宽信息（简化处理）
-        auto& rowColManager = sheet->getRowColumnManager();
-        const auto& customColumnWidths = rowColManager.getCustomColumnWidths();
-        if (!customColumnWidths.empty()) {
-            xmlStream << "<cols>\n";
-            for (const auto& pair : customColumnWidths) {
-                // pair.first 是 column_t::index_t 类型，直接使用
-                xmlStream << "<col min=\"" << pair.first << "\" max=\"" << pair.first
-                         << "\" width=\"" << pair.second << "\" customWidth=\"1\"/>\n";
-            }
-            xmlStream << "</cols>\n";
+        // 估算单元格数量
+        size_t estimatedCells = 0;
+        if (usedRange.isValid()) {
+            estimatedCells = (usedRange.getEnd().getRow().index() - usedRange.getStart().getRow().index() + 1) *
+                           (usedRange.getEnd().getCol().index() - usedRange.getStart().getCol().index() + 1);
         }
 
-        // 开始sheetData
-        xmlStream << "<sheetData>\n";
+        // 创建高性能流式写入器
+        auto writer = TXWorksheetWriterFactory::createWriter(estimatedCells);
+
+        // 开始写入工作表
+        std::string rangeRef = usedRange.isValid() ? usedRange.toAddress() : "A1:A1";
+        auto& rowColManager = sheet->getRowColumnManager();
+        const auto& customColumnWidths = rowColManager.getCustomColumnWidths();
+        bool hasCustomColumns = !customColumnWidths.empty();
+
+        writer->startWorksheet(rangeRef, hasCustomColumns);
+
+        // 写入列宽信息
+        for (const auto& pair : customColumnWidths) {
+            writer->writeColumnWidth(pair.first, pair.second);
+        }
+
+        // 开始写入工作表数据
+        writer->startSheetData();
 
         if (usedRange.isValid()) {
             // 按行流式写入单元格数据
             for (row_t row = usedRange.getStart().getRow(); row <= usedRange.getEnd().getRow(); ++row) {
                 bool hasRowData = false;
-                std::ostringstream rowStream;
 
-                // 先检查这一行是否有数据，并构建行内容
+                // 先检查这一行是否有数据
                 for (column_t col = usedRange.getStart().getCol(); col <= usedRange.getEnd().getCol(); ++col) {
                     const TXCell* cell = sheet->getCell(row, col);
 
                     if (cell && (!cell->isEmpty() || cell->getStyleIndex() != 0)) {
                         if (!hasRowData) {
                             hasRowData = true;
-                            rowStream << "<row r=\"" << row.index() << "\">\n";
+                            writer->startRow(row.index());
                         }
 
                         std::string cellRef = column_t::column_string_from_index(col.index()) + std::to_string(row.index());
-                        rowStream << "<c r=\"" << cellRef << "\"";
+                        u32 styleIndex = cell->getStyleIndex();
 
-                        // 样式索引
-                        if (cell->getStyleIndex() != 0) {
-                            rowStream << " s=\"" << cell->getStyleIndex() << "\"";
-                        }
-
-                        // 单元格类型和值
+                        // 根据单元格类型写入数据
                         TXCell::CellType type = cell->getType();
                         if (type == TXCell::CellType::String) {
                             const std::string& str = cell->getStringValue();
                             if (shouldUseInlineString(str)) {
-                                rowStream << " t=\"inlineStr\"><is><t>" << str << "</t></is></c>\n";
+                                writer->writeCellInlineString(cellRef, str, styleIndex);
                             } else {
                                 u32 index = context.sharedStringsPool.add(str);
-                                rowStream << " t=\"s\"><v>" << index << "</v></c>\n";
+                                writer->writeCellSharedString(cellRef, index, styleIndex);
                             }
                         } else if (type == TXCell::CellType::Number) {
-                            rowStream << "><v>" << cell->getNumberValue() << "</v></c>\n";
+                            writer->writeCellNumber(cellRef, cell->getNumberValue(), styleIndex);
                         } else if (type == TXCell::CellType::Integer) {
-                            rowStream << "><v>" << cell->getIntegerValue() << "</v></c>\n";
+                            writer->writeCellInteger(cellRef, cell->getIntegerValue(), styleIndex);
                         } else if (type == TXCell::CellType::Boolean) {
-                            rowStream << " t=\"b\"><v>" << (cell->getBooleanValue() ? "1" : "0") << "</v></c>\n";
-                        } else {
-                            rowStream << "/>\n"; // 空单元格
+                            writer->writeCellBoolean(cellRef, cell->getBooleanValue(), styleIndex);
                         }
+                        // 注意：空单元格但有样式的情况在上面的类型判断中会被处理
                     }
                 }
 
                 if (hasRowData) {
-                    rowStream << "</row>\n";
-                    xmlStream << rowStream.str();
+                    writer->endRow();
                 }
             }
         }
 
-        // 结束sheetData和worksheet
-        xmlStream << "</sheetData>\n";
-        xmlStream << "</worksheet>\n";
+        // 结束工作表数据和工作表
+        writer->endSheetData();
+        writer->endWorksheet();
 
         // 写入ZIP文件
-        std::string xmlContent = xmlStream.str();
-        std::vector<uint8_t> xmlData(xmlContent.begin(), xmlContent.end());
-
-        auto writeResult = zipWriter.write(std::string(partName()), xmlData);
+        auto writeResult = writer->writeToZip(zipWriter, std::string(partName()));
         if (writeResult.isError()) {
-            return Err<void>(writeResult.error().getCode(),
-                           "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage());
+            return writeResult;
         }
 
         return Ok();

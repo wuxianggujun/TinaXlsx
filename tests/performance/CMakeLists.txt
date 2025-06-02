@@ -20,9 +20,14 @@ add_executable(BatchOperationsTests
     test_batch_operations.cpp
 )
 
-# 创建流式性能测试可执行文件
-add_executable(StreamingPerformanceTests
-    test_streaming_performance.cpp
+# 创建Pugixml流式性能测试可执行文件
+add_executable(PugiStreamPerformanceTests
+    test_pugi_stream_performance.cpp
+)
+
+# 创建SharedStrings性能测试可执行文件
+add_executable(SharedStringsPerformanceTests
+    test_shared_strings_performance.cpp
 )
 
 # 链接必要的库
@@ -54,7 +59,14 @@ target_link_libraries(BatchOperationsTests
     gtest_main
 )
 
-target_link_libraries(StreamingPerformanceTests
+target_link_libraries(PugiStreamPerformanceTests
+    PRIVATE
+    TinaXlsx
+    gtest
+    gtest_main
+)
+
+target_link_libraries(SharedStringsPerformanceTests
     PRIVATE
     TinaXlsx
     gtest
@@ -86,7 +98,13 @@ target_include_directories(BatchOperationsTests
     ${CMAKE_SOURCE_DIR}/third_party/googletest/googletest/include
 )
 
-target_include_directories(StreamingPerformanceTests
+target_include_directories(PugiStreamPerformanceTests
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party/googletest/googletest/include
+)
+
+target_include_directories(SharedStringsPerformanceTests
     PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/third_party/googletest/googletest/include
@@ -97,7 +115,8 @@ target_compile_features(ExtremePerformanceTests PRIVATE cxx_std_17)
 target_compile_features(SimplePerformanceTests PRIVATE cxx_std_17)
 target_compile_features(OptimizedPerformanceTests PRIVATE cxx_std_17)
 target_compile_features(BatchOperationsTests PRIVATE cxx_std_17)
-target_compile_features(StreamingPerformanceTests PRIVATE cxx_std_17)
+target_compile_features(PugiStreamPerformanceTests PRIVATE cxx_std_17)
+target_compile_features(SharedStringsPerformanceTests PRIVATE cxx_std_17)
 
 # Windows特定设置
 if(WIN32)
@@ -121,7 +140,12 @@ if(WIN32)
         NOMINMAX
         _CRT_SECURE_NO_WARNINGS
     )
-    target_compile_definitions(StreamingPerformanceTests PRIVATE
+    target_compile_definitions(PugiStreamPerformanceTests PRIVATE
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+        _CRT_SECURE_NO_WARNINGS
+    )
+    target_compile_definitions(SharedStringsPerformanceTests PRIVATE
         WIN32_LEAN_AND_MEAN
         NOMINMAX
         _CRT_SECURE_NO_WARNINGS
@@ -144,7 +168,11 @@ set_target_properties(BatchOperationsTests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
 )
 
-set_target_properties(StreamingPerformanceTests PROPERTIES
+set_target_properties(PugiStreamPerformanceTests PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
+)
+
+set_target_properties(SharedStringsPerformanceTests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
 )
 
@@ -153,7 +181,8 @@ add_test(NAME ExtremePerformanceTests COMMAND ExtremePerformanceTests)
 add_test(NAME SimplePerformanceTests COMMAND SimplePerformanceTests)
 add_test(NAME OptimizedPerformanceTests COMMAND OptimizedPerformanceTests)
 add_test(NAME BatchOperationsTests COMMAND BatchOperationsTests)
-add_test(NAME StreamingPerformanceTests COMMAND StreamingPerformanceTests)
+add_test(NAME PugiStreamPerformanceTests COMMAND PugiStreamPerformanceTests)
+add_test(NAME SharedStringsPerformanceTests COMMAND SharedStringsPerformanceTests)
 
 # 设置测试工作目录
 set_tests_properties(ExtremePerformanceTests PROPERTIES
@@ -171,6 +200,10 @@ set_tests_properties(BatchOperationsTests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
 )
 
-set_tests_properties(StreamingPerformanceTests PROPERTIES
+set_tests_properties(PugiStreamPerformanceTests PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
+)
+
+set_tests_properties(SharedStringsPerformanceTests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
 )

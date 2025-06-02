@@ -9,6 +9,7 @@
 #include "TXXmlReader.hpp"
 #include "TXXmlWriter.hpp"
 #include "TXComponentManager.hpp"
+#include "TXSharedStringsStreamWriter.hpp"
 
 namespace TinaXlsx
 {
@@ -52,46 +53,47 @@ namespace TinaXlsx
         {
             // 获取共享字符串池中的字符串
             const auto& strings = context.sharedStringsPool.getStrings();
-            
+
             // 如果没有字符串或共享字符串池不是dirty状态，则不生成文件
             if (strings.empty() || !context.sharedStringsPool.isDirty()) {
                 return Ok();  // 跳过空池或未修改的池
             }
-            
-            // 生成 XML
-            XmlNodeBuilder sst("sst");
-            sst.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
-               .addAttribute("count", std::to_string(strings.size()))
-               .addAttribute("uniqueCount", std::to_string(strings.size()));
 
-            for (const auto& str : strings)
-            {
-                XmlNodeBuilder si("si");
-                si.addChild(XmlNodeBuilder("t").setText(str));
-                sst.addChild(si);
+            // 统一使用流式写入器（高性能）
+            return saveWithStreamWriter(zipWriter, context);
+        }
+
+    private:
+        /**
+         * @brief 使用流式写入器保存（高性能版本）
+         */
+        TXResult<void> saveWithStreamWriter(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context)
+        {
+            const auto& strings = context.sharedStringsPool.getStrings();
+
+            // 创建流式写入器
+            auto writer = TXSharedStringsWriterFactory::createWriter(strings.size());
+
+            // 开始写入文档
+            writer->startDocument(strings.size());
+
+            // 逐个写入字符串
+            for (const auto& str : strings) {
+                // 检查是否需要保留空格（简单启发式：包含前导/尾随空格）
+                bool preserveSpace = !str.empty() && (str.front() == ' ' || str.back() == ' ');
+                writer->writeString(str, preserveSpace);
             }
 
-            TXXmlWriter writer;
-            auto setRootResult = writer.setRootNode(sst);
-            if (setRootResult.isError())
-            {
-                return Err<void>(setRootResult.error().getCode(), "Failed to set root node: " + setRootResult.error().getMessage());
+            // 写入到ZIP文件
+            auto writeResult = writer->writeToZip(zipWriter, std::string(partName()));
+            if (writeResult.isError()) {
+                return writeResult;
             }
-            
-            auto xmlContentResult = writer.generateXmlString();
-            if (xmlContentResult.isError())
-            {
-                return Err<void>(xmlContentResult.error().getCode(), "Failed to generate XML: " + xmlContentResult.error().getMessage());
-            }
-            
-            std::vector<uint8_t> xmlData(xmlContentResult.value().begin(), xmlContentResult.value().end());
-            auto writeResult = zipWriter.write(std::string(partName()), xmlData);
-            if (writeResult.isError())
-            {
-                return Err<void>(writeResult.error().getCode(), "Failed to write " + std::string(partName()) + ": " + writeResult.error().getMessage());
-            }
+
             return Ok();
         }
+
+
 
         std::string partName() const override
         {
