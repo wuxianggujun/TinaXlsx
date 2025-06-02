@@ -1,3 +1,6 @@
 [submodule "third_party/fast_float"]
 	path = third_party/fast_float
 	url = https://github.com/fastfloat/fast_float.git
+[submodule "third_party/doxygen"]
+	path = third_party/doxygen
+	url = https://github.com/doxygen/doxygen.git

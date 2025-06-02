@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(TinaXlsx VERSION 2.0 LANGUAGES CXX)
+project(TinaXlsx VERSION 2.1 LANGUAGES CXX)
 
 # 添加cmake模块路径
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -9,6 +9,7 @@ include(CompilerConfig)
 
 # ------------ 项目配置选项 ------------
 option(BUILD_TESTS "Build the unit tests" ON)
+option(BUILD_DOCS "Build API documentation with Doxygen" OFF)
 
 
 # -------------- 配置 pugixml --------------
@@ -105,5 +106,13 @@ if(BUILD_TESTS)
         COMMENT "Running all tests"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
-    
+
+endif()
+
+# ------------ 文档生成配置 ------------
+if(BUILD_DOCS)
+    message(STATUS "启用文档生成")
+    include(DoxygenConfig)
+else()
+    message(STATUS "文档生成已禁用，使用 -DBUILD_DOCS=ON 启用")
 endif()
