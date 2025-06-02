@@ -68,13 +68,27 @@ namespace TinaXlsx
         TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
         {
             const TXSheet* sheet = context.sheets[m_sheetIndex].get();
+            TXRange usedRange = sheet->getUsedRange();
+
+            // 估算单元格数量，决定使用哪种写入策略
+            size_t estimatedCells = 0;
+            if (usedRange.isValid()) {
+                estimatedCells = (usedRange.getEnd().getRow().index() - usedRange.getStart().getRow().index() + 1) *
+                               (usedRange.getEnd().getCol().index() - usedRange.getStart().getCol().index() + 1);
+            }
+
+            // 对于大量数据使用流式写入，小量数据使用DOM方式
+            if (estimatedCells > 5000) {
+                return saveWithStreamWriter(zipWriter, context);
+            }
+
+            // 小数据量使用原有的DOM方式
             XmlNodeBuilder worksheet("worksheet");
             worksheet.addAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main")
                      .addAttribute("xmlns:r", "http://schemas.openxmlformats.org/officeDocument/2006/relationships");
 
             // 添加维度信息
             XmlNodeBuilder dimension("dimension");
-            TXRange usedRange = sheet->getUsedRange();
             if (usedRange.isValid()) {
                 dimension.addAttribute("ref", usedRange.toAddress());
             } else {
@@ -281,6 +295,15 @@ namespace TinaXlsx
 
     private:
         bool shouldUseInlineString(const std::string& str) const;
+
+        /**
+         * @brief 使用流式写入器保存（高性能版本）
+         * @param zipWriter ZIP写入器
+         * @param context 工作簿上下文
+         * @return 保存结果
+         */
+        TXResult<void> saveWithStreamWriter(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context);
+
         /**
          * @brief 构建单个单元格节点
          * @param cell 单元格对象
