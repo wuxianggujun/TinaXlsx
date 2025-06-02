@@ -195,6 +195,28 @@ target_include_directories(BasicTests PRIVATE
 # 配置测试目标的UTF-8编码
 configure_test_target(BasicTests)
 
+# 6. 高级功能测试（第四阶段）
+if(BUILD_ADVANCED_FEATURES)
+    add_executable(AdvancedFeaturesTests
+        test_pivot_table.cpp
+        test_file_generator.cpp
+    )
+
+    target_link_libraries(AdvancedFeaturesTests
+        PRIVATE
+        ${PROJECT_NAME}
+        gtest_main
+        gtest
+    )
+
+    target_include_directories(AdvancedFeaturesTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    # 配置测试目标的UTF-8编码
+    configure_test_target(AdvancedFeaturesTests)
+endif()
+
 # ==================== 注册测试到CTest ====================
 
 # 注册独立测试到CTest
@@ -203,6 +225,12 @@ add_test(NAME NumberUtils COMMAND NumberUtilsTests)
 add_test(NAME DataFeatures COMMAND DataFeaturesTests)
 add_test(NAME Charts COMMAND ChartTests)
 add_test(NAME Basic COMMAND BasicTests)
+
+# 高级功能测试
+if(BUILD_ADVANCED_FEATURES)
+    add_test(NAME AdvancedFeatures COMMAND AdvancedFeaturesTests)
+    set_tests_properties(AdvancedFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
 
 # 设置测试工作目录
 set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
