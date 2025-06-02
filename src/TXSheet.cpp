@@ -282,6 +282,41 @@ std::size_t TXSheet::setCellValues(const std::vector<std::pair<Coordinate, CellV
     return count;
 }
 
+// ==================== 高性能批量操作实现 ====================
+
+std::size_t TXSheet::setCellValuesBatch(const std::vector<std::pair<TXCoordinate, CellValue>>& values) {
+    // 转换为CellManager需要的格式
+    std::vector<std::pair<Coordinate, CellValue>> convertedValues;
+    convertedValues.reserve(values.size());
+
+    for (const auto& pair : values) {
+        convertedValues.emplace_back(Coordinate(pair.first.getRow(), pair.first.getCol()), pair.second);
+    }
+
+    std::size_t count = cellManager_.setCellValues(convertedValues);
+    if (count > 0) {
+        notifyComponentChange(ExcelComponent::BasicWorkbook);
+    }
+    return count;
+}
+
+std::size_t TXSheet::setRangeValues(row_t startRow, column_t startCol,
+                                   const std::vector<std::vector<CellValue>>& values) {
+    std::size_t count = cellManager_.setRangeValues(startRow, startCol, values);
+    if (count > 0) {
+        notifyComponentChange(ExcelComponent::BasicWorkbook);
+    }
+    return count;
+}
+
+std::size_t TXSheet::setRowValues(row_t row, column_t startCol, const std::vector<CellValue>& values) {
+    std::size_t count = cellManager_.setRowValues(row, startCol, values);
+    if (count > 0) {
+        notifyComponentChange(ExcelComponent::BasicWorkbook);
+    }
+    return count;
+}
+
 std::vector<std::pair<TXSheet::Coordinate, TXSheet::CellValue>> 
 TXSheet::getCellValues(const std::vector<Coordinate>& coords) const {
     return cellManager_.getCellValues(coords);

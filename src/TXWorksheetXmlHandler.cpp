@@ -5,6 +5,7 @@
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
 #include "TinaXlsx/TXCell.hpp"
 #include "TinaXlsx/TXNumberUtils.hpp"
+#include "TinaXlsx/TXStreamXmlWriter.hpp"
 #include <variant>
 
 #include "TinaXlsx/TXSharedStringsPool.hpp"

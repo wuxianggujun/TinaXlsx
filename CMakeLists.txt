@@ -99,12 +99,31 @@ if(BUILD_TESTS)
     
     # 添加单元测试子目录
     add_subdirectory(tests/unit)
-    
+
+    # 添加性能测试子目录
+    add_subdirectory(tests/performance)
+
     # 创建一个运行所有测试的目标
     add_custom_target(run_all_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
         COMMENT "Running all tests"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+    # 创建一个专门运行性能测试的目标
+    add_custom_target(run_performance_tests
+        COMMAND SimplePerformanceTests --gtest_color=no
+        COMMENT "Running simple performance tests"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
+        DEPENDS SimplePerformanceTests
+    )
+
+    # 创建一个运行极致性能测试的目标
+    add_custom_target(run_extreme_performance_tests
+        COMMAND ExtremePerformanceTests --gtest_color=no
+        COMMENT "Running extreme performance tests"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
+        DEPENDS ExtremePerformanceTests
     )
 
 endif()

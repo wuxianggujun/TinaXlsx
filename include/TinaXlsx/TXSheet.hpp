@@ -106,6 +106,34 @@ public:
      */
     bool setCellValue(const Coordinate& coord, const CellValue& value);
 
+    // ==================== 高性能批量操作 ====================
+
+    /**
+     * @brief 批量设置单元格值（高性能）
+     * @param values 坐标-值对列表
+     * @return 成功设置的数量
+     */
+    std::size_t setCellValuesBatch(const std::vector<std::pair<TXCoordinate, CellValue>>& values);
+
+    /**
+     * @brief 批量设置矩形区域的单元格值（最高性能）
+     * @param startRow 起始行
+     * @param startCol 起始列
+     * @param values 二维值数组 [row][col]
+     * @return 成功设置的数量
+     */
+    std::size_t setRangeValues(row_t startRow, column_t startCol,
+                              const std::vector<std::vector<CellValue>>& values);
+
+    /**
+     * @brief 批量设置行数据（连续内存优化）
+     * @param row 目标行
+     * @param startCol 起始列
+     * @param values 行数据
+     * @return 成功设置的数量
+     */
+    std::size_t setRowValues(row_t row, column_t startCol, const std::vector<CellValue>& values);
+
     /**
      * @brief 设置单元格值（使用A1格式）
      * @param address 单元格地址，如"A1", "B2"

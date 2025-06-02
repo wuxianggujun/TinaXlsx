@@ -102,11 +102,30 @@ public:
     CellValue getCellValue(const Coordinate& coord) const;
 
     /**
-     * @brief 批量设置单元格值
+     * @brief 批量设置单元格值（高性能版本）
      * @param values 坐标-值对列表
      * @return 成功设置的数量
      */
     std::size_t setCellValues(const std::vector<std::pair<Coordinate, CellValue>>& values);
+
+    /**
+     * @brief 批量设置矩形区域的单元格值（最高性能）
+     * @param startRow 起始行
+     * @param startCol 起始列
+     * @param values 二维值数组 [row][col]
+     * @return 成功设置的数量
+     */
+    std::size_t setRangeValues(row_t startRow, column_t startCol,
+                              const std::vector<std::vector<CellValue>>& values);
+
+    /**
+     * @brief 批量设置行数据（连续内存优化）
+     * @param row 目标行
+     * @param startCol 起始列
+     * @param values 行数据
+     * @return 成功设置的数量
+     */
+    std::size_t setRowValues(row_t row, column_t startCol, const std::vector<CellValue>& values);
 
     /**
      * @brief 批量获取单元格值

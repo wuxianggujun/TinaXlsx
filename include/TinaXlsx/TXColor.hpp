@@ -205,9 +205,9 @@ namespace TinaXlsx
         bool isLight() const { return !isDark(); }
 
         /**
-     * @brief 转换为 AARRGGBB 格式的16进制字符串 (无#前缀)
-     * @return 16进制字符串，如 "FFFF0000" 代表不透明红色
-     */
+         * @brief 转换为 AARRGGBB 格式的16进制字符串 (无#前缀)
+         * @return 16进制字符串，如 "FFFF0000" 代表不透明红色
+         */
         std::string toARGBHexString() const;
 
 
@@ -217,10 +217,10 @@ namespace TinaXlsx
         bool operator!=(const TXColor& other) const { return value_ != other.value_; }
 
         /**
-         * @brief 隐式转换为颜色值
+         * @brief 显式转换为颜色值
          * @return ARGB颜色值
          */
-        operator color_value_t() const { return value_; }
+        explicit operator color_value_t() const { return value_; }
 
         // ==================== 静态工厂方法 ====================
 
@@ -274,6 +274,6 @@ namespace TinaXlsx
         extern const TXColor GRAY;
         extern const TXColor DARK_GRAY;
         extern const TXColor LIGHT_GRAY;
-        extern const TXColor TRANSPARENT;
+        extern const TXColor TRANSPARENT_COLOR;
     }
 } // namespace TinaXlsx 

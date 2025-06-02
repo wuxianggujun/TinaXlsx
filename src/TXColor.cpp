@@ -289,7 +289,7 @@ namespace ColorConstants {
     const TXColor GRAY(0xFF808080);      // 灰色
     const TXColor DARK_GRAY(0xFF404040); // 深灰色
     const TXColor LIGHT_GRAY(0xFFC0C0C0);// 浅灰色
-    const TXColor TRANSPARENT(0x00000000);// 透明
+    const TXColor TRANSPARENT_COLOR(0x00000000);// 透明
 }
 
 } // namespace TinaXlsx 

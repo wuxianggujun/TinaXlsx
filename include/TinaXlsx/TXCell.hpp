@@ -318,7 +318,7 @@ namespace TinaXlsx
         // 样式相关状态
         bool has_style_ = false;                       ///<单元格是否有显式样式
         u32 style_index_ = 0;                          ///< 应用于此单元格的样式索引 (来自样式管理器)
-        
+
         // 保护相关状态
         bool is_locked_ = true;                        ///< 单元格是否锁定（默认锁定）
 

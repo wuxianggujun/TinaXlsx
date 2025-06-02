@@ -82,11 +82,82 @@ TXCellManager::CellValue TXCellManager::getCellValue(const Coordinate& coord) co
 }
 
 std::size_t TXCellManager::setCellValues(const std::vector<std::pair<Coordinate, CellValue>>& values) {
+    // 高性能批量设置：预分配空间并减少哈希查找
+    cells_.reserve(cells_.size() + values.size());
+
     std::size_t count = 0;
     for (const auto& pair : values) {
-        if (setCellValue(pair.first, pair.second)) {
+        if (!isValidCoordinate(pair.first)) {
+            continue;
+        }
+
+        // 直接插入或更新，避免重复的哈希查找
+        auto [it, inserted] = cells_.try_emplace(pair.first, TXCell(pair.second));
+        if (!inserted) {
+            // 如果已存在，更新值
+            it->second.setValue(pair.second);
+        }
+        ++count;
+    }
+    return count;
+}
+
+std::size_t TXCellManager::setRangeValues(row_t startRow, column_t startCol,
+                                         const std::vector<std::vector<CellValue>>& values) {
+    if (values.empty()) return 0;
+
+    // 预计算总单元格数量并预分配空间
+    std::size_t totalCells = 0;
+    for (const auto& row : values) {
+        totalCells += row.size();
+    }
+    cells_.reserve(cells_.size() + totalCells);
+
+    std::size_t count = 0;
+    for (std::size_t rowIdx = 0; rowIdx < values.size(); ++rowIdx) {
+        const auto& rowData = values[rowIdx];
+        row_t currentRow = row_t(startRow.index() + rowIdx);
+
+        for (std::size_t colIdx = 0; colIdx < rowData.size(); ++colIdx) {
+            column_t currentCol = column_t(startCol.index() + colIdx);
+            Coordinate coord(currentRow, currentCol);
+
+            if (!isValidCoordinate(coord)) {
+                continue;
+            }
+
+            // 高效插入
+            auto [it, inserted] = cells_.try_emplace(coord, TXCell(rowData[colIdx]));
+            if (!inserted) {
+                it->second.setValue(rowData[colIdx]);
+            }
             ++count;
         }
+    }
+    return count;
+}
+
+std::size_t TXCellManager::setRowValues(row_t row, column_t startCol, const std::vector<CellValue>& values) {
+    if (values.empty()) return 0;
+
+    // 预分配空间
+    cells_.reserve(cells_.size() + values.size());
+
+    std::size_t count = 0;
+    for (std::size_t colIdx = 0; colIdx < values.size(); ++colIdx) {
+        column_t currentCol = column_t(startCol.index() + colIdx);
+        Coordinate coord(row, currentCol);
+
+        if (!isValidCoordinate(coord)) {
+            continue;
+        }
+
+        // 高效插入
+        auto [it, inserted] = cells_.try_emplace(coord, TXCell(values[colIdx]));
+        if (!inserted) {
+            it->second.setValue(values[colIdx]);
+        }
+        ++count;
     }
     return count;
 }
