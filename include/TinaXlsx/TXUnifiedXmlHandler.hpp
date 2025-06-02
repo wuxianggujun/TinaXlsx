@@ -82,37 +82,7 @@ private:
     std::vector<std::shared_ptr<TXPivotTable>> pivot_tables_;
     std::unordered_map<std::string, std::vector<std::shared_ptr<TXPivotTable>>> all_pivot_tables_;
 
-    // ==================== 具体生成方法 ====================
-    
-    /**
-     * @brief 生成主关系文件 (_rels/.rels)
-     */
-    XmlNodeBuilder generateMainRels(const TXWorkbookContext& context) const;
-    
-    /**
-     * @brief 生成工作簿关系文件 (xl/_rels/workbook.xml.rels)
-     */
-    XmlNodeBuilder generateWorkbookRels(const TXWorkbookContext& context) const;
-    
-    /**
-     * @brief 生成工作表关系文件 (xl/worksheets/_rels/sheetN.xml.rels)
-     */
-    XmlNodeBuilder generateWorksheetRels(const TXWorkbookContext& context) const;
-    
-    /**
-     * @brief 生成文档属性文件 (同时生成 docProps/core.xml 和 docProps/app.xml)
-     */
-    TXResult<void> generateDocumentProperties(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) const;
-    
-    /**
-     * @brief 生成透视表关系文件 (xl/pivotTables/_rels/pivotTableN.xml.rels)
-     */
-    XmlNodeBuilder generatePivotTableRels(const TXWorkbookContext& context) const;
-    
-    /**
-     * @brief 生成透视表缓存关系文件 (xl/pivotCache/_rels/pivotCacheDefinitionN.xml.rels)
-     */
-    XmlNodeBuilder generatePivotCacheRels(const TXWorkbookContext& context) const;
+
 
     // ==================== 流式生成方法 ====================
 
@@ -153,10 +123,7 @@ private:
      */
     std::string getPartName() const;
 
-    /**
-     * @brief 通用的XML写入方法
-     */
-    TXResult<void> writeXmlToZip(TXZipArchiveWriter& zipWriter, const XmlNodeBuilder& rootNode) const;
+
 
     /**
      * @brief 检查是否需要处理透视表
