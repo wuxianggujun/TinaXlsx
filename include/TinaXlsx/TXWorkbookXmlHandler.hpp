@@ -99,6 +99,26 @@ namespace TinaXlsx
             }
             workbook.addChild(sheetNode);
 
+            // 添加透视表缓存（如果有透视表）
+            if (context.componentManager.hasComponent(ExcelComponent::PivotTables)) {
+                XmlNodeBuilder pivotCaches("pivotCaches");
+
+                // 计算关系ID：工作表数量 + 共享字符串(1) + 透视表缓存
+                int baseRid = static_cast<int>(context.sheets.size());
+                if (context.componentManager.hasComponent(ExcelComponent::SharedStrings)) {
+                    baseRid += 1;
+                }
+
+                // 添加透视表缓存（cacheId从0开始）
+                // 根据WPS的结构，第一个透视表缓存使用下一个可用的rId
+                XmlNodeBuilder pivotCache("pivotCache");
+                pivotCache.addAttribute("cacheId", "0")
+                          .addAttribute("r:id", "rId" + std::to_string(baseRid + 1));
+                pivotCaches.addChild(pivotCache);
+
+                workbook.addChild(pivotCaches);
+            }
+
             TXXmlWriter xmlWriter;
             auto setRootResult = xmlWriter.setRootNode(workbook);
             if (setRootResult.isError())

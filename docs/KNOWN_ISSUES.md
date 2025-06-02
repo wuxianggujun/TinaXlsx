@@ -13,7 +13,57 @@
 
 ## 🔴 严重问题
 
-### 1. Excel数值筛选无法点击确定应用筛选
+### 1. 透视表兼容性问题
+
+**问题描述**：
+透视表功能虽然能够生成技术上正确的XML结构，但生成的XLSX文件无法被Excel/WPS等主流办公软件正确识别为包含透视表的文件。
+
+**影响范围**：
+- `TXPivotTable` 类的所有功能
+- `TXPivotCache` 类的数据缓存功能
+- 透视表相关的XML处理器
+- `UnifiedPivotTableTest.ComprehensivePivotTableTest` 测试用例
+
+**复现步骤**：
+1. 运行 `UnifiedPivotTableTests.exe`
+2. 打开生成的 `comprehensive_pivot_table_test.xlsx`
+3. 发现Excel/WPS无法识别文件中的透视表
+4. 文件显示为普通数据表，而非透视表
+
+**已尝试的解决方案**：
+- ✅ 修复了工作簿XML缺少 `<pivotCaches>` 元素的问题
+- ✅ 修复了透视表定义缺少必需属性的问题（`autoFormatId`, `dataCaption`, `updatedVersion` 等）
+- ✅ 修复了缓存记录格式错误（从直接值改为索引引用格式）
+- ✅ 修复了 `pivotField` 缺少 `<items>` 子元素的问题
+- ✅ 修复了 `rowItems` 和 `colItems` 结构问题
+- ✅ 修复了 `dataField` 缺少 `baseField` 和 `baseItem` 属性的问题
+- ✅ 完善了 `sharedItems` 的数据类型和统计信息
+- ✅ 修复了 cacheId 从0开始的问题
+- ❌ Excel仍无法识别生成的透视表
+
+**当前状态**：🔴 **暂时搁置**
+
+**可能原因**：
+1. Excel可能对透视表XML有未公开的内部验证规则或校验和
+2. 可能缺少特定的Excel内部标识符或元数据
+3. 数据类型推断可能不够精确，需要更复杂的类型系统
+4. 某些微妙的XML格式差异（如命名空间、属性顺序、编码等）
+5. Excel可能需要特定的统计信息或缓存优化数据
+6. 可能需要OLE复合文档格式而非纯XML格式
+
+**解决方案建议**：
+- **短期**：暂时跳过透视表功能，专注于其他更稳定的Excel功能
+- **长期**：如需继续开发，建议深入研究Excel的OLE复合文档格式或使用逆向工程方法
+
+**相关文件**：
+- `include/TinaXlsx/TXPivotTable.hpp`（已添加TODO注释）
+- `src/TXPivotTable.cpp`
+- `src/TXPivotTableXmlHandler.cpp`
+- `tests/unit/test_pivot_table_unified.cpp`
+
+---
+
+### 2. Excel数值筛选无法点击确定应用筛选
 
 **问题描述**：
 在生成的Excel文件中，数值列（如价格、薪资）的筛选条件虽然能正确显示绿色筛选按钮，但点击筛选按钮后无法点击"确定"来应用筛选条件。文本筛选工作正常。
@@ -168,20 +218,21 @@ CMake Deprecation Warning at third_party/fast_float/CMakeLists.txt:1 (cmake_mini
 
 | 严重程度 | 数量 | 已解决 | 未解决 |
 |---------|------|--------|--------|
-| 🔴 严重  | 1    | 0      | 1      |
+| 🔴 严重  | 2    | 0      | 2      |
 | 🟡 中等  | 2    | 2      | 0      |
 | 🟢 轻微  | 1    | 0      | 1      |
 | 🔵 功能缺失 | 3 | 0      | 3      |
-| **总计** | **7** | **2** | **5** |
+| **总计** | **8** | **2** | **6** |
 
 ---
 
 ## 🎯 优先级排序
 
 1. **最高优先级**：Excel数值筛选问题（影响核心功能）
-2. **高优先级**：数据验证功能完善
-3. **中优先级**：条件格式功能验证
-4. **低优先级**：图表功能扩展、CMake警告修复
+2. **暂时搁置**：透视表兼容性问题（技术复杂度过高，建议跳过）
+3. **高优先级**：数据验证功能完善
+4. **中优先级**：条件格式功能验证
+5. **低优先级**：图表功能扩展、CMake警告修复
 
 ---
 

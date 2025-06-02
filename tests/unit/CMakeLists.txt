@@ -196,26 +196,44 @@ target_include_directories(BasicTests PRIVATE
 configure_test_target(BasicTests)
 
 # 6. 高级功能测试（第四阶段）
-if(BUILD_ADVANCED_FEATURES)
-    add_executable(AdvancedFeaturesTests
-        test_pivot_table.cpp
-        test_file_generator.cpp
-    )
+add_executable(AdvancedFeaturesTests
+    test_pivot_table.cpp
+    test_file_generator.cpp
+)
 
-    target_link_libraries(AdvancedFeaturesTests
-        PRIVATE
-        ${PROJECT_NAME}
-        gtest_main
-        gtest
-    )
+target_link_libraries(AdvancedFeaturesTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
 
-    target_include_directories(AdvancedFeaturesTests PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+target_include_directories(AdvancedFeaturesTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
-    # 配置测试目标的UTF-8编码
-    configure_test_target(AdvancedFeaturesTests)
-endif()
+# 配置测试目标的UTF-8编码
+configure_test_target(AdvancedFeaturesTests)
+
+# 7. 统一透视表测试（包含所有透视表功能）
+add_executable(UnifiedPivotTableTests
+    test_pivot_table_unified.cpp
+    test_file_generator.cpp
+)
+
+target_link_libraries(UnifiedPivotTableTests
+    PRIVATE
+    ${PROJECT_NAME}
+    gtest_main
+    gtest
+)
+
+target_include_directories(UnifiedPivotTableTests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# 配置测试目标的UTF-8编码
+configure_test_target(UnifiedPivotTableTests)
 
 # ==================== 注册测试到CTest ====================
 
@@ -227,10 +245,12 @@ add_test(NAME Charts COMMAND ChartTests)
 add_test(NAME Basic COMMAND BasicTests)
 
 # 高级功能测试
-if(BUILD_ADVANCED_FEATURES)
-    add_test(NAME AdvancedFeatures COMMAND AdvancedFeaturesTests)
-    set_tests_properties(AdvancedFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
+add_test(NAME AdvancedFeatures COMMAND AdvancedFeaturesTests)
+set_tests_properties(AdvancedFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+# 统一透视表测试
+add_test(NAME UnifiedPivotTable COMMAND UnifiedPivotTableTests)
+set_tests_properties(UnifiedPivotTable PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # 设置测试工作目录
 set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -297,5 +317,21 @@ add_custom_target(RunBasicTest
     COMMAND BasicTests
     DEPENDS BasicTests
     COMMENT "Running basic tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 高级功能测试目标
+add_custom_target(RunAdvancedFeaturesTest
+    COMMAND AdvancedFeaturesTests
+    DEPENDS AdvancedFeaturesTests
+    COMMENT "Running advanced features tests"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# 统一透视表测试目标
+add_custom_target(RunUnifiedPivotTableTest
+    COMMAND UnifiedPivotTableTests
+    DEPENDS UnifiedPivotTableTests
+    COMMENT "Running unified pivot table tests (all pivot table functionality)"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

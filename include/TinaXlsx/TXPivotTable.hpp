@@ -33,6 +33,17 @@
 
 namespace TinaXlsx {
 
+    // TODO: 透视表功能存在兼容性问题，需要进一步完善
+    // 当前实现的XML结构虽然在技术上正确，但Excel/WPS仍无法正确识别
+    // 可能的问题包括：
+    // 1. 某些微妙的XML格式差异
+    // 2. 缺少特定的Excel内部标识符或校验和
+    // 3. 数据索引映射可能不完全准确
+    // 4. 可能需要更精确的数据类型推断和元数据
+    // 5. Excel可能对透视表XML有未公开的验证规则
+    // 建议：暂时跳过透视表功能，优先实现其他更稳定的Excel功能
+    // 如需继续开发，建议深入研究Excel的OLE复合文档格式或使用逆向工程方法
+
     // 前向声明
     class TXSheet;
     class TXPivotField;
@@ -136,10 +147,17 @@ namespace TinaXlsx {
         // 获取字段列表
         std::vector<std::string> getFieldNames() const;
 
+        // 设置源工作表引用
+        void setSourceSheet(const TXSheet* sheet);
+
+        // 手动设置字段名称
+        void setFieldNames(const std::vector<std::string>& fieldNames);
+
     private:
         TXRange sourceRange_;                          ///< 源数据范围
         std::vector<std::string> fieldNames_;         ///< 字段名称列表
         bool needsRefresh_;                            ///< 是否需要刷新
+        const TXSheet* sourceSheet_;                   ///< 源工作表引用
     };
 
     /**
@@ -221,6 +239,25 @@ namespace TinaXlsx {
          */
         std::shared_ptr<TXPivotField> getField(const std::string& fieldName) const;
 
+        /**
+         * @brief 获取所有字段
+         * @return 字段列表
+         */
+        const std::vector<std::shared_ptr<TXPivotField>>& getFields() const { return fields_; }
+
+        /**
+         * @brief 获取指定类型的字段
+         * @param type 字段类型
+         * @return 字段列表
+         */
+        std::vector<std::shared_ptr<TXPivotField>> getFieldsByType(PivotFieldType type) const;
+
+        /**
+         * @brief 获取数据缓存
+         * @return 数据缓存指针
+         */
+        const TXPivotCache* getCache() const { return cache_.get(); }
+
         // 透视表操作
         /**
          * @brief 生成透视表
@@ -233,6 +270,14 @@ namespace TinaXlsx {
          * @return 是否刷新成功
          */
         bool refresh();
+
+        /**
+         * @brief 将透视表集成到工作簿保存流程
+         * @param zipWriter ZIP写入器
+         * @param sheetName 工作表名称
+         * @return 是否集成成功
+         */
+        bool integrateToWorkbook(class TXZipArchiveWriter& zipWriter, const std::string& sheetName);
 
         // 属性设置
         /**
@@ -269,7 +314,15 @@ namespace TinaXlsx {
         // 内部方法
         bool validateField(const std::string& fieldName) const;
         void generatePivotTableXML();
+        void generatePivotTableDefinitionXML();
+        void generatePivotCacheDefinitionXML();
+        void updateWorksheetRelationships();
         void calculateAggregates();
+
+        // XML生成辅助方法
+        std::string generatePivotCacheRecordsXml() const;
+        std::string generateSheetRelationshipsXml() const;
+        std::string generateWorkbookRelationshipsXml() const;
     };
 
 } // namespace TinaXlsx

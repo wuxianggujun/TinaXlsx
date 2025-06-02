@@ -29,20 +29,39 @@ namespace TinaXlsx
         }
 
         const TXSheet* sheet = context.sheets[m_sheetIndex].get();
-        
-        // 如果没有图表，不需要生成关系文件
-        if (sheet->getChartCount() == 0) {
+
+        // 检查是否有图表或透视表
+        bool hasCharts = sheet->getChartCount() > 0;
+        // 检查透视表（通过工作表关系处理器的设置）
+        bool hasPivotTables = !m_pivotTables.empty();
+
+        // 如果没有图表和透视表，不需要生成关系文件
+        if (!hasCharts && !hasPivotTables) {
             return Ok();
         }
 
         XmlNodeBuilder relationships("Relationships");
         relationships.addAttribute("xmlns", "http://schemas.openxmlformats.org/package/2006/relationships");
 
-        // 添加绘图关系
-        relationships.addChild(XmlNodeBuilder("Relationship")
-                              .addAttribute("Id", "rId1")
-                              .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing")
-                              .addAttribute("Target", "../drawings/drawing" + std::to_string(m_sheetIndex + 1) + ".xml"));
+        u32 relationshipId = 1;
+
+        // 添加透视表关系（如果有）
+        if (hasPivotTables) {
+            for (size_t i = 0; i < m_pivotTables.size(); ++i) {
+                relationships.addChild(XmlNodeBuilder("Relationship")
+                                      .addAttribute("Id", "rId" + std::to_string(relationshipId++))
+                                      .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable")
+                                      .addAttribute("Target", "../pivotTables/pivotTable" + std::to_string(i + 1) + ".xml"));
+            }
+        }
+
+        // 添加绘图关系（如果有图表）
+        if (hasCharts) {
+            relationships.addChild(XmlNodeBuilder("Relationship")
+                                  .addAttribute("Id", "rId" + std::to_string(relationshipId))
+                                  .addAttribute("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing")
+                                  .addAttribute("Target", "../drawings/drawing" + std::to_string(m_sheetIndex + 1) + ".xml"));
+        }
 
         TXXmlWriter writer;
         auto setRootResult = writer.setRootNode(relationships);
@@ -65,6 +84,10 @@ namespace TinaXlsx
         }
 
         return Ok();
+    }
+
+    void TXWorksheetRelsXmlHandler::setPivotTables(const std::vector<std::shared_ptr<TXPivotTable>>& pivotTables) {
+        m_pivotTables = pivotTables;
     }
 
     std::string TXWorksheetRelsXmlHandler::partName() const

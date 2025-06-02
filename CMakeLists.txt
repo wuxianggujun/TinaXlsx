@@ -10,7 +10,6 @@ include(CompilerConfig)
 # ------------ 项目配置选项 ------------
 option(BUILD_TESTS "Build the unit tests" ON)
 option(BUILD_DOCS "Build API documentation with Doxygen" OFF)
-option(BUILD_ADVANCED_FEATURES "Build advanced features (Phase 4)" ON)
 
 
 # -------------- 配置 pugixml --------------

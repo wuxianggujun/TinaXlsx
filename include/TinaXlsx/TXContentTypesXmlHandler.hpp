@@ -68,6 +68,33 @@ namespace TinaXlsx
                                .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.extended-properties+xml"));
             }
 
+            // 透视表内容类型（如果启用）
+            if (context.componentManager.hasComponent(ExcelComponent::PivotTables)) {
+                // 计算透视表总数
+                u32 pivotTableCount = 0;
+                // 这里需要从工作簿上下文中获取透视表信息
+                // 暂时假设每个工作表最多有一个透视表
+                for (u64 i = 0; i < context.sheets.size(); ++i) {
+                    // 假设有透视表（实际应该从工作簿中获取）
+                    ++pivotTableCount;
+
+                    // 透视表定义内容类型
+                    types.addChild(XmlNodeBuilder("Override")
+                                   .addAttribute("PartName", "/xl/pivotTables/pivotTable" + std::to_string(pivotTableCount) + ".xml")
+                                   .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotTable+xml"));
+
+                    // 透视表缓存定义内容类型
+                    types.addChild(XmlNodeBuilder("Override")
+                                   .addAttribute("PartName", "/xl/pivotCache/pivotCacheDefinition" + std::to_string(pivotTableCount) + ".xml")
+                                   .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheDefinition+xml"));
+
+                    // 透视表缓存记录内容类型
+                    types.addChild(XmlNodeBuilder("Override")
+                                   .addAttribute("PartName", "/xl/pivotCache/pivotCacheRecords" + std::to_string(pivotTableCount) + ".xml")
+                                   .addAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml"));
+                }
+            }
+
             // 图表和绘图内容类型
             u32 chartCount = 0;
             for (u64 i = 0; i < context.sheets.size(); ++i) {

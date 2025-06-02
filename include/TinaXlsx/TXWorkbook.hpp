@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <atomic>
+#include <unordered_map>
 #include "TXTypes.hpp"
 #include "TXComponentManager.hpp"
 #include "TXStyleManager.hpp"
@@ -279,6 +280,30 @@ namespace TinaXlsx
          */
         bool protectWindows(const std::string& password);
 
+        // ==================== 透视表功能 ====================
+
+        /**
+         * @brief 为工作表添加透视表
+         * @param sheetName 工作表名称
+         * @param pivotTable 透视表对象
+         * @return 成功返回true
+         */
+        bool addPivotTable(const std::string& sheetName, std::shared_ptr<class TXPivotTable> pivotTable);
+
+        /**
+         * @brief 获取工作表的透视表列表
+         * @param sheetName 工作表名称
+         * @return 透视表列表
+         */
+        std::vector<std::shared_ptr<class TXPivotTable>> getPivotTables(const std::string& sheetName) const;
+
+        /**
+         * @brief 移除工作表的所有透视表
+         * @param sheetName 工作表名称
+         * @return 成功返回true
+         */
+        bool removePivotTables(const std::string& sheetName);
+
     private:
         std::vector<std::unique_ptr<TXSheet>> sheets_;
         std::size_t active_sheet_index_;
@@ -289,5 +314,11 @@ namespace TinaXlsx
         TXSharedStringsPool shared_strings_pool_;
         std::unique_ptr<TXWorkbookContext> context_;
         TXWorkbookProtectionManager workbook_protection_manager_;  ///< 工作簿保护管理器
+
+        // 透视表管理
+        std::unordered_map<std::string, std::vector<std::shared_ptr<class TXPivotTable>>> pivot_tables_;  ///< 工作表名称到透视表列表的映射
+
+        // 透视表辅助方法
+        std::string generatePivotCacheRecordsXml(const TXPivotTable* pivotTable, const std::string& sheetName) const;
     };
 } // namespace TinaXlsx 

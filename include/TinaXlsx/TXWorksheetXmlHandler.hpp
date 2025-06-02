@@ -13,9 +13,14 @@
 #include "TXTypes.hpp"
 #include <sstream>
 #include <iomanip>
+#include <memory>
+#include <vector>
 
 namespace TinaXlsx
 {
+    // 前向声明
+    class TXPivotTable;
+
     class TXWorksheetXmlHandler : public TXXmlHandler
     {
     public:
@@ -218,10 +223,28 @@ namespace TinaXlsx
                 worksheet.addChild(autoFilter);
             }
 
+            // 添加透视表引用（如果有透视表）
+            if (!m_pivotTables.empty()) {
+                XmlNodeBuilder pivotTablesNode("pivotTables");
+                pivotTablesNode.addAttribute("count", std::to_string(m_pivotTables.size()));
+
+                for (size_t i = 0; i < m_pivotTables.size(); ++i) {
+                    XmlNodeBuilder pivotTable("pivotTable");
+                    pivotTable.addAttribute("cacheId", std::to_string(i + 1));
+                    pivotTable.addAttribute("name", "PivotTable" + std::to_string(i + 1));
+                    pivotTable.addAttribute("r:id", "rId" + std::to_string(i + 1));
+                    pivotTablesNode.addChild(pivotTable);
+                }
+
+                worksheet.addChild(pivotTablesNode);
+            }
+
             // 添加绘图引用（如果有图表）
             if (sheet->getChartCount() > 0) {
                 XmlNodeBuilder drawing("drawing");
-                drawing.addAttribute("r:id", "rId1");
+                // 如果有透视表，图表的关系ID需要调整
+                std::string drawingRId = m_pivotTables.empty() ? "rId1" : "rId" + std::to_string(m_pivotTables.size() + 1);
+                drawing.addAttribute("r:id", drawingRId);
                 worksheet.addChild(drawing);
             }
 
@@ -250,6 +273,12 @@ namespace TinaXlsx
             return "xl/worksheets/sheet" + std::to_string(m_sheetIndex + 1) + ".xml";
         }
 
+        /**
+         * @brief 设置透视表信息（用于传递透视表数据）
+         * @param pivotTables 透视表列表
+         */
+        void setPivotTables(const std::vector<std::shared_ptr<class TXPivotTable>>& pivotTables);
+
     private:
         bool shouldUseInlineString(const std::string& str) const;
         /**
@@ -274,6 +303,17 @@ namespace TinaXlsx
          * @return 自动筛选节点
          */
         XmlNodeBuilder buildAutoFilterNode(const TXSheet* sheet) const;
+
+        /**
+         * @brief 获取工作表的透视表列表
+         * @param sheetName 工作表名称
+         * @param context 工作簿上下文
+         * @return 透视表列表
+         */
+        std::vector<std::shared_ptr<class TXPivotTable>> getPivotTablesForSheet(const std::string& sheetName, const TXWorkbookContext& context) const;
+
+    private:
+        std::vector<std::shared_ptr<class TXPivotTable>> m_pivotTables;  ///< 当前工作表的透视表列表
 
         u64 m_sheetIndex;
     };

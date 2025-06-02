@@ -6,9 +6,13 @@
 
 #include "TXXmlHandler.hpp"
 #include "TXXmlWriter.hpp"
+#include <memory>
+#include <vector>
 
 namespace TinaXlsx
 {
+    // 前向声明
+    class TXPivotTable;
     /**
      * @brief 工作表关系XML处理器
      * 
@@ -23,8 +27,15 @@ namespace TinaXlsx
         TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override;
         [[nodiscard]] std::string partName() const override;
 
+        /**
+         * @brief 设置透视表信息（用于传递透视表数据）
+         * @param pivotTables 透视表列表
+         */
+        void setPivotTables(const std::vector<std::shared_ptr<TXPivotTable>>& pivotTables);
+
     private:
         u32 m_sheetIndex;
+        std::vector<std::shared_ptr<TXPivotTable>> m_pivotTables;  ///< 当前工作表的透视表列表
     };
 
     /**

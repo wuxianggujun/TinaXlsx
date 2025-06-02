@@ -394,4 +394,15 @@ namespace TinaXlsx
 
         return autoFilterNode;
     }
+
+    std::vector<std::shared_ptr<TXPivotTable>> TXWorksheetXmlHandler::getPivotTablesForSheet(const std::string& sheetName, const TXWorkbookContext& context) const {
+        // 这里需要从工作簿上下文中获取透视表信息
+        // 由于当前的TXWorkbookContext没有透视表信息，我们需要通过其他方式获取
+        // 暂时返回空列表，这个方法需要在TXWorkbookContext中添加透视表支持后才能正确实现
+        return {};
+    }
+
+    void TXWorksheetXmlHandler::setPivotTables(const std::vector<std::shared_ptr<TXPivotTable>>& pivotTables) {
+        m_pivotTables = pivotTables;
+    }
 }
