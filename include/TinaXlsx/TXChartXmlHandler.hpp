@@ -126,13 +126,31 @@ namespace TinaXlsx
 
     /**
      * @brief 绘图XML处理器
-     * 
+     *
      * 处理工作表中的绘图对象
      */
     class TXDrawingXmlHandler : public TXXmlHandler
     {
     public:
         explicit TXDrawingXmlHandler(u32 sheetIndex);
+
+        TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override;
+        TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override;
+        [[nodiscard]] std::string partName() const override;
+
+    private:
+        u32 m_sheetIndex;
+    };
+
+    /**
+     * @brief 绘图关系XML处理器
+     *
+     * 处理绘图的关系文件
+     */
+    class TXDrawingRelsXmlHandler : public TXXmlHandler
+    {
+    public:
+        explicit TXDrawingRelsXmlHandler(u32 sheetIndex);
 
         TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override;
         TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override;

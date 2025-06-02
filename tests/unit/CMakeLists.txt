@@ -34,9 +34,6 @@ set(UNIT_TEST_SOURCES
     # 数据功能测试
     test_data_features.cpp
     test_data_filter.cpp
-
-    # 内存优化测试
-    test_compact_cell.cpp
 )
 
 # 方法1：创建统一的测试可执行文件（推荐）
@@ -238,25 +235,6 @@ target_include_directories(UnifiedPivotTableTests PRIVATE
 # 配置测试目标的UTF-8编码
 configure_test_target(UnifiedPivotTableTests)
 
-# 8. 紧凑单元格测试（内存优化）
-add_executable(CompactCellTests
-    test_compact_cell.cpp
-    test_file_generator.cpp
-)
-
-target_link_libraries(CompactCellTests
-    PRIVATE
-    ${PROJECT_NAME}
-    gtest_main
-    gtest
-)
-
-target_include_directories(CompactCellTests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-# 配置测试目标的UTF-8编码
-configure_test_target(CompactCellTests)
 
 # 注意：TXCell已完全替换为TXCompactCell，相关测试已移除
 
@@ -277,11 +255,6 @@ set_tests_properties(AdvancedFeatures PROPERTIES WORKING_DIRECTORY ${CMAKE_BINAR
 add_test(NAME UnifiedPivotTable COMMAND UnifiedPivotTableTests)
 set_tests_properties(UnifiedPivotTable PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
-# 紧凑单元格测试
-add_test(NAME CompactCell COMMAND CompactCellTests)
-set_tests_properties(CompactCell PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-# 注意：TXCell替换测试已移除，TXCompactCell已完全集成
 
 # 设置测试工作目录
 set_tests_properties(DataFilter PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

@@ -13,16 +13,22 @@
 #include "TinaXlsx/TXStylesXmlHandler.hpp"
 #include "TinaXlsx/TXWorkbookXmlHandler.hpp"
 #include "TinaXlsx/TXWorksheetXmlHandler.hpp"
-#include "TinaXlsx/TXDocumentPropertiesXmlHandler.hpp"
+// TXDocumentPropertiesXmlHandler 已替换为 TXUnifiedXmlHandler
 #include "TinaXlsx/TXContentTypesXmlHandler.hpp"
-#include "TinaXlsx/TXMainRelsXmlHandler.hpp"
-#include "TinaXlsx/TXWorkbookRelsXmlHandler.hpp"
-#include "TinaXlsx/TXWorksheetRelsXmlHandler.hpp"
+#include "TinaXlsx/TXUnifiedXmlHandler.hpp"
+// TXWorkbookRelsXmlHandler 已替换为 TXUnifiedXmlHandler
+// TXWorksheetRelsXmlHandler 已替换为 TXUnifiedXmlHandler
 #include "TinaXlsx/TXSharedStringsXmlHandler.hpp"
 #include "TinaXlsx/TXChartXmlHandler.hpp"
 #include "TinaXlsx/TXPivotTable.hpp"
 #include "TinaXlsx/TXPivotTableXmlHandler.hpp"
-#include "TinaXlsx/TXPivotCacheRelsXmlHandler.hpp"
+// TXPivotCacheRelsXmlHandler 已替换为 TXUnifiedXmlHandler
+
+// 添加缺失的处理器头文件
+#include "TinaXlsx/TXPivotTableRelsXmlHandler.hpp"
+
+// 注意：TXDrawingXmlHandler、TXDrawingRelsXmlHandler、TXChartRelsXmlHandler
+// 都在 TXChartXmlHandler.hpp 中定义
 
 namespace TinaXlsx
 {
@@ -123,8 +129,8 @@ namespace TinaXlsx
 
         // 加载其他组件（如文档属性）
         if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
-            TXDocumentPropertiesXmlHandler docPropsHandler;
-            auto docPropsLoadResult = docPropsHandler.load(zipReader, *context_);
+            auto docPropsHandler = TXUnifiedXmlHandlerFactory::createDocumentPropertiesHandler();
+            auto docPropsLoadResult = docPropsHandler->load(zipReader, *context_);
             if (docPropsLoadResult.isError()) {
                 last_error_ = "Document properties load failed: " + docPropsLoadResult.error().getMessage();
                 return false;
@@ -152,8 +158,8 @@ namespace TinaXlsx
             return false;
         }
 
-        TXMainRelsXmlHandler mainRelsHandler;
-        auto mainRelsResult = mainRelsHandler.save(zipWriter, *context_);
+        auto mainRelsHandler = TXUnifiedXmlHandlerFactory::createMainRelsHandler();
+        auto mainRelsResult = mainRelsHandler->save(zipWriter, *context_);
         if (mainRelsResult.isError()) {
             last_error_ = "Main rels save failed: " + mainRelsResult.error().getMessage();
             return false;
@@ -168,12 +174,12 @@ namespace TinaXlsx
         }
 
         // 保存 workbook.xml.rels
-        TXWorkbookRelsXmlHandler workbookRelsHandler;
+        auto workbookRelsHandler = TXUnifiedXmlHandlerFactory::createWorkbookRelsHandler();
 
         // 传递所有透视表信息给工作簿关系处理器
-        workbookRelsHandler.setAllPivotTables(pivot_tables_);
+        workbookRelsHandler->setAllPivotTables(pivot_tables_);
 
-        auto workbookRelsResult = workbookRelsHandler.save(zipWriter, *context_);
+        auto workbookRelsResult = workbookRelsHandler->save(zipWriter, *context_);
         if (workbookRelsResult.isError()) {
             last_error_ = "Workbook rels save failed: " + workbookRelsResult.error().getMessage();
             return false;
@@ -212,14 +218,14 @@ namespace TinaXlsx
             bool hasPivotTables = !pivotTables.empty();
 
             if (hasCharts || hasPivotTables) {
-                TXWorksheetRelsXmlHandler worksheetRelsHandler(static_cast<u32>(i));
+                auto worksheetRelsHandler = TXUnifiedXmlHandlerFactory::createWorksheetRelsHandler(static_cast<u32>(i));
 
                 // 传递透视表信息给关系处理器
                 if (hasPivotTables) {
-                    worksheetRelsHandler.setPivotTables(pivotTables);
+                    worksheetRelsHandler->setPivotTables(pivotTables);
                 }
 
-                auto worksheetRelsResult = worksheetRelsHandler.save(zipWriter, *context_);
+                auto worksheetRelsResult = worksheetRelsHandler->save(zipWriter, *context_);
                 if (worksheetRelsResult.isError()) {
                     last_error_ = "Worksheet rels " + std::to_string(i) + " save failed: " + worksheetRelsResult.error().getMessage();
                     return false;
@@ -302,8 +308,8 @@ namespace TinaXlsx
                     }
 
                     // 保存透视表缓存关系文件
-                    TXPivotCacheRelsXmlHandler cacheRelsHandler(globalCacheId);
-                    auto cacheRelsResult = cacheRelsHandler.save(zipWriter, *context_);
+                    auto cacheRelsHandler = TXUnifiedXmlHandlerFactory::createPivotCacheRelsHandler(globalCacheId);
+                    auto cacheRelsResult = cacheRelsHandler->save(zipWriter, *context_);
                     if (cacheRelsResult.isError()) {
                         last_error_ = "Pivot cache rels " + std::to_string(j) + " save failed: " + cacheRelsResult.error().getMessage();
                         return false;
@@ -324,8 +330,8 @@ namespace TinaXlsx
 
         // 保存文档属性
         if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
-            TXDocumentPropertiesXmlHandler docPropsHandler;
-            auto docPropsResult = docPropsHandler.save(zipWriter, *context_);
+            auto docPropsHandler = TXUnifiedXmlHandlerFactory::createDocumentPropertiesHandler();
+            auto docPropsResult = docPropsHandler->save(zipWriter, *context_);
             if (docPropsResult.isError()) {
                 last_error_ = "Document properties save failed: " + docPropsResult.error().getMessage();
                 return false;

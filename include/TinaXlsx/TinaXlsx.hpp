@@ -37,7 +37,7 @@
 #include "TXWorksheetXmlHandler.hpp"
 #include "TXWorkbookXmlHandler.hpp"
 #include "TXStylesXmlHandler.hpp"
-#include "TXDocumentPropertiesXmlHandler.hpp"
+#include "TXUnifiedXmlHandler.hpp"  // 统一的XML处理器
 
 /**
  * @namespace TinaXlsx
