@@ -1,5 +1,31 @@
-.specstory
+# Build directories
 build/
 cmake-build-*/
-# SpecStory explanation file
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+.cursorindexingignore
+
+# Temporary files
+*.tmp
+*.temp
+merge_code.py
+
+# SpecStory files
+.specstory
 .specstory/.what-is-this.md
+
+# Test output
+tests/unit/test_output/
+
+# Documentation build
+api-docs/html/
+api-docs/xml/
