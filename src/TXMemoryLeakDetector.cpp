@@ -226,7 +226,6 @@ TXSmartMemoryManager& TXSmartMemoryManager::instance() {
 
 TXSmartMemoryManager::TXSmartMemoryManager() {
     generalPool_ = std::make_unique<TXMemoryPool>();
-    stringPool_ = std::make_unique<TXStringPool>();
 }
 
 TXSmartMemoryManager::~TXSmartMemoryManager() {
@@ -291,10 +290,6 @@ void TXSmartMemoryManager::optimize() {
         generalPool_->shrink();
     }
     
-    if (stringPool_) {
-        stringPool_->clear();
-    }
-    
     // 清理旧的分配记录
     TXMemoryLeakDetector::instance().forceCleanup();
 }
@@ -304,10 +299,6 @@ void TXSmartMemoryManager::emergencyCleanup() {
     
     if (generalPool_) {
         generalPool_->clear();
-    }
-    
-    if (stringPool_) {
-        stringPool_->clear();
     }
     
     TXMemoryLeakDetector::instance().forceCleanup();

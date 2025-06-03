@@ -7,6 +7,7 @@
 #include "TinaXlsx/TXSheet.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
 #include "TinaXlsx/TXCellManager.hpp"
+#include "TinaXlsx/TXCompactCell.hpp"  // 包含新的 TXStringPool
 #include <chrono>
 #include <cstring>
 #include <algorithm>
@@ -554,11 +555,10 @@ std::string TXSIMDWorksheetParser::parseValue(const FastXmlNode& cellNode) {
         vStart += 3; // 跳过 <v>
         const char* vEnd = std::strstr(vStart, "</v>");
         if (vEnd && vEnd < cellNode.end) {
-            // 🚀 使用内存池管理的字符串
-            auto& stringPool = TXMemoryManager::instance().getStringPool();
-            std::string_view valueView(vStart, vEnd - vStart);
-            std::string_view pooledValue = stringPool.createString(valueView);
-            return std::string(pooledValue);
+            // 使用新的字符串池管理字符串
+            std::string valueStr(vStart, vEnd - vStart);
+            TXStringPool::getInstance().intern(valueStr);
+            return valueStr;
         }
     }
 
@@ -570,11 +570,10 @@ std::string TXSIMDWorksheetParser::parseValue(const FastXmlNode& cellNode) {
             tStart += 3;
             const char* tEnd = std::strstr(tStart, "</t>");
             if (tEnd && tEnd < cellNode.end) {
-                // 🚀 使用内存池管理的字符串
-                auto& stringPool = TXMemoryManager::instance().getStringPool();
-                std::string_view valueView(tStart, tEnd - tStart);
-                std::string_view pooledValue = stringPool.createString(valueView);
-                return std::string(pooledValue);
+                // 使用新的字符串池管理字符串
+                std::string valueStr(tStart, tEnd - tStart);
+                TXStringPool::getInstance().intern(valueStr);
+                return valueStr;
             }
         }
     }

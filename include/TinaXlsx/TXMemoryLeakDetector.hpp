@@ -239,7 +239,6 @@ private:
     ~TXSmartMemoryManager();
     
     std::unique_ptr<class TXMemoryPool> generalPool_;
-    std::unique_ptr<class TXStringPool> stringPool_;
     mutable std::mutex mutex_;
     
     // 智能策略

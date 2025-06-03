@@ -231,126 +231,11 @@ bool TXMemoryPool::isFromPool(void* ptr) const {
     return false;
 }
 
-// ==================== TXStringPool 实现 ====================
+// 注意：TXStringPool 实现已移动到 TXCompactCell.cpp 中
 
-TXStringPool::TXStringPool(const StringPoolConfig& config) 
-    : config_(config) {
-    
-    // 创建不同大小的内存池
-    TXMemoryPool::PoolConfig smallConfig;
-    smallConfig.blockSize = config_.smallStringSize;
-    smallConfig.blocksPerChunk = 2048;
-    smallPool_ = std::make_unique<TXMemoryPool>(smallConfig);
-    
-    TXMemoryPool::PoolConfig mediumConfig;
-    mediumConfig.blockSize = config_.mediumStringSize;
-    mediumConfig.blocksPerChunk = 1024;
-    mediumPool_ = std::make_unique<TXMemoryPool>(mediumConfig);
-    
-    TXMemoryPool::PoolConfig largeConfig;
-    largeConfig.blockSize = config_.largeStringSize;
-    largeConfig.blocksPerChunk = 512;
-    largePool_ = std::make_unique<TXMemoryPool>(largeConfig);
-}
 
-TXStringPool::~TXStringPool() {
-    clear();
-}
 
-char* TXStringPool::allocateString(size_t size) {
-    TXMemoryPool* pool = selectPool(size);
-    if (pool) {
-        totalStrings_++;
-        totalBytes_ += size;
-        
-        if (size <= config_.smallStringSize) {
-            smallStrings_++;
-        } else if (size <= config_.mediumStringSize) {
-            mediumStrings_++;
-        } else if (size <= config_.largeStringSize) {
-            largeStrings_++;
-        }
-        
-        return static_cast<char*>(pool->allocate(size));
-    }
-    
-    // 超大字符串，直接分配
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto allocation = std::make_unique<char[]>(size);
-    char* ptr = allocation.get();
-    largeAllocations_.push_back(std::move(allocation));
-    
-    totalStrings_++;
-    totalBytes_ += size;
-    largeStrings_++;
-    
-    return ptr;
-}
 
-void TXStringPool::deallocateString(char* ptr, size_t size) {
-    TXMemoryPool* pool = selectPool(size);
-    if (pool) {
-        pool->deallocate(ptr);
-        return;
-    }
-    
-    // 超大字符串，从列表中移除
-    std::lock_guard<std::mutex> lock(mutex_);
-    largeAllocations_.erase(
-        std::remove_if(largeAllocations_.begin(), largeAllocations_.end(),
-            [ptr](const std::unique_ptr<char[]>& allocation) {
-                return allocation.get() == ptr;
-            }),
-        largeAllocations_.end()
-    );
-}
-
-std::string_view TXStringPool::createString(std::string_view str) {
-    size_t size = str.length() + 1; // +1 for null terminator
-    char* buffer = allocateString(size);
-    if (!buffer) return {};
-    
-    std::memcpy(buffer, str.data(), str.length());
-    buffer[str.length()] = '\0';
-    
-    return std::string_view(buffer, str.length());
-}
-
-void TXStringPool::clear() {
-    smallPool_->clear();
-    mediumPool_->clear();
-    largePool_->clear();
-    
-    std::lock_guard<std::mutex> lock(mutex_);
-    largeAllocations_.clear();
-    
-    totalStrings_ = 0;
-    totalBytes_ = 0;
-    smallStrings_ = 0;
-    mediumStrings_ = 0;
-    largeStrings_ = 0;
-}
-
-TXStringPool::StringStats TXStringPool::getStats() const {
-    StringStats stats;
-    stats.totalStrings = totalStrings_.load();
-    stats.totalBytes = totalBytes_.load();
-    stats.smallStrings = smallStrings_.load();
-    stats.mediumStrings = mediumStrings_.load();
-    stats.largeStrings = largeStrings_.load();
-    return stats;
-}
-
-TXMemoryPool* TXStringPool::selectPool(size_t size) {
-    if (size <= config_.smallStringSize) {
-        return smallPool_.get();
-    } else if (size <= config_.mediumStringSize) {
-        return mediumPool_.get();
-    } else if (size <= config_.largeStringSize) {
-        return largePool_.get();
-    }
-    return nullptr; // 超大字符串
-}
 
 // ==================== TXMemoryManager 实现 ====================
 
@@ -362,7 +247,6 @@ TXMemoryManager& TXMemoryManager::instance() {
 TXMemoryManager::TXMemoryManager() {
     // 创建默认池
     generalPool_ = std::make_unique<TXMemoryPool>();
-    stringPool_ = std::make_unique<TXStringPool>();
 }
 
 TXMemoryManager::~TXMemoryManager() {
@@ -371,10 +255,6 @@ TXMemoryManager::~TXMemoryManager() {
 
 TXMemoryPool& TXMemoryManager::getGeneralPool() {
     return *generalPool_;
-}
-
-TXStringPool& TXMemoryManager::getStringPool() {
-    return *stringPool_;
 }
 
 TXMemoryPool& TXMemoryManager::getPool(size_t blockSize) {
@@ -404,10 +284,6 @@ void TXMemoryManager::clearAll() {
         generalPool_->clear();
     }
 
-    if (stringPool_) {
-        stringPool_->clear();
-    }
-
     for (auto& [size, pool] : sizedPools_) {
         pool->clear();
     }
@@ -434,11 +310,6 @@ TXMemoryManager::GlobalStats TXMemoryManager::getGlobalStats() const {
     if (generalPool_) {
         stats.generalPool = generalPool_->getStats();
         stats.totalMemoryUsage += stats.generalPool.currentUsage;
-    }
-
-    if (stringPool_) {
-        stats.stringPool = stringPool_->getStats();
-        stats.totalMemoryUsage += stats.stringPool.totalBytes;
     }
 
     stats.totalPools = 1 + sizedPools_.size(); // general + sized pools

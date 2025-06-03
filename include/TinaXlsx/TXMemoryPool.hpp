@@ -132,79 +132,7 @@ private:
     void deallocateToChunk(void* ptr);
 };
 
-/**
- * @brief 🚀 字符串专用内存池
- * 
- * 针对Excel文件中大量字符串优化
- */
-class TXStringPool {
-public:
-    struct StringPoolConfig {
-        size_t smallStringSize = 32;     // 小字符串大小
-        size_t mediumStringSize = 128;   // 中等字符串大小
-        size_t largeStringSize = 512;    // 大字符串大小
-        size_t poolsPerSize = 10;        // 每种大小的池数量
-    };
-    
-    explicit TXStringPool(const StringPoolConfig& config = StringPoolConfig{});
-    ~TXStringPool();
-    
-    /**
-     * @brief 分配字符串内存
-     * @param size 字符串长度
-     * @return 内存指针
-     */
-    char* allocateString(size_t size);
-    
-    /**
-     * @brief 释放字符串内存
-     * @param ptr 字符串指针
-     * @param size 字符串长度
-     */
-    void deallocateString(char* ptr, size_t size);
-    
-    /**
-     * @brief 创建字符串（自动管理内存）
-     * @param str 源字符串
-     * @return 池管理的字符串
-     */
-    std::string_view createString(std::string_view str);
-    
-    /**
-     * @brief 清空所有字符串
-     */
-    void clear();
-    
-    /**
-     * @brief 获取统计信息
-     */
-    struct StringStats {
-        size_t totalStrings = 0;
-        size_t totalBytes = 0;
-        size_t smallStrings = 0;
-        size_t mediumStrings = 0;
-        size_t largeStrings = 0;
-    };
-    
-    StringStats getStats() const;
-
-private:
-    StringPoolConfig config_;
-    std::unique_ptr<TXMemoryPool> smallPool_;
-    std::unique_ptr<TXMemoryPool> mediumPool_;
-    std::unique_ptr<TXMemoryPool> largePool_;
-    
-    std::vector<std::unique_ptr<char[]>> largeAllocations_;
-    mutable std::mutex mutex_;
-    
-    std::atomic<size_t> totalStrings_{0};
-    std::atomic<size_t> totalBytes_{0};
-    std::atomic<size_t> smallStrings_{0};
-    std::atomic<size_t> mediumStrings_{0};
-    std::atomic<size_t> largeStrings_{0};
-    
-    TXMemoryPool* selectPool(size_t size);
-};
+// 注意：TXStringPool 已移动到 TXCompactCell.hpp 中，作为字符串池索引优化的一部分
 
 /**
  * @brief 🚀 全局内存管理器
@@ -220,10 +148,7 @@ public:
      */
     TXMemoryPool& getGeneralPool();
     
-    /**
-     * @brief 获取字符串内存池
-     */
-    TXStringPool& getStringPool();
+    // 注意：字符串池功能已移动到 TXCompactCell.hpp 中的 TXStringPool
     
     /**
      * @brief 获取指定大小的内存池
@@ -245,7 +170,6 @@ public:
      */
     struct GlobalStats {
         TXMemoryPool::PoolStats generalPool;
-        TXStringPool::StringStats stringPool;
         size_t totalPools = 0;
         size_t totalMemoryUsage = 0;
     };
@@ -257,7 +181,6 @@ private:
     ~TXMemoryManager();
     
     std::unique_ptr<TXMemoryPool> generalPool_;
-    std::unique_ptr<TXStringPool> stringPool_;
     std::map<size_t, std::unique_ptr<TXMemoryPool>> sizedPools_;
     mutable std::mutex mutex_;
 };

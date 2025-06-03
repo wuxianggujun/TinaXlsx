@@ -61,6 +61,13 @@ create_test_executable(
     COMMENT "Running unified pivot table tests (all pivot table functionality)"
 )
 
+# 8. 超紧凑单元格测试（批处理优化）
+create_test_executable(
+    TARGET_NAME UltraCompactCellTests
+    SOURCES test_ultra_compact_cell.cpp test_file_generator.cpp
+    COMMENT "Running ultra compact cell and batch processing tests"
+)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件

@@ -23,6 +23,34 @@ TinaXlsx/
 
 ## 📚 文档列表
 
+### 🚀 性能优化文档
+
+#### [`BATCH_PROCESSING_OPTIMIZATION.md`](./BATCH_PROCESSING_OPTIMIZATION.md)
+**用途**：TinaXlsx批处理优化的核心技术方案
+**目标**：
+- 单元格处理时间 < 10μs（当前12-15μs）
+- 内存占用控制在4GB以内
+- 从44字节优化到16字节的超紧凑单元格
+
+**技术亮点**：
+- 批处理架构替代单个单元格处理
+- 内存分块管理和4GB限制
+- SIMD优化和缓存友好设计
+- 流水线处理和异步优化
+
+#### [`BATCH_IMPLEMENTATION_PLAN.md`](./BATCH_IMPLEMENTATION_PLAN.md)
+**用途**：批处理优化的详细5周实施计划
+**内容**：
+- 分阶段的技术实施路线图
+- 详细的任务分解和时间安排
+- 风险评估和缓解策略
+- 成功标准和验收条件
+
+**适用人员**：
+- 性能优化开发者
+- 项目管理人员
+- 架构设计人员
+
 ### 🐛 问题跟踪文档
 
 #### [`KNOWN_ISSUES.md`](./KNOWN_ISSUES.md)

@@ -9,31 +9,29 @@
 #include <string>
 #include "TXTypes.hpp"
 #include "TXGlobalStringPool.hpp"
-#include "TXMemoryPool.hpp"
+#include "TXCompactCell.hpp"  // 包含新的 TXStringPool
 
 namespace TinaXlsx
 {
     class TXSharedStringsPool {
     public:
-        // 🚀 性能优化：添加字符串并返回索引（使用内存池）
+        // 性能优化：添加字符串并返回索引（使用新的字符串池）
         u32 add(const std::string& str) {
-            // 🚀 使用内存池管理的字符串
-            auto& stringPool = TXMemoryManager::instance().getStringPool();
-            std::string_view pooledStr = stringPool.createString(str);
+            // 使用新的字符串池
+            uint32_t poolIndex = TXStringPool::getInstance().intern(str);
 
-            // 🚀 优化：使用单次查找避免重复哈希计算
-            std::string keyStr(pooledStr); // 用于哈希表的key
-            auto [it, inserted] = m_uniqueIndexMap.try_emplace(keyStr, static_cast<u32>(m_strings.size()));
+            // 优化：使用单次查找避免重复哈希计算
+            auto [it, inserted] = m_uniqueIndexMap.try_emplace(str, static_cast<u32>(m_strings.size()));
 
             if (inserted) {
                 // 新字符串 - 添加到池
-                m_strings.push_back(keyStr);
-                m_frequencyMap[keyStr] = 1;
+                m_strings.push_back(str);
+                m_frequencyMap[str] = 1;
                 m_dirty = true;
                 return it->second;
             } else {
-                // 🚀 优化：已存在的字符串，直接增加频率（避免再次查找）
-                m_frequencyMap[keyStr]++;
+                // 优化：已存在的字符串，直接增加频率（避免再次查找）
+                m_frequencyMap[str]++;
                 return it->second;
             }
         }
@@ -55,13 +53,13 @@ namespace TinaXlsx
             m_frequencyMap.clear();
             m_dirty = false;
 
-            // 🚀 清理内存池
-            TXMemoryManager::instance().getStringPool().clear();
+            // 注意：内存池功能已移动到 TXCompactCell.hpp 中的 TXStringPool
+            TXStringPool::getInstance().clear();
         }
 
-        // 🚀 获取内存使用统计
-        TXStringPool::StringStats getMemoryStats() const {
-            return TXMemoryManager::instance().getStringPool().getStats();
+        // 获取内存使用统计
+        auto getMemoryStats() const {
+            return TXStringPool::getInstance().getStats();
         }
 
     private:
