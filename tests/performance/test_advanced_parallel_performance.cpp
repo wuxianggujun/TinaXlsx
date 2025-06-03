@@ -62,7 +62,8 @@ protected:
 
             // 确保坐标唯一
             if (usedCoords.insert({row, col}).second) {
-                TXCoordinate coord(row_t(row), column_t(col));
+                // 使用更明确的构造语法避免编译器解析问题
+                auto coord = TXCoordinate{row_t(row), column_t(col)};
 
                 // 生成不同类型的数据，增加测试复杂度
                 cell_value_t value;
@@ -81,7 +82,7 @@ protected:
                         break;
                 }
 
-                data.emplace_back(coord, value);
+                data.emplace_back(std::move(coord), std::move(value));
             }
         }
 
