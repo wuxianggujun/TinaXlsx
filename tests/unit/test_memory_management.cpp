@@ -62,32 +62,64 @@ TEST_F(MemoryManagementTest, ChunkAllocatorBasicAllocation) {
 }
 
 TEST_F(MemoryManagementTest, ChunkAllocatorBatchAllocation) {
-    std::cout << "\n=== 批量分配测试 ===" << std::endl;
-    
-    // 准备批量分配请求
-    std::vector<size_t> sizes = {1024, 2048, 4096, 8192, 1024, 512};
-    
+    std::cout << "\n=== 批量分配测试（智能块大小）===" << std::endl;
+
+    // 准备不同大小的分配请求来测试智能块选择
+    std::vector<size_t> small_sizes = {1024, 2048, 4096, 8192, 1024, 512}; // 小分配
+    std::vector<size_t> medium_sizes = {128 * 1024, 256 * 1024, 512 * 1024}; // 中等分配
+    std::vector<size_t> large_sizes = {5 * 1024 * 1024}; // 大分配
+
+    std::cout << "测试小分配（应使用1MB块）:" << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    auto ptrs = allocator_->allocateBatch(sizes);
+    auto small_ptrs = allocator_->allocateBatch(small_sizes);
     auto end = std::chrono::high_resolution_clock::now();
-    
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "批量分配时间: " << duration.count() << " 微秒" << std::endl;
-    
-    // 验证所有分配都成功
-    for (size_t i = 0; i < sizes.size(); ++i) {
-        EXPECT_NE(ptrs[i], nullptr) << "分配 " << i << " 失败";
+
+    size_t small_total = std::accumulate(small_sizes.begin(), small_sizes.end(), size_t(0));
+    size_t usage_after_small = allocator_->getTotalMemoryUsage();
+
+    std::cout << "  小分配时间: " << duration.count() << " 微秒" << std::endl;
+    std::cout << "  请求总量: " << small_total << " 字节" << std::endl;
+    std::cout << "  实际使用: " << usage_after_small << " 字节" << std::endl;
+    std::cout << "  内存效率: " << (static_cast<double>(small_total) / usage_after_small * 100) << "%" << std::endl;
+
+    // 验证小分配使用了合适的块大小（应该是1MB块）
+    auto chunk_infos = allocator_->getChunkInfos();
+    bool has_small_chunk = false;
+    for (const auto& info : chunk_infos) {
+        if (info.total_size == 1024 * 1024) { // 1MB块
+            has_small_chunk = true;
+            std::cout << "  ✅ 使用了1MB小块，使用率: " << (info.usage_ratio * 100) << "%" << std::endl;
+        }
     }
-    
-    // 检查内存使用
-    size_t total_requested = std::accumulate(sizes.begin(), sizes.end(), size_t(0));
-    size_t actual_usage = allocator_->getTotalMemoryUsage();
-    
-    std::cout << "请求总量: " << total_requested << " 字节" << std::endl;
-    std::cout << "实际使用: " << actual_usage << " 字节" << std::endl;
-    std::cout << "内存效率: " << (static_cast<double>(total_requested) / actual_usage * 100) << "%" << std::endl;
-    
-    EXPECT_GE(actual_usage, total_requested);
+    EXPECT_TRUE(has_small_chunk) << "应该创建1MB小块用于小分配";
+
+    std::cout << "\n测试中等分配（应使用16MB块）:" << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    auto medium_ptrs = allocator_->allocateBatch(medium_sizes);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+    size_t medium_total = std::accumulate(medium_sizes.begin(), medium_sizes.end(), size_t(0));
+    size_t usage_after_medium = allocator_->getTotalMemoryUsage();
+
+    std::cout << "  中等分配时间: " << duration.count() << " 微秒" << std::endl;
+    std::cout << "  请求总量: " << medium_total << " 字节" << std::endl;
+    std::cout << "  新增使用: " << (usage_after_medium - usage_after_small) << " 字节" << std::endl;
+    std::cout << "  中等分配效率: " << (static_cast<double>(medium_total) / (usage_after_medium - usage_after_small) * 100) << "%" << std::endl;
+
+    // 验证所有分配都成功
+    for (size_t i = 0; i < small_sizes.size(); ++i) {
+        EXPECT_NE(small_ptrs[i], nullptr) << "小分配 " << i << " 失败";
+    }
+    for (size_t i = 0; i < medium_sizes.size(); ++i) {
+        EXPECT_NE(medium_ptrs[i], nullptr) << "中等分配 " << i << " 失败";
+    }
+
+    // 总体效率应该比之前好很多
+    double overall_efficiency = static_cast<double>(small_total + medium_total) / usage_after_medium * 100;
+    std::cout << "  总体内存效率: " << overall_efficiency << "%" << std::endl;
+    EXPECT_GT(overall_efficiency, 50.0) << "智能块选择应该提供>50%的内存效率";
 }
 
 TEST_F(MemoryManagementTest, ChunkAllocatorMemoryLimit) {

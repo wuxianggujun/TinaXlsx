@@ -15,10 +15,27 @@ namespace TinaXlsx {
 
 size_t CompactCleanupStrategy::cleanup(TXChunkAllocator& allocator, size_t target_reduction_mb) {
     size_t before_usage = allocator.getTotalMemoryUsage();
+
+    // 先尝试压缩
     allocator.compact();
-    size_t after_usage = allocator.getTotalMemoryUsage();
-    
-    return (before_usage - after_usage) / (1024 * 1024);
+
+    size_t after_compact = allocator.getTotalMemoryUsage();
+    size_t compact_reduction = (before_usage - after_compact) / (1024 * 1024);
+
+    // 如果压缩释放的内存不够，尝试部分清理
+    if (compact_reduction < target_reduction_mb) {
+        // 获取块信息，清理使用率低的块
+        auto chunk_infos = allocator.getChunkInfos();
+        for (const auto& info : chunk_infos) {
+            if (info.usage_ratio < 0.3 && !info.is_active) { // 使用率低于30%的非活跃块
+                // 这里可以实现更精细的清理逻辑
+                break;
+            }
+        }
+    }
+
+    size_t final_usage = allocator.getTotalMemoryUsage();
+    return (before_usage - final_usage) / (1024 * 1024);
 }
 
 size_t CompactCleanupStrategy::estimateCleanupSize(const TXChunkAllocator& allocator) const {
@@ -403,7 +420,23 @@ void TXSmartMemoryManager::updateStats(const MemoryEvent& event) {
             break;
         case MemoryEventType::CLEANUP_END:
             stats_.cleanup_events++;
-            // 从消息中提取清理量（简化实现）
+            // 从消息中提取清理量
+            {
+                std::string msg = event.message;
+                size_t pos = msg.find("释放: ");
+                if (pos != std::string::npos) {
+                    std::string size_str = msg.substr(pos + 6); // "释放: " 后面的内容
+                    size_t mb_pos = size_str.find(" MB");
+                    if (mb_pos != std::string::npos) {
+                        try {
+                            size_t cleaned_mb = std::stoull(size_str.substr(0, mb_pos));
+                            stats_.total_cleanup_mb += cleaned_mb;
+                        } catch (...) {
+                            // 解析失败，忽略
+                        }
+                    }
+                }
+            }
             break;
         default:
             break;

@@ -90,6 +90,11 @@ add_executable(MemoryManagementTests test_memory_management.cpp test_file_genera
 target_link_libraries(MemoryManagementTests PRIVATE TinaXlsx gtest_main xsimd)
 configure_test_target(MemoryManagementTests)
 
+# 13. 多级内存分配器测试
+add_executable(MultiLevelAllocatorTests test_multilevel_allocator.cpp test_file_generator.cpp)
+target_link_libraries(MultiLevelAllocatorTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(MultiLevelAllocatorTests)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件

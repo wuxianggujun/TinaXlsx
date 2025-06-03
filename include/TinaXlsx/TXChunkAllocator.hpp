@@ -24,6 +24,14 @@ struct ChunkConfig {
     static constexpr size_t MAX_TOTAL_MEMORY = 4ULL * 1024 * 1024 * 1024; // 4GB
     static constexpr size_t ALIGNMENT = 32;                         // 32字节对齐
     static constexpr size_t MIN_ALLOCATION = 16;                    // 最小分配16字节
+
+    // 多级块大小策略
+    static constexpr size_t SMALL_CHUNK_SIZE = 1024 * 1024;         // 1MB小块
+    static constexpr size_t MEDIUM_CHUNK_SIZE = 16 * 1024 * 1024;   // 16MB中块
+    static constexpr size_t LARGE_CHUNK_SIZE = 64 * 1024 * 1024;    // 64MB大块
+
+    static constexpr size_t SMALL_ALLOCATION_THRESHOLD = 64 * 1024;  // 64KB以下用小块
+    static constexpr size_t MEDIUM_ALLOCATION_THRESHOLD = 4 * 1024 * 1024; // 4MB以下用中块
 };
 
 /**
@@ -265,12 +273,17 @@ private:
     /**
      * @brief 创建新块
      */
-    TXMemoryChunk* createNewChunk();
-    
+    TXMemoryChunk* createNewChunk(size_t requested_size);
+
     /**
      * @brief 查找可用块
      */
     TXMemoryChunk* findAvailableChunk(size_t size, size_t alignment);
+
+    /**
+     * @brief 选择合适的块大小
+     */
+    size_t selectOptimalChunkSize(size_t requested_size) const;
     
     /**
      * @brief 更新统计信息

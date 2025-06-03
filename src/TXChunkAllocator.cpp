@@ -105,8 +105,8 @@ void* TXChunkAllocator::allocate(size_t size, size_t alignment) {
     TXMemoryChunk* chunk = findAvailableChunk(size, alignment);
     
     if (!chunk) {
-        // 创建新块
-        chunk = createNewChunk();
+        // 创建新块 - 传递请求大小以选择合适的块大小
+        chunk = createNewChunk(size);
         if (!chunk) {
             updateStats(size, false);
             return nullptr;
@@ -305,21 +305,24 @@ bool TXChunkAllocator::validateMemoryIntegrity() const {
 
 // ==================== 私有方法实现 ====================
 
-TXMemoryChunk* TXChunkAllocator::createNewChunk() {
+TXMemoryChunk* TXChunkAllocator::createNewChunk(size_t requested_size) {
     size_t current_count = chunk_count_.load();
 
     if (current_count >= ChunkConfig::MAX_CHUNKS) {
         return nullptr; // 达到最大块数
     }
 
-    // 检查内存限制 - 修复：检查当前使用量 + 新块大小
+    // 选择合适的块大小
+    size_t optimal_chunk_size = selectOptimalChunkSize(requested_size);
+
+    // 检查内存限制
     size_t current_usage = getTotalMemoryUsage();
-    if (current_usage + chunk_size_ > memory_limit_) {
+    if (current_usage + optimal_chunk_size > memory_limit_) {
         return nullptr;
     }
 
     try {
-        chunks_[current_count] = std::make_unique<TXMemoryChunk>(chunk_size_);
+        chunks_[current_count] = std::make_unique<TXMemoryChunk>(optimal_chunk_size);
         chunk_count_.fetch_add(1);
 
         std::lock_guard<std::mutex> stats_lock(stats_mutex_);
@@ -328,6 +331,17 @@ TXMemoryChunk* TXChunkAllocator::createNewChunk() {
         return chunks_[current_count].get();
     } catch (const std::bad_alloc&) {
         return nullptr;
+    }
+}
+
+size_t TXChunkAllocator::selectOptimalChunkSize(size_t requested_size) const {
+    // 智能块大小选择策略
+    if (requested_size <= ChunkConfig::SMALL_ALLOCATION_THRESHOLD) {
+        return ChunkConfig::SMALL_CHUNK_SIZE;   // 1MB for small allocations
+    } else if (requested_size <= ChunkConfig::MEDIUM_ALLOCATION_THRESHOLD) {
+        return ChunkConfig::MEDIUM_CHUNK_SIZE;  // 16MB for medium allocations
+    } else {
+        return ChunkConfig::LARGE_CHUNK_SIZE;   // 64MB for large allocations
     }
 }
 
