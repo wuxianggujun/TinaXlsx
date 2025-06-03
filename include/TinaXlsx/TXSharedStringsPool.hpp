@@ -6,28 +6,30 @@
 
 #include <unordered_map>
 #include <vector>
+#include <string>
 #include "TXTypes.hpp"
+#include "TXGlobalStringPool.hpp"
 
 namespace TinaXlsx
 {
     class TXSharedStringsPool {
     public:
-        // 添加字符串并返回索引
+        // 🚀 性能优化：添加字符串并返回索引（暂时禁用字符串内化）
         u32 add(const std::string& str) {
-            // 尝试在唯一字符串表中查找
-            if (auto it = m_uniqueIndexMap.find(str); it != m_uniqueIndexMap.end()) {
+            // 🚀 优化：使用单次查找避免重复哈希计算
+            auto [it, inserted] = m_uniqueIndexMap.try_emplace(str, static_cast<u32>(m_strings.size()));
+
+            if (inserted) {
+                // 新字符串 - 添加到池
+                m_strings.push_back(str);
+                m_frequencyMap[str] = 1;
+                m_dirty = true;
+                return it->second;
+            } else {
+                // 🚀 优化：已存在的字符串，直接增加频率（避免再次查找）
                 m_frequencyMap[str]++;
                 return it->second;
             }
-        
-            // 新字符串 - 添加到池
-            const u32 newIndex = static_cast<u32>(m_strings.size());
-            m_strings.push_back(str);
-            m_uniqueIndexMap[str] = newIndex;
-            m_frequencyMap[str] = 1;
-            m_dirty = true;
-        
-            return newIndex;
         }
     
         // 获取所有字符串（按添加顺序）

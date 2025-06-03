@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
 #include <chrono>
+#include <fstream>
 #include <vector>
 #include <random>
 #include <iostream>

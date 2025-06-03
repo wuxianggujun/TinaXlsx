@@ -60,7 +60,15 @@ private:
     std::unique_ptr<TXBufferedXmlWriter> writer_;
     size_t stringCount_;
     bool documentStarted_;
-    
+
+    /**
+     * @brief 🚀 性能优化：直接写入转义文本，避免创建临时字符串
+     */
+    void writeEscapedXmlText(const std::string& text);
+
+    /**
+     * @brief XML文本转义（兼容性方法）
+     */
     std::string escapeXmlText(const std::string& text);
 };
 

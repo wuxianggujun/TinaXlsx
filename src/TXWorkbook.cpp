@@ -542,53 +542,56 @@ namespace TinaXlsx
     }
 
     void TXWorkbook::prepareForSaving() {
-        // 扫描所有工作表，检测需要的组件
+        // 🚀 性能优化：使用迭代器扫描所有工作表，检测需要的组件
         bool hasStringCells = false;
         bool hasMergedCells = false;
         bool hasStyledCells = false;
-        
+
         for (const auto& sheet : sheets_) {
             if (!sheet) continue;
-            
+
             // 检查是否有合并单元格
             if (sheet->getMergeCount() > 0) {
                 hasMergedCells = true;
             }
-            
-            // 获取已使用的范围
-            auto usedRange = sheet->getUsedRange();
-            if (usedRange.isValid()) {
-                auto start = usedRange.getStart();
-                auto end = usedRange.getEnd();
-                
-                for (row_t row = start.getRow(); row <= end.getRow(); ++row) {
-                    for (column_t col = start.getCol(); col <= end.getCol(); ++col) {
-                        const TXCompactCell* cell = sheet->getCell(row, col);
-                        if (!cell || cell->isEmpty()) continue;
 
-                        // 检查是否有字符串值
-                        if (cell->getType() == TXCompactCell::CellType::String) {
-                            hasStringCells = true;
-                        }
-                        
-                        // 检查是否有样式
-                        if (cell->getStyleIndex() != 0) {
-                            hasStyledCells = true;
-                        }
-                    }
+            // 🚀 性能优化：使用迭代器直接遍历存在的单元格，避免大量哈希查找
+            const auto& cellManager = sheet->getCellManager();
+            for (auto it = cellManager.cbegin(); it != cellManager.cend(); ++it) {
+                const TXCompactCell* cell = &it->second;
+                if (!cell || cell->isEmpty()) continue;
+
+                // 检查是否有字符串值
+                if (cell->getType() == TXCompactCell::CellType::String) {
+                    hasStringCells = true;
+                }
+
+                // 检查是否有样式
+                if (cell->getStyleIndex() != 0) {
+                    hasStyledCells = true;
+                }
+
+                // 🚀 早期退出优化：如果所有类型都检测到了，提前退出
+                if (hasStringCells && hasStyledCells && hasMergedCells) {
+                    break;
                 }
             }
+
+            // 🚀 早期退出优化：如果所有类型都检测到了，提前退出
+            if (hasStringCells && hasStyledCells && hasMergedCells) {
+                break;
+            }
         }
-        
+
         // 根据检测结果注册组件
         if (hasStringCells) {
             component_manager_.registerComponent(ExcelComponent::SharedStrings);
         }
-        
+
         if (hasMergedCells) {
             component_manager_.registerComponent(ExcelComponent::MergedCells);
         }
-        
+
         if (hasStyledCells) {
             component_manager_.registerComponent(ExcelComponent::Styles);
         }

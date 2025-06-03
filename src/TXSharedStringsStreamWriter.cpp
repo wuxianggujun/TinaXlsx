@@ -5,6 +5,7 @@
 
 #include "TinaXlsx/TXSharedStringsStreamWriter.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
+#include "TinaXlsx/TXSIMDXmlEscaper.hpp"
 #include <sstream>
 #include <iomanip>
 
@@ -64,9 +65,8 @@ void TXSharedStringsStreamWriter::writeString(const std::string& text, bool pres
         writer_->write(tStart, strlen(tStart));
     }
     
-    // 写入转义后的文本内容
-    std::string escapedText = escapeXmlText(text);
-    writer_->write(escapedText.c_str(), escapedText.length());
+    // 🚀 性能优化：写入转义后的文本内容，避免不必要的字符串拷贝
+    writeEscapedXmlText(text);
     
     // 结束t和si元素
     const char* tEnd = "</t></si>\n";
@@ -107,7 +107,59 @@ void TXSharedStringsStreamWriter::reset() {
     documentStarted_ = false;
 }
 
+// 🚀 性能优化：直接写入转义文本，使用SIMD加速
+void TXSharedStringsStreamWriter::writeEscapedXmlText(const std::string& text) {
+    // 🚀 SIMD优化：使用SIMD指令快速检查是否需要转义
+    if (!TXSIMDXmlEscaper::needsEscape(text)) {
+        writer_->write(text.c_str(), text.length());
+        return;
+    }
+
+    // 需要转义时，逐字符处理并直接写入
+    const char* start = text.c_str();
+    const char* current = start;
+    const char* end = start + text.length();
+
+    while (current < end) {
+        // 找到下一个需要转义的字符
+        const char* next = current;
+        while (next < end && *next != '<' && *next != '>' && *next != '&' && *next != '"' && *next != '\'') {
+            ++next;
+        }
+
+        // 写入普通字符段
+        if (next > current) {
+            writer_->write(current, next - current);
+        }
+
+        // 处理转义字符
+        if (next < end) {
+            switch (*next) {
+                case '<':
+                    writer_->write("&lt;", 4);
+                    break;
+                case '>':
+                    writer_->write("&gt;", 4);
+                    break;
+                case '&':
+                    writer_->write("&amp;", 5);
+                    break;
+                case '"':
+                    writer_->write("&quot;", 6);
+                    break;
+                case '\'':
+                    writer_->write("&apos;", 6);
+                    break;
+            }
+            current = next + 1;
+        } else {
+            break;
+        }
+    }
+}
+
 std::string TXSharedStringsStreamWriter::escapeXmlText(const std::string& text) {
+    // 保留原方法用于兼容性，但标记为已弃用
     // 快速检查是否需要转义
     bool needsEscape = false;
     for (char c : text) {

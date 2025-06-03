@@ -11,6 +11,7 @@
 #include "TXCompactCell.hpp"
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
+#include "TXStreamXmlReader.hpp"
 #include <sstream>
 #include <iomanip>
 #include <memory>
@@ -30,39 +31,23 @@ namespace TinaXlsx
 
         TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
-            auto xmlData = zipReader.read(partName());
-            if (xmlData.isError())
-            {
-                return Err<void>(xmlData.error().getCode(), "Failed to read " + partName());
+            // 🚀 性能优化：使用高性能流式读取器
+            if (m_sheetIndex >= context.sheets.size()) {
+                return Err<void>(TXErrorCode::InvalidArgument, "Sheet index out of range");
             }
-            const std::vector<uint8_t>& fileBytes = xmlData.value(); // Get the actual std::vector<uint8_t>
 
-            std::string xmlContent(fileBytes.begin(), fileBytes.end());
-            TXXmlReader reader;
-            auto parseResult = reader.parseFromString(xmlContent);
-            if (parseResult.isError())
-            {
-                return Err<void>(parseResult.error().getCode(), "Failed to parse worksheet.xml: " + parseResult.error().getMessage());
+            TXFastWorksheetLoader loader(context.sheets[m_sheetIndex].get());
+            auto result = loader.load(zipReader, partName());
+
+            if (result.isOk()) {
+                // 🚀 输出加载统计信息（调试用）
+                const auto& stats = loader.getStats();
+                // TODO: 添加日志系统后输出统计信息
+                // printf("流式读取: %zu行, %zu单元格, %.2fms\n",
+                //        stats.totalRows, stats.totalCells, stats.loadTimeMs);
             }
-            
-            // 解析 sheetData 节点，填充 context.sheets[sheetIndex_]
-            auto cellNodesResult = reader.findNodes("//sheetData/row/c");
-            if (cellNodesResult.isError())
-            {
-                return Err<void>(cellNodesResult.error().getCode(), "Failed to find cell nodes: " + cellNodesResult.error().getMessage());
-            }
-            
-            for (const auto& cellNode : cellNodesResult.value())
-            {
-                auto refIter = cellNode.attributes.find("r");
-                if (refIter != cellNode.attributes.end())
-                {
-                    std::string ref = refIter->second;
-                    std::string value = cellNode.value;
-                    context.sheets[m_sheetIndex]->setCellValue(ref, value);
-                }
-            }
-            return Ok();
+
+            return result;
         }
 
         TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override
