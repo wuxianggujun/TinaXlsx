@@ -8,12 +8,15 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <map>
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
-#include "TXWorkbookContext.hpp"
-#include "TXZipArchive.hpp"
 
 namespace TinaXlsx {
+
+// 前向声明
+struct TXWorkbookContext;
+class TXZipArchiveWriter;
 
 /**
  * @brief 🚀 批量工作表写入器
@@ -60,12 +63,8 @@ public:
     
     const BatchStats& getStats() const { return stats_; }
 
-private:
-    BatchConfig config_;
-    BatchStats stats_;
-    
     /**
-     * @brief 工作表写入任务
+     * @brief 工作表写入任务（公开供其他类使用）
      */
     struct WorksheetTask {
         size_t sheetIndex;
@@ -76,7 +75,11 @@ private:
         
         WorksheetTask(size_t index) : sheetIndex(index), cellCount(0), generationTimeMs(0.0) {}
     };
-    
+
+private:
+    BatchConfig config_;
+    BatchStats stats_;
+
     /**
      * @brief 并行生成工作表XML
      * @param context 工作簿上下文

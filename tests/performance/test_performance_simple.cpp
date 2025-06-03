@@ -267,12 +267,70 @@ TEST_F(SimplePerformanceTest, MultipleSheetPerformance) {
     
     {
         PerformanceTimer timer("保存多工作表文件");
-        bool success = workbook.saveToFile("test_output/performance/multiple_sheets_simple_test.xlsx");
-        EXPECT_TRUE(success);
+
+        // 🚀 测试串行批量保存
+        TXBatchWorksheetWriter::BatchConfig serialConfig;
+        serialConfig.enableParallelGeneration = false;
+        serialConfig.enableSharedStringOptim = true;
+        serialConfig.maxConcurrentThreads = 1;
+
+        auto serialStart = std::chrono::high_resolution_clock::now();
+        bool serialSuccess = workbook.saveToFileBatch("test_output/performance/multiple_sheets_serial.xlsx", serialConfig);
+        auto serialEnd = std::chrono::high_resolution_clock::now();
+        auto serialDuration = std::chrono::duration_cast<std::chrono::milliseconds>(serialEnd - serialStart);
+
+        if (!serialSuccess) {
+            std::cout << "❌ 串行批量保存失败: " << workbook.getLastError() << std::endl;
+        }
+        EXPECT_TRUE(serialSuccess);
+
+        if (serialSuccess) {
+            const auto& serialStats = workbook.getLastBatchStats();
+            std::cout << "串行保存统计 - 耗时: " << serialDuration.count() << "ms"
+                     << ", XML生成: " << serialStats.xmlGenerationTimeMs << "ms" << std::endl;
+        }
+
+        // 🚀 测试并行批量保存（注意：10个工作表可能不足以体现并行优势）
+        TXBatchWorksheetWriter::BatchConfig parallelConfig;
+        parallelConfig.enableParallelGeneration = true;
+        parallelConfig.enableSharedStringOptim = true;
+        parallelConfig.maxConcurrentThreads = 2; // 减少线程数，避免过度竞争
+
+        auto parallelStart = std::chrono::high_resolution_clock::now();
+        bool parallelSuccess = workbook.saveToFileBatch("test_output/performance/multiple_sheets_parallel.xlsx", parallelConfig);
+        auto parallelEnd = std::chrono::high_resolution_clock::now();
+        auto parallelDuration = std::chrono::duration_cast<std::chrono::milliseconds>(parallelEnd - parallelStart);
+
+        if (!parallelSuccess) {
+            std::cout << "❌ 并行批量保存失败: " << workbook.getLastError() << std::endl;
+        }
+        EXPECT_TRUE(parallelSuccess);
+
+        if (parallelSuccess) {
+            const auto& parallelStats = workbook.getLastBatchStats();
+            std::cout << "并行保存统计 - 耗时: " << parallelDuration.count() << "ms"
+                     << ", XML生成: " << parallelStats.xmlGenerationTimeMs << "ms" << std::endl;
+
+            // 🚀 计算性能提升
+            if (serialDuration.count() > 0) {
+                double improvement = (double(serialDuration.count()) - double(parallelDuration.count())) / double(serialDuration.count()) * 100.0;
+                std::cout << "🚀 并行处理性能提升: " << std::fixed << std::setprecision(1) << improvement << "%" << std::endl;
+
+                if (improvement < 0) {
+                    std::cout << "💡 提示: 对于 " << SHEET_COUNT << " 个工作表，串行处理更高效。" << std::endl;
+                    std::cout << "   并行处理适合于更多工作表（建议 >20 个）的场景。" << std::endl;
+                } else if (improvement < 10) {
+                    std::cout << "💡 提示: 性能提升较小，可能是因为工作表数量不够多。" << std::endl;
+                }
+            }
+        }
     }
     
-    auto file_size = std::filesystem::file_size("test_output/performance/multiple_sheets_simple_test.xlsx");
-    std::cout << "多工作表文件大小: " << formatMemorySize(file_size) << std::endl;
+    // 检查并行保存的文件大小
+    if (std::filesystem::exists("test_output/performance/multiple_sheets_parallel.xlsx")) {
+        auto file_size = std::filesystem::file_size("test_output/performance/multiple_sheets_parallel.xlsx");
+        std::cout << "多工作表文件大小: " << formatMemorySize(file_size) << std::endl;
+    }
 }
 
 // 测试5: 高级内存泄漏检测测试

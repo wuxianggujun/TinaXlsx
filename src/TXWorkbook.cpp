@@ -341,6 +341,103 @@ namespace TinaXlsx
         return true;
     }
 
+    bool TXWorkbook::saveToFileBatch(const std::string& filename,
+                                   const TXBatchWorksheetWriter::BatchConfig& config) {
+        try {
+            prepareForSaving();
+
+            TXZipArchiveWriter zipWriter;
+            if (!zipWriter.open(filename, false)) {
+                last_error_ = "无法创建文件: " + filename;
+                return false;
+            }
+
+            // 🚀 保存非工作表部分（使用标准方法但跳过工作表）
+            // 保存 [Content_Types].xml
+            TXContentTypesXmlHandler contentTypesHandler;
+            auto contentTypesResult = contentTypesHandler.save(zipWriter, *context_);
+            if (contentTypesResult.isError()) {
+                last_error_ = "Content types save failed: " + contentTypesResult.error().getMessage();
+                return false;
+            }
+
+            auto mainRelsHandler = TXUnifiedXmlHandlerFactory::createMainRelsHandler();
+            auto mainRelsResult = mainRelsHandler->save(zipWriter, *context_);
+            if (mainRelsResult.isError()) {
+                last_error_ = "Main rels save failed: " + mainRelsResult.error().getMessage();
+                return false;
+            }
+
+            // 保存 workbook.xml
+            TXWorkbookXmlHandler workbookHandler;
+            auto workbookResult = workbookHandler.save(zipWriter, *context_);
+            if (workbookResult.isError()) {
+                last_error_ = "Workbook save failed: " + workbookResult.error().getMessage();
+                return false;
+            }
+
+            // 保存 workbook.xml.rels
+            auto workbookRelsHandler = TXUnifiedXmlHandlerFactory::createWorkbookRelsHandler();
+            workbookRelsHandler->setAllPivotTables(pivot_tables_);
+            auto workbookRelsResult = workbookRelsHandler->save(zipWriter, *context_);
+            if (workbookRelsResult.isError()) {
+                last_error_ = "Workbook rels save failed: " + workbookRelsResult.error().getMessage();
+                return false;
+            }
+
+            // 保存 styles.xml（如果启用了样式组件）
+            if (component_manager_.hasComponent(ExcelComponent::Styles)) {
+                StylesXmlHandler stylesHandler;
+                auto stylesResult = stylesHandler.save(zipWriter, *context_);
+                if (stylesResult.isError()) {
+                    last_error_ = "Styles save failed: " + stylesResult.error().getMessage();
+                    return false;
+                }
+            }
+
+            // 🚀 使用批量工作表写入器保存所有工作表
+            TXBatchWorksheetWriter batchWriter(config);
+            auto batchResult = batchWriter.saveAllWorksheets(zipWriter, *context_);
+
+            if (batchResult.isError()) {
+                last_error_ = "Failed to batch save worksheets: " + batchResult.error().getMessage();
+                return false;
+            }
+
+            // 保存统计信息
+            lastBatchStats_ = batchWriter.getStats();
+
+            // 保存 sharedStrings.xml（如果启用了共享字符串组件）
+            if (component_manager_.hasComponent(ExcelComponent::SharedStrings)) {
+                TXSharedStringsXmlHandler sharedStringsHandler;
+                auto sharedStringsResult = sharedStringsHandler.save(zipWriter, *context_);
+                if (sharedStringsResult.isError()) {
+                    last_error_ = "Shared strings save failed: " + sharedStringsResult.error().getMessage();
+                    return false;
+                }
+            }
+
+            // 保存文档属性
+            if (component_manager_.hasComponent(ExcelComponent::DocumentProperties)) {
+                auto docPropsHandler = TXUnifiedXmlHandlerFactory::createDocumentPropertiesHandler();
+                auto docPropsResult = docPropsHandler->save(zipWriter, *context_);
+                if (docPropsResult.isError()) {
+                    last_error_ = "Document properties save failed: " + docPropsResult.error().getMessage();
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (const std::exception& e) {
+            last_error_ = e.what();
+            return false;
+        }
+    }
+
+    const TXBatchWorksheetWriter::BatchStats& TXWorkbook::getLastBatchStats() const {
+        return lastBatchStats_;
+    }
+
     TXSheet* TXWorkbook::storeSheet(std::unique_ptr<TXSheet> sheet_uptr) {
         if (!sheet_uptr) {
             last_error_ = "Attempted to store a null sheet.";

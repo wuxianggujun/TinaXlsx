@@ -11,6 +11,7 @@
 #include "TXSharedStringsPool.hpp"
 #include "TXWorkbookProtectionManager.hpp"
 #include "TXMemoryPool.hpp"
+#include "TXBatchWorksheetWriter.hpp"
 
 namespace TinaXlsx
 {
@@ -51,6 +52,21 @@ namespace TinaXlsx
          * @return 成功返回true，失败返回false
          */
         bool saveToFile(const std::string& filename);
+
+        /**
+         * @brief 🚀 高性能批量保存工作簿到文件
+         * @param filename 输出文件路径
+         * @param config 批量保存配置（可选）
+         * @return 成功返回true，失败返回false
+         */
+        bool saveToFileBatch(const std::string& filename,
+                           const TXBatchWorksheetWriter::BatchConfig& config = TXBatchWorksheetWriter::BatchConfig{});
+
+        /**
+         * @brief 获取最后一次批量保存的统计信息
+         * @return 批量保存统计信息
+         */
+        const TXBatchWorksheetWriter::BatchStats& getLastBatchStats() const;
 
         /**
          * @brief 创建新的工作表
@@ -318,6 +334,9 @@ namespace TinaXlsx
 
         // 透视表管理
         std::unordered_map<std::string, std::vector<std::shared_ptr<class TXPivotTable>>> pivot_tables_;  ///< 工作表名称到透视表列表的映射
+
+        // 🚀 批量保存相关
+        mutable TXBatchWorksheetWriter::BatchStats lastBatchStats_;  ///< 最后一次批量保存统计
 
         // 透视表辅助方法
         std::string generatePivotCacheRecordsXml(const TXPivotTable* pivotTable, const std::string& sheetName) const;

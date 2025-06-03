@@ -126,6 +126,18 @@ if(BUILD_TESTS)
         DEPENDS ExtremePerformanceTests
     )
 
+    # 🚀 创建批量保存测试可执行文件（GoogleTest版本）
+    add_executable(BatchSaveTests tests/batch_save_test.cpp)
+    target_link_libraries(BatchSaveTests ${PROJECT_NAME} gtest gtest_main)
+
+    # 创建运行批量保存测试的目标
+    add_custom_target(run_batch_save_tests
+        COMMAND BatchSaveTests --gtest_color=yes
+        COMMENT "Running batch save tests (GoogleTest)"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        DEPENDS BatchSaveTests
+    )
+
 endif()
 
 # ------------ 文档生成配置 ------------
