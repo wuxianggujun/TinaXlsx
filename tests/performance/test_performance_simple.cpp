@@ -18,6 +18,7 @@
 #endif
 
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "TinaXlsx/TXMemoryLeakDetector.hpp"
 
 using namespace TinaXlsx;
 using namespace std::chrono;
@@ -274,55 +275,118 @@ TEST_F(SimplePerformanceTest, MultipleSheetPerformance) {
     std::cout << "多工作表文件大小: " << formatMemorySize(file_size) << std::endl;
 }
 
-// 测试5: 内存使用监控测试
-TEST_F(SimplePerformanceTest, MemoryUsageMonitoring) {
-    std::cout << "\n--- 测试5: 内存使用监控测试 ---" << std::endl;
-    
+// 测试5: 高级内存泄漏检测测试
+TEST_F(SimplePerformanceTest, AdvancedMemoryLeakDetection) {
+    std::cout << "\n--- 测试5: 高级内存泄漏检测测试 ---" << std::endl;
+
     const int ITERATIONS = 10;
     const int ROWS_PER_ITERATION = 1000;
     const int COLS_PER_ITERATION = 5;
-    
+
+    // 🚀 启用内存泄漏检测器
+    auto& detector = TXMemoryLeakDetector::instance();
+    TXMemoryLeakDetector::DetectorConfig config;
+    config.enableTracking = true;
+    config.enableAutoCleanup = false; // 手动控制清理
+    detector.setConfig(config);
+    detector.reset(); // 重置统计
+
     size_t initial_memory = getCurrentMemoryUsage();
-    std::vector<size_t> memory_snapshots;
-    
+    auto initial_stats = detector.getStats();
+
     {
-        PerformanceTimer timer("内存监控测试(" + std::to_string(ITERATIONS) + "次迭代)");
-        
+        PerformanceTimer timer("高级内存监控测试(" + std::to_string(ITERATIONS) + "次迭代)");
+
         for (int iter = 0; iter < ITERATIONS; ++iter) {
             {
+                // 🚀 使用作用域内存跟踪器
+                TXScopedMemoryTracker scope_tracker(("迭代" + std::to_string(iter)).c_str());
+
                 TXWorkbook workbook;
                 TXSheet* sheet = workbook.addSheet("内存测试");
-                
+
                 for (int row = 1; row <= ROWS_PER_ITERATION; ++row) {
                     for (int col = 1; col <= COLS_PER_ITERATION; ++col) {
                         sheet->setCellValue(row_t(row), column_t(col), generateRandomString(20));
                     }
                 }
-                
+
                 std::string filename = "test_output/performance/memory_test_" + std::to_string(iter) + ".xlsx";
                 workbook.saveToFile(filename);
                 std::filesystem::remove(filename); // 立即删除以节省空间
+
+                // 检查作用域内存泄漏
+                if (scope_tracker.hasLeaks()) {
+                    auto scope_stats = scope_tracker.getScopeStats();
+                    std::cout << "⚠️  迭代 " << iter << " 检测到作用域内存泄漏: "
+                             << formatMemorySize(scope_stats.currentBytes) << std::endl;
+                }
             }
-            
+
             size_t current_memory = getCurrentMemoryUsage();
-            memory_snapshots.push_back(current_memory);
-            
-            std::cout << "迭代 " << (iter + 1) << "/" << ITERATIONS 
-                     << ", 内存: " << formatMemorySize(current_memory) << std::endl;
+            auto current_stats = detector.getStats();
+
+            std::cout << "迭代 " << (iter + 1) << "/" << ITERATIONS
+                     << ", 系统内存: " << formatMemorySize(current_memory)
+                     << ", 跟踪内存: " << formatMemorySize(current_stats.currentBytes) << std::endl;
         }
     }
-    
+
+    // 🚀 详细的内存泄漏分析
     size_t final_memory = getCurrentMemoryUsage();
+    auto final_stats = detector.getStats();
+    auto leak_report = detector.detectLeaks();
+
+    std::cout << "\n=== 内存分析报告 ===" << std::endl;
+    std::cout << "系统内存 - 初始: " << formatMemorySize(initial_memory)
+             << ", 最终: " << formatMemorySize(final_memory)
+             << ", 增长: " << formatMemorySize(final_memory - initial_memory) << std::endl;
+
+    std::cout << "跟踪内存 - 当前分配: " << final_stats.currentAllocations
+             << ", 当前字节: " << formatMemorySize(final_stats.currentBytes) << std::endl;
+    std::cout << "总分配次数: " << final_stats.totalAllocations
+             << ", 总释放次数: " << final_stats.totalDeallocations << std::endl;
+    std::cout << "峰值分配: " << final_stats.peakAllocations
+             << ", 峰值内存: " << formatMemorySize(final_stats.peakBytes) << std::endl;
+
+    if (leak_report.leakedAllocations > 0) {
+        std::cout << "🚨 检测到内存泄漏: " << leak_report.leakedAllocations
+                 << " 个分配, 总计 " << formatMemorySize(leak_report.totalLeakedBytes) << std::endl;
+
+        // 显示前5个泄漏
+        size_t show_count = std::min(size_t(5), leak_report.leaks.size());
+        for (size_t i = 0; i < show_count; ++i) {
+            const auto& [ptr, info] = leak_report.leaks[i];
+            std::cout << "  泄漏 " << (i+1) << ": " << formatMemorySize(info.size);
+            if (info.file) {
+                std::cout << " 在 " << info.file << ":" << info.line;
+            }
+            std::cout << std::endl;
+        }
+    } else {
+        std::cout << "✅ 未检测到长期内存泄漏" << std::endl;
+    }
+
+    // 🚀 使用智能内存管理器进行健康检查
+    auto& smart_manager = TXSmartMemoryManager::instance();
+    auto health_report = smart_manager.performHealthCheck();
+
+    std::cout << "\n=== 内存健康报告 ===" << std::endl;
+    std::cout << "内存效率: " << (health_report.memoryEfficiency * 100) << "%" << std::endl;
+    std::cout << "碎片化级别: " << health_report.fragmentationLevel << std::endl;
+
+    if (!health_report.recommendations.empty()) {
+        std::cout << "优化建议:" << std::endl;
+        for (const auto& recommendation : health_report.recommendations) {
+            std::cout << "  - " << recommendation << std::endl;
+        }
+    }
+
+    // 最终判断
     size_t memory_growth = final_memory - initial_memory;
-    
-    std::cout << "初始内存: " << formatMemorySize(initial_memory) << std::endl;
-    std::cout << "最终内存: " << formatMemorySize(final_memory) << std::endl;
-    std::cout << "总内存增长: " << formatMemorySize(memory_growth) << std::endl;
-    
-    // 简单的内存泄漏检测
-    if (memory_growth > initial_memory * 0.1) { // 增长超过10%
+    if (memory_growth > initial_memory * 0.1 || health_report.hasLeaks) {
         std::cout << "⚠️  警告: 检测到可能的内存泄漏!" << std::endl;
     } else {
-        std::cout << "✅ 内存使用稳定" << std::endl;
+        std::cout << "✅ 内存使用健康" << std::endl;
     }
 }

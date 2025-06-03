@@ -12,6 +12,7 @@
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
 #include "TXStreamXmlReader.hpp"
+#include "TXSIMDXmlParser.hpp"
 #include <sstream>
 #include <iomanip>
 #include <memory>
@@ -31,23 +32,31 @@ namespace TinaXlsx
 
         TXResult<void> load(TXZipArchiveReader& zipReader, TXWorkbookContext& context) override
         {
-            // 🚀 性能优化：使用高性能流式读取器
+            // 🚀 性能优化：使用SIMD优化的XML解析器
             if (m_sheetIndex >= context.sheets.size()) {
                 return Err<void>(TXErrorCode::InvalidArgument, "Sheet index out of range");
             }
 
-            TXFastWorksheetLoader loader(context.sheets[m_sheetIndex].get());
-            auto result = loader.load(zipReader, partName());
-
-            if (result.isOk()) {
-                // 🚀 输出加载统计信息（调试用）
-                const auto& stats = loader.getStats();
-                // TODO: 添加日志系统后输出统计信息
-                // printf("流式读取: %zu行, %zu单元格, %.2fms\n",
-                //        stats.totalRows, stats.totalCells, stats.loadTimeMs);
+            // 读取XML数据
+            auto xmlData = zipReader.read(partName());
+            if (xmlData.isError()) {
+                return Err<void>(xmlData.error().getCode(), "Failed to read " + partName());
             }
 
-            return result;
+            const std::vector<uint8_t>& fileBytes = xmlData.value();
+            std::string xmlContent(fileBytes.begin(), fileBytes.end());
+
+            // 🚀 使用SIMD优化的解析器
+            TXSIMDWorksheetParser parser(context.sheets[m_sheetIndex].get());
+            size_t cellCount = parser.parse(xmlContent);
+
+            // 输出统计信息（调试用）
+            const auto& stats = parser.getStats();
+            // TODO: 添加日志系统后输出统计信息
+            // printf("SIMD解析: %zu行, %zu单元格, %.2fms\n",
+            //        stats.totalRows, stats.totalCells, stats.parseTimeMs);
+
+            return Ok();
         }
 
         TXResult<void> save(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context) override

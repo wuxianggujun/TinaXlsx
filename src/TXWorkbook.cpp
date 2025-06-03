@@ -495,6 +495,9 @@ namespace TinaXlsx
         style_manager_ = std::move(TXStyleManager());
         shared_strings_pool_ = TXSharedStringsPool();
         context_ = std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_);
+
+        // 🚀 清理内存池，防止内存泄漏
+        TXMemoryManager::instance().clearAll();
     }
 
     ComponentManager& TXWorkbook::getComponentManager() {

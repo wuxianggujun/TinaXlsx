@@ -9,25 +9,31 @@
 #include <string>
 #include "TXTypes.hpp"
 #include "TXGlobalStringPool.hpp"
+#include "TXMemoryPool.hpp"
 
 namespace TinaXlsx
 {
     class TXSharedStringsPool {
     public:
-        // 🚀 性能优化：添加字符串并返回索引（暂时禁用字符串内化）
+        // 🚀 性能优化：添加字符串并返回索引（使用内存池）
         u32 add(const std::string& str) {
+            // 🚀 使用内存池管理的字符串
+            auto& stringPool = TXMemoryManager::instance().getStringPool();
+            std::string_view pooledStr = stringPool.createString(str);
+
             // 🚀 优化：使用单次查找避免重复哈希计算
-            auto [it, inserted] = m_uniqueIndexMap.try_emplace(str, static_cast<u32>(m_strings.size()));
+            std::string keyStr(pooledStr); // 用于哈希表的key
+            auto [it, inserted] = m_uniqueIndexMap.try_emplace(keyStr, static_cast<u32>(m_strings.size()));
 
             if (inserted) {
                 // 新字符串 - 添加到池
-                m_strings.push_back(str);
-                m_frequencyMap[str] = 1;
+                m_strings.push_back(keyStr);
+                m_frequencyMap[keyStr] = 1;
                 m_dirty = true;
                 return it->second;
             } else {
                 // 🚀 优化：已存在的字符串，直接增加频率（避免再次查找）
-                m_frequencyMap[str]++;
+                m_frequencyMap[keyStr]++;
                 return it->second;
             }
         }
@@ -42,12 +48,20 @@ namespace TinaXlsx
             return m_dirty; 
         }
     
-        // 重置状态
+        // 🚀 重置状态（包括内存池清理）
         void reset() {
             m_strings.clear();
             m_uniqueIndexMap.clear();
             m_frequencyMap.clear();
             m_dirty = false;
+
+            // 🚀 清理内存池
+            TXMemoryManager::instance().getStringPool().clear();
+        }
+
+        // 🚀 获取内存使用统计
+        TXStringPool::StringStats getMemoryStats() const {
+            return TXMemoryManager::instance().getStringPool().getStats();
         }
 
     private:

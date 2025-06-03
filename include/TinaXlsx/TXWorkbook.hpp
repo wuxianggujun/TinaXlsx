@@ -10,6 +10,7 @@
 #include "TXStyleManager.hpp"
 #include "TXSharedStringsPool.hpp"
 #include "TXWorkbookProtectionManager.hpp"
+#include "TXMemoryPool.hpp"
 
 namespace TinaXlsx
 {
