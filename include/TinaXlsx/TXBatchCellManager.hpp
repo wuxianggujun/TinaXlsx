@@ -6,6 +6,7 @@
 #pragma once
 
 #include "TXUltraCompactCell.hpp"
+#include "TXOptimizedSIMD.hpp"
 #include "TXTypes.hpp"
 #include "TXCoordinate.hpp"
 #include <vector>

@@ -4,6 +4,7 @@
 //
 
 #include "TinaXlsx/TXBatchCellManager.hpp"
+#include "TinaXlsx/TXOptimizedSIMD.hpp"
 #include <algorithm>
 #include <cstring>
 

@@ -85,6 +85,11 @@ add_executable(SIMDComparisonTests test_simd_comparison.cpp test_file_generator.
 target_link_libraries(SIMDComparisonTests PRIVATE TinaXlsx gtest_main xsimd)
 configure_test_target(SIMDComparisonTests)
 
+# 12. 内存管理系统测试
+add_executable(MemoryManagementTests test_memory_management.cpp test_file_generator.cpp)
+target_link_libraries(MemoryManagementTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(MemoryManagementTests)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件
