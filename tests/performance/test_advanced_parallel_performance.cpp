@@ -87,6 +87,20 @@ protected:
         }
 
         std::cout << "✅ 成功生成 " << data.size() << " 个唯一单元格数据" << std::endl;
+
+        // 调试：统计数据类型分布
+        size_t doubleCount = 0, stringCount = 0, intCount = 0, boolCount = 0;
+        for (const auto& [coord, value] : data) {
+            if (std::holds_alternative<double>(value)) doubleCount++;
+            else if (std::holds_alternative<std::string>(value)) stringCount++;
+            else if (std::holds_alternative<i64>(value)) intCount++;
+            else if (std::holds_alternative<bool>(value)) boolCount++;
+        }
+        std::cout << "数据类型分布 - Double: " << doubleCount
+                  << ", String: " << stringCount
+                  << ", Int: " << intCount
+                  << ", Bool: " << boolCount << std::endl;
+
         return data;
     }
 };
@@ -194,19 +208,47 @@ TEST_F(AdvancedParallelPerformanceTest, SmartParallelCellProcessorPerformance) {
         std::cout << "✅ 总耗时: " << duration.count() << " μs" << std::endl;
         std::cout << "✅ 平均每单元格: " << (duration.count() / processedCount) << " μs" << std::endl;
         std::cout << "✅ 处理速度: " << (processedCount * 1000000 / duration.count()) << " 单元格/秒" << std::endl;
+
+        // 调试：检查实际的单元格管理器状态
+        std::cout << "📊 实际单元格管理器中的单元格数: " << sheet->getCellManager().getCellCount() << std::endl;
     }
     
     // 验证数据正确性
     std::cout << "验证数据正确性..." << std::endl;
     size_t verifiedCount = 0;
-    for (const auto& [coord, cellValue] : cellData) {
+    size_t emptyCount = 0;
+    size_t mismatchCount = 0;
+
+    for (const auto& [coord, originalValue] : cellData) {
         auto retrievedValue = sheet->getCellValue(coord.getRow(), coord.getCol());
-        // 检查是否不是 std::monostate（空值）
-        if (!std::holds_alternative<std::monostate>(retrievedValue)) {
+
+        if (std::holds_alternative<std::monostate>(retrievedValue)) {
+            emptyCount++;
+        } else {
             verifiedCount++;
+
+            // 检查值是否匹配（简单检查）
+            bool matches = false;
+            if (std::holds_alternative<double>(originalValue) && std::holds_alternative<double>(retrievedValue)) {
+                matches = true;
+            } else if (std::holds_alternative<std::string>(originalValue) && std::holds_alternative<std::string>(retrievedValue)) {
+                matches = true;
+            } else if (std::holds_alternative<i64>(originalValue) && std::holds_alternative<i64>(retrievedValue)) {
+                matches = true;
+            } else if (std::holds_alternative<bool>(originalValue) && std::holds_alternative<bool>(retrievedValue)) {
+                matches = true;
+            }
+
+            if (!matches) {
+                mismatchCount++;
+            }
         }
     }
+
     std::cout << "✅ 验证通过的单元格数: " << verifiedCount << std::endl;
+    std::cout << "❌ 空单元格数: " << emptyCount << std::endl;
+    std::cout << "⚠️  类型不匹配数: " << mismatchCount << std::endl;
+    std::cout << "📊 总验证数: " << cellData.size() << std::endl;
 }
 
 /**
