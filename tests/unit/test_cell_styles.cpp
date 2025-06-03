@@ -1,20 +1,21 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <cstdio>
 #include <fstream>
 
 using namespace TinaXlsx;
 
-class CellStyleTest : public ::testing::Test {
+class CellStyleTest : public TestWithFileGeneration<CellStyleTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<CellStyleTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
     }
 
     void TearDown() override {
         workbook.reset();
-        // 清理测试文件
-        // std::remove("comprehensive_styles_test.xlsx");
+        TestWithFileGeneration<CellStyleTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -297,10 +298,14 @@ TEST_F(CellStyleTest, ComprehensiveStyleTest) {
     }
 
     // ==================== 保存综合测试文件 ====================
-    EXPECT_TRUE(workbook->saveToFile("comprehensive_styles_test.xlsx"));
-    
-    // 验证文件确实被创建 - 使用更安全的方法
-    std::ifstream file("comprehensive_styles_test.xlsx", std::ios::binary);
+    // 添加测试信息到第一个工作表
+    addTestInfo(fontSheet, "ComprehensiveStyleTest", "综合样式测试 - 包含字体、边框、填充、对齐、组合和范围样式");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "ComprehensiveStyleTest"));
+
+    // 验证文件确实被创建
+    std::string filePath = getFilePath("ComprehensiveStyleTest");
+    std::ifstream file(filePath, std::ios::binary);
     ASSERT_TRUE(file.good());
     file.close();
     
@@ -336,5 +341,8 @@ TEST_F(CellStyleTest, QuickStyleTest) {
     ASSERT_NE(cell, nullptr);
     EXPECT_TRUE(cell->hasStyle());
     
-    EXPECT_TRUE(workbook->saveToFile("quick_style_test.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "QuickStyleTest", "快速样式测试");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "QuickStyleTest"));
 } 

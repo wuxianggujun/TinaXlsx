@@ -42,6 +42,14 @@ protected:
      * @return 是否保存成功
      */
     bool saveWorkbook(const std::unique_ptr<TXWorkbook>& workbook, const std::string& filename);
+
+    /**
+     * @brief 保存工作簿到文件（移动语义版本）
+     * @param workbook 工作簿指针（移动）
+     * @param filename 文件名（不包含扩展名）
+     * @return 是否保存成功
+     */
+    bool saveWorkbook(std::unique_ptr<TXWorkbook>&& workbook, const std::string& filename);
     
     /**
      * @brief 获取完整的文件路径

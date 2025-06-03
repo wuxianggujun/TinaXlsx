@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <mutex>
 #include "TXCoordinate.hpp"
 #include "TXCompactCell.hpp"
 #include "TXRange.hpp"
@@ -38,7 +39,7 @@ public:
 
     using CellContainer = std::unordered_map<Coordinate, TXCompactCell, CoordinateHash>;
 
-    TXCellManager() = default;
+    TXCellManager() : cellsMutex_(std::make_unique<std::mutex>()) {}
     ~TXCellManager() = default;
 
     // 禁用拷贝，支持移动
@@ -64,11 +65,19 @@ public:
     const TXCompactCell* getCell(const Coordinate& coord) const;
 
     /**
-     * @brief 获取或创建单元格
+     * @brief 获取或创建单元格（线程安全）
      * @param coord 坐标
      * @return 单元格指针，不存在则创建新的
      */
     TXCompactCell* getOrCreateCell(const Coordinate& coord);
+
+    /**
+     * @brief 获取或创建单元格（非线程安全，高性能）
+     * @param coord 坐标
+     * @return 单元格指针，不存在则创建新的
+     * @note 调用者需要确保线程安全
+     */
+    TXCompactCell* getOrCreateCellUnsafe(const Coordinate& coord);
 
     /**
      * @brief 检查单元格是否存在
@@ -87,12 +96,21 @@ public:
     // ==================== 值操作 ====================
 
     /**
-     * @brief 设置单元格值
+     * @brief 设置单元格值（线程安全）
      * @param coord 坐标
      * @param value 值
      * @return 成功返回true
      */
     bool setCellValue(const Coordinate& coord, const CellValue& value);
+
+    /**
+     * @brief 设置单元格值（非线程安全，高性能）
+     * @param coord 坐标
+     * @param value 值
+     * @return 成功返回true
+     * @note 调用者需要确保线程安全
+     */
+    bool setCellValueUnsafe(const Coordinate& coord, const CellValue& value);
 
     /**
      * @brief 获取单元格值
@@ -102,11 +120,19 @@ public:
     CellValue getCellValue(const Coordinate& coord) const;
 
     /**
-     * @brief 批量设置单元格值（高性能版本）
+     * @brief 批量设置单元格值（线程安全）
      * @param values 坐标-值对列表
      * @return 成功设置的数量
      */
     std::size_t setCellValues(const std::vector<std::pair<Coordinate, CellValue>>& values);
+
+    /**
+     * @brief 批量设置单元格值（非线程安全，最高性能）
+     * @param values 坐标-值对列表
+     * @return 成功设置的数量
+     * @note 调用者需要确保线程安全
+     */
+    std::size_t setCellValuesUnsafe(const std::vector<std::pair<Coordinate, CellValue>>& values);
 
     /**
      * @brief 批量设置矩形区域的单元格值（最高性能）
@@ -198,8 +224,18 @@ public:
      */
     std::size_t removeCellsInRange(const TXRange& range);
 
+    // ==================== 线程安全控制 ====================
+
+    /**
+     * @brief 获取互斥锁（用于外部批量操作）
+     * @return 互斥锁引用
+     * @note 使用 std::lock_guard<std::mutex> lock(cellManager.getMutex()); 来手动加锁
+     */
+    std::mutex& getMutex() { return *cellsMutex_; }
+
 private:
     CellContainer cells_;
+    mutable std::unique_ptr<std::mutex> cellsMutex_;  // 保护 cells_ 的并发访问
 
     /**
      * @brief 验证坐标有效性

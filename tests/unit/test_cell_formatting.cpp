@@ -1,12 +1,14 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <cstdio>
 
 using namespace TinaXlsx;
 
-class CellFormattingTest : public ::testing::Test {
+class CellFormattingTest : public TestWithFileGeneration<CellFormattingTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<CellFormattingTest>::SetUp();
         workbook = std::make_unique<TXWorkbook>();
         sheet = workbook->addSheet("FormatTest");
         ASSERT_NE(sheet, nullptr);
@@ -14,8 +16,7 @@ protected:
 
     void TearDown() override {
         workbook.reset();
-        // 清理测试文件
-        // std::remove("test_formatting.xlsx");
+        TestWithFileGeneration<CellFormattingTest>::TearDown();
     }
 
     std::unique_ptr<TXWorkbook> workbook;
@@ -42,8 +43,11 @@ TEST_F(CellFormattingTest, NumberFormatting) {
     EXPECT_FALSE(formatted2.empty());
     
 
+    // 添加测试信息
+    addTestInfo(sheet, "NumberFormatting", "测试数字格式化功能");
+
     // 保存验证
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_number.xlsx"));
+    EXPECT_TRUE(saveWorkbook(workbook, "NumberFormatting"));
 }
 
 // 测试百分比格式化
@@ -73,7 +77,10 @@ TEST_F(CellFormattingTest, PercentageFormatting) {
     //       EXPECT_EQ(formatted3, "120%");
     // 具体值取决于 TXNumberFormat::formatPercentage 的实现
 
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_percentage.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "PercentageFormatting", "测试百分比格式化功能");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "PercentageFormatting"));
 }
 
 // 测试货币格式化
@@ -102,7 +109,10 @@ TEST_F(CellFormattingTest, CurrencyFormatting) {
     //       EXPECT_EQ(formatted2, "($567.89)" or "-$567.89");
     // 具体值取决于 TXNumberFormat::formatCurrency 的实现
 
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_currency.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "CurrencyFormatting", "测试货币格式化功能");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "CurrencyFormatting"));
 }
 
 // 测试自定义格式
@@ -129,7 +139,10 @@ TEST_F(CellFormattingTest, CustomFormatting) {
     // 例如: EXPECT_EQ(formatted_val, "1,234,567.89");
     // 具体值取决于 TXNumberFormat 对自定义格式的解析和应用
 
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_custom.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "CustomFormatting", "测试自定义格式化功能");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "CustomFormatting"));
 }
 
 // 测试范围格式化
@@ -165,7 +178,10 @@ TEST_F(CellFormattingTest, RangeFormatting) {
             // EXPECT_EQ(formatted_val, std::to_string(sheet->getCellValue(current_row, current_col).getNumberValue() /* adapt to get double*/ ) with 1 decimal place);
         }
     }
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_range.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "RangeFormatting", "测试范围格式化功能");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "RangeFormatting"));
 }
 
 // 测试TXNumberFormat对象
@@ -245,5 +261,8 @@ TEST_F(CellFormattingTest, BatchFormatting) {
     ASSERT_NE(fmt3, nullptr);
     EXPECT_EQ(fmt3->getFormatType(), TXNumberFormat::FormatType::Percentage);
 
-    EXPECT_TRUE(workbook->saveToFile("test_formatting_batch.xlsx"));
+    // 添加测试信息
+    addTestInfo(sheet, "BatchFormatting", "测试批量格式化功能");
+
+    EXPECT_TRUE(saveWorkbook(workbook, "BatchFormatting"));
 }

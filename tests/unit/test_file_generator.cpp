@@ -30,9 +30,9 @@ bool TestFileGenerator::saveWorkbook(const std::unique_ptr<TXWorkbook>& workbook
         std::cerr << "Error: Workbook is null" << std::endl;
         return false;
     }
-    
+
     std::string fullPath = getFilePath(filename);
-    
+
     try {
         bool success = workbook->saveToFile(fullPath);
         if (success) {
@@ -45,6 +45,10 @@ bool TestFileGenerator::saveWorkbook(const std::unique_ptr<TXWorkbook>& workbook
         std::cerr << "✗ Exception while saving " << fullPath << ": " << e.what() << std::endl;
         return false;
     }
+}
+
+bool TestFileGenerator::saveWorkbook(std::unique_ptr<TXWorkbook>&& workbook, const std::string& filename) {
+    return saveWorkbook(workbook, filename);
 }
 
 std::string TestFileGenerator::getFilePath(const std::string& filename) const {

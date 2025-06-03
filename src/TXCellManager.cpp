@@ -26,6 +26,15 @@ TXCompactCell* TXCellManager::getOrCreateCell(const Coordinate& coord) {
         return nullptr;
     }
 
+    std::lock_guard<std::mutex> lock(*cellsMutex_);
+    return getOrCreateCellUnsafe(coord);
+}
+
+TXCompactCell* TXCellManager::getOrCreateCellUnsafe(const Coordinate& coord) {
+    if (!isValidCoordinate(coord)) {
+        return nullptr;
+    }
+
     auto it = cells_.find(coord);
     if (it != cells_.end()) {
         return &it->second;
@@ -65,12 +74,24 @@ bool TXCellManager::setCellValue(const Coordinate& coord, const CellValue& value
         return false;
     }
 
-    auto* cell = getOrCreateCell(coord);
-    if (cell) {
-        cell->setValue(value);
+    std::lock_guard<std::mutex> lock(*cellsMutex_);
+    return setCellValueUnsafe(coord, value);
+}
+
+bool TXCellManager::setCellValueUnsafe(const Coordinate& coord, const CellValue& value) {
+    if (!isValidCoordinate(coord)) {
+        return false;
+    }
+
+    auto it = cells_.find(coord);
+    if (it != cells_.end()) {
+        it->second.setValue(value);
         return true;
     }
-    return false;
+
+    // 创建新单元格
+    cells_[coord] = TXCompactCell(value);
+    return true;
 }
 
 TXCellManager::CellValue TXCellManager::getCellValue(const Coordinate& coord) const {
@@ -82,6 +103,11 @@ TXCellManager::CellValue TXCellManager::getCellValue(const Coordinate& coord) co
 }
 
 std::size_t TXCellManager::setCellValues(const std::vector<std::pair<Coordinate, CellValue>>& values) {
+    std::lock_guard<std::mutex> lock(*cellsMutex_);
+    return setCellValuesUnsafe(values);
+}
+
+std::size_t TXCellManager::setCellValuesUnsafe(const std::vector<std::pair<Coordinate, CellValue>>& values) {
     // 高性能批量设置：预分配空间并减少哈希查找
     cells_.reserve(cells_.size() + values.size());
 

@@ -727,9 +727,9 @@ template <typename Fn>
      * @brief 创建成功结果 (非void类型)。
      */
     template <typename T>
-    [[nodiscard]] inline TXResult<T> Ok(T&& value)
+    [[nodiscard]] inline TXResult<std::decay_t<T>> Ok(T&& value)
     {
-        return TXResult<T>(std::forward<T>(value));
+        return TXResult<std::decay_t<T>>(std::forward<T>(value));
     }
     /**
      * @brief 创建成功结果 (非void类型, const 左值引用版本)。

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <chrono>
 #include <vector>
 #include <random>
@@ -12,16 +13,15 @@
 
 using namespace TinaXlsx;
 
-class SharedStringsPerformanceTest : public ::testing::Test {
+class SharedStringsPerformanceTest : public TestWithFileGeneration<SharedStringsPerformanceTest> {
 protected:
     void SetUp() override {
+        TestWithFileGeneration<SharedStringsPerformanceTest>::SetUp();
         gen_.seed(12345);
     }
-    
+
     void TearDown() override {
-        for (const auto& filename : testFiles_) {
-            std::remove(filename.c_str());
-        }
+        TestWithFileGeneration<SharedStringsPerformanceTest>::TearDown();
     }
     
     std::string generateRandomString(size_t length) {
@@ -85,7 +85,6 @@ protected:
 
 protected:
     std::mt19937 gen_;
-    std::vector<std::string> testFiles_;
 };
 
 // 测试SharedStrings流式写入器性能
@@ -135,18 +134,21 @@ TEST_F(SharedStringsPerformanceTest, SharedStringsPerformanceTest) {
         
         printPerformanceResult("数据填充", fillTime, stringCount, "strings");
         
+        // 添加测试信息
+        addTestInfo(sheet, "SharedStringsPerformanceTest", "SharedStrings性能测试 - " + std::to_string(stringCount) + " 字符串");
+
         // 保存文件
-        std::string filename = "shared_strings_test_" + std::to_string(stringCount) + ".xlsx";
-        testFiles_.push_back(filename);
-        
+        std::string filename = "SharedStringsTest_" + std::to_string(stringCount);
+
         auto saveTime = measureTime([&]() {
-            EXPECT_TRUE(workbook.saveToFile(filename));
+            EXPECT_TRUE(saveWorkbook(std::make_unique<TXWorkbook>(std::move(workbook)), filename));
         });
-        
+
         printPerformanceResult("文件保存", saveTime, stringCount, "strings");
-        
+
         // 检查文件信息
-        std::ifstream file(filename, std::ios::binary | std::ios::ate);
+        std::string filePath = getFilePath(filename);
+        std::ifstream file(filePath, std::ios::binary | std::ios::ate);
         if (file.is_open()) {
             size_t fileSize = file.tellg();
             double fileSizeMB = fileSize / (1024.0 * 1024.0);
@@ -212,18 +214,21 @@ TEST_F(SharedStringsPerformanceTest, LargeStringSetPerformance) {
     
     printPerformanceResult("数据填充", fillTime, stringCount, "strings");
     
+    // 添加测试信息
+    addTestInfo(sheet, "LargeStringSetPerformance", "大量字符串性能测试 - " + std::to_string(stringCount) + " 字符串");
+
     // 保存文件
-    std::string filename = "large_shared_strings_test.xlsx";
-    testFiles_.push_back(filename);
-    
+    std::string filename = "LargeSharedStringsTest";
+
     auto saveTime = measureTime([&]() {
-        EXPECT_TRUE(workbook.saveToFile(filename));
+        EXPECT_TRUE(saveWorkbook(std::make_unique<TXWorkbook>(std::move(workbook)), filename));
     });
-    
+
     printPerformanceResult("文件保存", saveTime, stringCount, "strings");
-    
+
     // 文件信息
-    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    std::string filePath = getFilePath(filename);
+    std::ifstream file(filePath, std::ios::binary | std::ios::ate);
     if (file.is_open()) {
         size_t fileSize = file.tellg();
         double fileSizeMB = fileSize / (1024.0 * 1024.0);
@@ -297,12 +302,14 @@ TEST_F(SharedStringsPerformanceTest, StringLengthImpactTest) {
         
         printPerformanceResult("数据填充", fillTime, stringCount, "strings");
         
+        // 添加测试信息
+        addTestInfo(sheet, "StringLengthImpactTest", testName + " - 平均长度: " + std::to_string(avgLength));
+
         // 保存文件
-        std::string filename = "string_length_test_" + std::to_string(avgLength) + ".xlsx";
-        testFiles_.push_back(filename);
-        
+        std::string filename = "StringLengthTest_" + std::to_string(avgLength);
+
         auto saveTime = measureTime([&]() {
-            EXPECT_TRUE(workbook.saveToFile(filename));
+            EXPECT_TRUE(saveWorkbook(std::make_unique<TXWorkbook>(std::move(workbook)), filename));
         });
         
         printPerformanceResult("文件保存", saveTime, stringCount, "strings");
@@ -356,12 +363,14 @@ TEST_F(SharedStringsPerformanceTest, PerformanceStabilityTest) {
         // 填充数据
         sheet->setRangeValues(row_t(1), column_t(1), testData);
         
+        // 添加测试信息
+        addTestInfo(sheet, "PerformanceStabilityTest", "性能稳定性测试 - 第" + std::to_string(test + 1) + "次");
+
         // 测试保存性能
-        std::string filename = "stability_test_" + std::to_string(test) + ".xlsx";
-        testFiles_.push_back(filename);
-        
+        std::string filename = "StabilityTest_" + std::to_string(test);
+
         auto saveTime = measureTime([&]() {
-            EXPECT_TRUE(workbook.saveToFile(filename));
+            EXPECT_TRUE(saveWorkbook(std::make_unique<TXWorkbook>(std::move(workbook)), filename));
         });
         
         saveTimes.push_back(saveTime);

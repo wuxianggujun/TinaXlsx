@@ -7,6 +7,9 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # 加载编译器配置（包含UTF-8编码设置）
 include(CompilerConfig)
 
+# 包含测试工具函数
+include(TestUtils)
+
 # ------------ 项目配置选项 ------------
 option(BUILD_TESTS "Build the unit tests" ON)
 option(BUILD_DOCS "Build API documentation with Doxygen" OFF)
@@ -110,33 +113,21 @@ if(BUILD_TESTS)
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 
-    # 创建一个专门运行性能测试的目标
-    add_custom_target(run_performance_tests
-        COMMAND SimplePerformanceTests --gtest_color=no
-        COMMENT "Running simple performance tests"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
-        DEPENDS SimplePerformanceTests
-    )
+    # 创建批量测试目标
+    create_batch_test_targets()
 
-    # 创建一个运行极致性能测试的目标
-    add_custom_target(run_extreme_performance_tests
-        COMMAND ExtremePerformanceTests --gtest_color=no
-        COMMENT "Running extreme performance tests"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tests/performance
-        DEPENDS ExtremePerformanceTests
-    )
-
-    # 🚀 创建批量保存测试可执行文件（GoogleTest版本）
-    add_executable(BatchSaveTests tests/batch_save_test.cpp)
-    target_link_libraries(BatchSaveTests ${PROJECT_NAME} gtest gtest_main)
-
-    # 创建运行批量保存测试的目标
-    add_custom_target(run_batch_save_tests
-        COMMAND BatchSaveTests --gtest_color=yes
-        COMMENT "Running batch save tests (GoogleTest)"
+    # 创建总的快速测试目标（运行单元测试和性能测试的快速版本）
+    add_custom_target(RunQuickTests
+        COMMAND echo "Running all quick tests..."
+        COMMENT "Running quick unit tests and performance tests"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        DEPENDS BatchSaveTests
     )
+
+    # 添加依赖（这些目标在子目录中创建）
+    add_dependencies(RunQuickTests RunQuickUnitTests RunQuickPerformanceTests)
+
+    # 打印测试配置摘要
+    print_test_summary()
 
 endif()
 

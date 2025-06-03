@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "TinaXlsx/TinaXlsx.hpp"
+#include "test_file_generator.hpp"
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -8,24 +9,17 @@
 
 using namespace TinaXlsx;
 
-class PerformanceBenchmarkTest : public ::testing::Test {
+class PerformanceBenchmarkTest : public TestWithFileGeneration<PerformanceBenchmarkTest> {
 protected:
     void SetUp() override {
-        // 创建测试目录
-        benchmark_dir = "benchmark_files";
-        std::filesystem::create_directories(benchmark_dir);
-        
+        TestWithFileGeneration<PerformanceBenchmarkTest>::SetUp();
+
         // 记录测试开始时间
         start_time = std::chrono::high_resolution_clock::now();
     }
 
     void TearDown() override {
-        // 清理测试文件
-        try {
-            std::filesystem::remove_all(benchmark_dir);
-        } catch (const std::exception& e) {
-            // 忽略清理错误
-        }
+        TestWithFileGeneration<PerformanceBenchmarkTest>::TearDown();
     }
 
     // 时间测量辅助方法
@@ -53,21 +47,21 @@ protected:
         std::cout << "=========================" << std::endl;
     }
 
-    std::string benchmark_dir;
     std::chrono::high_resolution_clock::time_point start_time;
 };
 
 // 测试单元格写入性能
 TEST_F(PerformanceBenchmarkTest, CellWritingPerformance) {
-    std::string output_file = benchmark_dir + "/cell_writing_benchmark.xlsx";
-    
     const int ROWS = 1000;
     const int COLS = 10;
-    
+
+    auto workbook = createWorkbook("CellWritingBenchmark");
+    auto* sheet = workbook->addSheet("性能测试");
+
+    // 添加测试信息
+    addTestInfo(sheet, "CellWritingPerformance", "单元格写入性能测试 - " + std::to_string(ROWS) + "x" + std::to_string(COLS));
+
     double time_ms = measureExecutionTime([&]() {
-        auto workbook = std::make_unique<TXWorkbook>();
-        auto* sheet = workbook->addSheet("性能测试");
-        
         // 写入大量单元格数据
         for (int row = 1; row <= ROWS; ++row) {
             for (int col = 1; col <= COLS; ++col) {
@@ -78,22 +72,22 @@ TEST_F(PerformanceBenchmarkTest, CellWritingPerformance) {
                 } else if (col == 3) {
                     sheet->setCellValue(row_t(row), column_t(col), row % 2 == 0);
                 } else {
-                    sheet->setCellValue(row_t(row), column_t(col), static_cast<TXSheet::CellValue>(row + col));
+                    sheet->setCellValue(row_t(row), column_t(col), static_cast<double>(row + col));
                 }
             }
         }
-        
-        workbook->saveToFile(output_file);
     });
-    
-    EXPECT_TRUE(std::filesystem::exists(output_file));
+
+    bool saved = saveWorkbook(workbook, "CellWritingBenchmark");
+    EXPECT_TRUE(saved);
     
     int total_operations = ROWS * COLS;
-    auto file_size = std::filesystem::file_size(output_file);
+    std::string filePath = getFilePath("CellWritingBenchmark");
+    auto file_size = std::filesystem::file_size(filePath);
     std::string extra_info = "文件大小: " + std::to_string(file_size) + " bytes";
-    
+
     printPerformanceReport("单元格写入", time_ms, total_operations, extra_info);
-    
+
     // 性能断言 - 平均每个单元格操作应该在合理时间内完成
     double avg_time_per_cell = time_ms / total_operations;
     EXPECT_LT(avg_time_per_cell, 1.0); // 每个单元格操作应少于1ms
