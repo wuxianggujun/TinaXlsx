@@ -10,7 +10,7 @@
 #include "TXStyleManager.hpp"
 #include "TXSharedStringsPool.hpp"
 #include "TXWorkbookProtectionManager.hpp"
-#include "TXMemoryPool.hpp"
+#include "TXUnifiedMemoryManager.hpp"
 #include "TXBatchWorksheetWriter.hpp"
 
 namespace TinaXlsx

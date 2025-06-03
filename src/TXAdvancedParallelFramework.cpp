@@ -6,7 +6,7 @@
 #include "TinaXlsx/TXAdvancedParallelFramework.hpp"
 #include "TinaXlsx/TXWorkbookContext.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
-#include "TinaXlsx/TXMemoryLeakDetector.hpp"
+// TXMemoryLeakDetector已删除，使用TXUnifiedMemoryManager替代
 #include <algorithm>
 #include <numeric>
 #include <fstream>
@@ -25,9 +25,10 @@ TXParallelXlsxReader::TXParallelXlsxReader(const ReaderConfig& config)
     schedulerConfig.maxConcurrentTasks = config_.numReaderThreads + config_.numParserThreads;
     scheduler_ = std::make_unique<TXXlsxTaskScheduler>(schedulerConfig);
     
-    TXMemoryPool::PoolConfig poolConfig;
-    poolConfig.blockSize = config_.bufferSize;
-    memoryPool_ = std::make_unique<TXMemoryPool>(poolConfig);
+    // 使用统一内存管理器
+    TXUnifiedMemoryManager::Config memoryConfig;
+    memoryConfig.chunk_size = config_.bufferSize;
+    memoryManager_ = std::make_unique<TXUnifiedMemoryManager>(memoryConfig);
 }
 
 TXParallelXlsxReader::~TXParallelXlsxReader() = default;

@@ -33,56 +33,7 @@ struct MultiLevelConfig {
     static constexpr size_t MIN_COMPACT_INTERVAL_MS = 5000; // 最小压缩间隔5秒
 };
 
-/**
- * @brief 块分配器（中等大小对象）
- */
-class TXBlockAllocator {
-public:
-    static constexpr size_t BLOCK_SIZE = 1024 * 1024;   // 1MB块
-    static constexpr size_t MAX_BLOCKS = 32;            // 最多32块
-    
-    TXBlockAllocator();
-    ~TXBlockAllocator();
-    
-    void* allocate(size_t size);
-    bool deallocate(void* ptr);
-    size_t compact();
-    void clear();
-    
-    size_t getTotalMemoryUsage() const;
-    size_t getUsedMemorySize() const;
-    double getFragmentationRatio() const;
-    
-    struct BlockStats {
-        size_t total_blocks = 0;
-        size_t active_blocks = 0;
-        size_t total_memory = 0;
-        size_t used_memory = 0;
-        double memory_efficiency = 0.0;
-        size_t allocation_count = 0;
-        size_t deallocation_count = 0;
-    };
-    
-    BlockStats getStats() const;
-
-private:
-    struct Block {
-        std::unique_ptr<char[]> data;
-        size_t used = 0;
-        std::vector<std::pair<size_t, size_t>> free_chunks; // offset, size
-    };
-    
-    std::array<std::unique_ptr<Block>, MAX_BLOCKS> blocks_;
-    std::atomic<size_t> block_count_{0};
-    std::atomic<size_t> allocation_count_{0};
-    std::atomic<size_t> deallocation_count_{0};
-    mutable std::mutex mutex_;
-    
-    Block* findAvailableBlock(size_t size);
-    Block* createNewBlock();
-    void* allocateFromBlock(Block* block, size_t size);
-    bool deallocateFromBlock(Block* block, void* ptr);
-};
+// TXBlockAllocator已删除 - 使用TXSlabAllocator + TXChunkAllocator组合替代
 
 /**
  * @brief 多级内存分配器
@@ -90,12 +41,11 @@ private:
 class TXMultiLevelAllocator {
 public:
     /**
-     * @brief 综合统计信息
+     * @brief 综合统计信息（简化版）
      */
     struct ComprehensiveStats {
-        // 各级分配器统计
+        // 双级分配器统计
         TXSlabAllocator::SlabStats slab_stats;
-        TXBlockAllocator::BlockStats block_stats;
         TXChunkAllocator::AllocationStats chunk_stats;
         
         // 综合指标
@@ -104,11 +54,9 @@ public:
         double overall_efficiency = 0.0;
         double overall_fragmentation = 0.0;
         
-        // 分配分布
-        size_t tiny_allocations = 0;    // Slab处理
-        size_t small_allocations = 0;   // Block处理
-        size_t medium_allocations = 0;  // Chunk处理
-        size_t large_allocations = 0;   // Chunk处理
+        // 分配分布（简化为双级）
+        size_t small_allocations = 0;   // Slab处理（<=8KB）
+        size_t large_allocations = 0;   // Chunk处理（>8KB）
         
         // 性能指标
         double avg_allocation_time_us = 0.0;
@@ -227,11 +175,10 @@ public:
     void enableTLSCache(bool enable) { tls_cache_enabled_ = enable; }
 
 private:
-    // ==================== 分配器实例 ====================
-    
-    std::unique_ptr<TXSlabAllocator> slab_allocator_;   // 微小对象 (<=2KB)
-    std::unique_ptr<TXBlockAllocator> block_allocator_; // 小对象 (2KB-64KB)
-    std::unique_ptr<TXChunkAllocator> chunk_allocator_; // 大对象 (>64KB)
+    // ==================== 分配器实例（简化为双级）====================
+
+    std::unique_ptr<TXSlabAllocator> slab_allocator_;   // 小对象 (<=8KB)
+    std::unique_ptr<TXChunkAllocator> chunk_allocator_; // 大对象 (>8KB)
     
     // ==================== 性能优化 ====================
     
@@ -250,11 +197,9 @@ private:
     mutable ComprehensiveStats cached_stats_;
     mutable std::chrono::steady_clock::time_point last_stats_update_;
     
-    // 分配计数
-    std::atomic<size_t> tiny_allocation_count_{0};
-    std::atomic<size_t> small_allocation_count_{0};
-    std::atomic<size_t> medium_allocation_count_{0};
-    std::atomic<size_t> large_allocation_count_{0};
+    // 分配计数（简化为双级）
+    std::atomic<size_t> small_allocation_count_{0};  // Slab分配计数
+    std::atomic<size_t> large_allocation_count_{0};  // Chunk分配计数
     
     // 性能计时
     std::atomic<size_t> total_allocation_time_us_{0};
@@ -264,12 +209,11 @@ private:
     // ==================== 内部方法 ====================
     
     /**
-     * @brief 选择分配器类型
+     * @brief 选择分配器类型（简化为双级）
      */
     enum class AllocatorType {
-        SLAB,   // 微小对象
-        BLOCK,  // 小对象  
-        CHUNK   // 大对象
+        SLAB,   // 小对象（<=8KB）
+        CHUNK   // 大对象（>8KB）
     };
     
     AllocatorType selectAllocatorType(size_t size) const;

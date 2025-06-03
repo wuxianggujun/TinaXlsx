@@ -594,7 +594,9 @@ namespace TinaXlsx
         context_ = std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_);
 
         // 🚀 清理内存池，防止内存泄漏
-        TXMemoryManager::instance().clearAll();
+        // 注意：TXMemoryManager已删除，使用TXUnifiedMemoryManager替代
+        // 这里暂时注释掉，因为需要全局实例管理
+        // GlobalUnifiedMemoryManager::getInstance().clear();
     }
 
     ComponentManager& TXWorkbook::getComponentManager() {

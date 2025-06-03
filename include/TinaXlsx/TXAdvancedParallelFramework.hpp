@@ -7,7 +7,7 @@
 
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
-#include "TXMemoryPool.hpp"
+#include "TXUnifiedMemoryManager.hpp"
 #include "TXParallelProcessor.hpp"
 #include <vector>
 #include <thread>
@@ -183,7 +183,7 @@ public:
 private:
     ReaderConfig config_;
     std::unique_ptr<TXXlsxTaskScheduler> scheduler_;
-    std::unique_ptr<TXMemoryPool> memoryPool_;
+    std::unique_ptr<TXUnifiedMemoryManager> memoryManager_;
     
     TXResult<std::vector<std::string>> extractXmlFiles(const std::string& filename);
     TXResult<void> parseSharedStrings(const std::string& xmlData, TXWorkbookContext& context);
@@ -230,7 +230,7 @@ public:
 private:
     WriterConfig config_;
     std::unique_ptr<TXXlsxTaskScheduler> scheduler_;
-    std::unique_ptr<TXMemoryPool> memoryPool_;
+    std::unique_ptr<TXUnifiedMemoryManager> memoryManager_;
     WriterStats stats_;
     
     TXResult<std::vector<std::pair<std::string, std::vector<uint8_t>>>> 

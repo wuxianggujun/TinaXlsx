@@ -8,7 +8,7 @@
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
 #include "TXCoordinate.hpp"
-#include "TXMemoryPool.hpp"
+#include "TXUnifiedMemoryManager.hpp"
 #include <vector>
 #include <thread>
 #include <future>
@@ -55,8 +55,8 @@ public:
         size_t numThreads = std::thread::hardware_concurrency();
         size_t queueCapacity = 1024;
         bool enableWorkStealing = true;
-        bool enableMemoryPool = true;
-        size_t memoryPoolBlockSize = 256;
+        bool enableMemoryManager = true;
+        size_t memoryManagerChunkSize = 64 * 1024 * 1024; // 64MB
     };
 
     explicit TXLockFreeThreadPool(const PoolConfig& config = PoolConfig{});
@@ -151,8 +151,8 @@ private:
     mutable std::atomic<size_t> workStealingCount_{0};
     mutable std::atomic<std::chrono::microseconds::rep> totalProcessingTime_{0};
 
-    // 内存池
-    std::unique_ptr<TXMemoryPool> memoryPool_;
+    // 统一内存管理器
+    std::unique_ptr<TXUnifiedMemoryManager> memoryManager_;
 
     bool submitTaskInternal(std::function<void()> task, TaskPriority priority);
     void workerThread(size_t threadId);
@@ -176,7 +176,7 @@ public:
         size_t minBatchSize = 100;
         size_t maxBatchSize = 10000;
         bool enableAdaptiveBatching = true;
-        bool enableMemoryPool = true;
+        bool enableMemoryManager = true;
         bool enableCacheOptimization = true;
     };
 

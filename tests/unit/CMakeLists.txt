@@ -95,6 +95,11 @@ add_executable(MultiLevelAllocatorTests test_multilevel_allocator.cpp test_file_
 target_link_libraries(MultiLevelAllocatorTests PRIVATE TinaXlsx gtest_main xsimd)
 configure_test_target(MultiLevelAllocatorTests)
 
+# 14. 统一内存管理器测试（主要测试）
+add_executable(UnifiedMemoryManagerTests test_unified_memory_manager.cpp test_file_generator.cpp)
+target_link_libraries(UnifiedMemoryManagerTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(UnifiedMemoryManagerTests)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件
