@@ -266,13 +266,25 @@ struct UltraCompactCell {
      */
     static constexpr size_t getMemoryUsage() { return 16; }
     
-private:
-    // ==================== 内部辅助方法 ====================
-    
     /**
-     * @brief 清除所有数据
+     * @brief 清空单元格数据
      */
     void clear();
+
+    // ==================== 比较操作符 ====================
+
+    /**
+     * @brief 相等比较操作符
+     */
+    bool operator==(const UltraCompactCell& other) const;
+
+    /**
+     * @brief 不等比较操作符
+     */
+    bool operator!=(const UltraCompactCell& other) const;
+
+private:
+    // ==================== 内部辅助方法 ====================
     
     /**
      * @brief 获取类型字段的指针（根据当前类型）

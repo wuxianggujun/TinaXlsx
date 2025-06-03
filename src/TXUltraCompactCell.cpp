@@ -251,6 +251,61 @@ void UltraCompactCell::clear() {
     secondary.col = 0;
 }
 
+// ==================== 比较操作符实现 ====================
+
+bool UltraCompactCell::operator==(const UltraCompactCell& other) const {
+    // 首先比较类型
+    if (getType() != other.getType()) {
+        return false;
+    }
+
+    // 比较坐标
+    if (getRow() != other.getRow() || getCol() != other.getCol()) {
+        return false;
+    }
+
+    // 比较样式
+    if (getStyleIndex() != other.getStyleIndex()) {
+        return false;
+    }
+
+    // 比较标志位
+    if (hasStyle() != other.hasStyle() ||
+        isFormula() != other.isFormula() ||
+        isMerged() != other.isMerged()) {
+        return false;
+    }
+
+    // 根据类型比较值
+    switch (getType()) {
+        case CellType::Empty:
+            return true; // 空单元格都相等
+
+        case CellType::String:
+            return getStringOffset() == other.getStringOffset() &&
+                   getStringLength() == other.getStringLength();
+
+        case CellType::Number:
+            return getNumberValue() == other.getNumberValue();
+
+        case CellType::Integer:
+            return getIntegerValue() == other.getIntegerValue();
+
+        case CellType::Boolean:
+            return getBooleanValue() == other.getBooleanValue();
+
+        case CellType::Formula:
+            return getFormulaOffset() == other.getFormulaOffset();
+
+        default:
+            return false;
+    }
+}
+
+bool UltraCompactCell::operator!=(const UltraCompactCell& other) const {
+    return !(*this == other);
+}
+
 uint8_t* UltraCompactCell::getTypeField() {
     // 不能获取位域的地址，返回nullptr或使用其他方式
     return nullptr;

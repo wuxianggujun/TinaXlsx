@@ -68,6 +68,23 @@ create_test_executable(
     COMMENT "Running ultra compact cell and batch processing tests"
 )
 
+# 9. SIMD和并行处理测试
+create_test_executable(
+    TARGET_NAME SIMDParallelTests
+    SOURCES test_simd_parallel.cpp test_file_generator.cpp
+    COMMENT "Running SIMD and parallel processing performance tests"
+)
+
+# 10. xsimd优化测试
+add_executable(XSIMDOptimizationTests test_xsimd_optimizations.cpp test_file_generator.cpp)
+target_link_libraries(XSIMDOptimizationTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(XSIMDOptimizationTests)
+
+# 11. SIMD实现对比测试
+add_executable(SIMDComparisonTests test_simd_comparison.cpp test_file_generator.cpp)
+target_link_libraries(SIMDComparisonTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(SIMDComparisonTests)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件

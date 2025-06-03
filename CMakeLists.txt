@@ -11,8 +11,8 @@ include(CompilerConfig)
 include(TestUtils)
 
 # ------------ 项目配置选项 ------------
-option(BUILD_TESTS "Build the unit tests" ON)
-option(BUILD_DOCS "Build API documentation with Doxygen" OFF)
+option(TINAXLSX_BUILD_TESTS "Build the TinaXlsx unit tests" ON)
+option(TINAXLSX_BUILD_DOCS "Build TinaXlsx API documentation with Doxygen" OFF)
 
 
 # -------------- 配置 pugixml --------------
@@ -58,6 +58,11 @@ add_subdirectory(third_party/minizip-ng)
 # fast_float 是 header-only 库
 add_subdirectory(third_party/fast_float)
 
+# -------------- 配置 xsimd --------------
+# xsimd 是 header-only SIMD 库，禁用其测试
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/xsimd)
+
 # -----------------------------------------
 
 # 搜索 TinaXlsx 项目源文件
@@ -69,12 +74,13 @@ add_library(${PROJECT_NAME} STATIC ${CORE_SOURCES})
 
 # 编译器特定选项已在CompilerConfig.cmake中配置
 
-# 链接 pugixml、minizip 和 fast_float 库到项目
+# 链接 pugixml、minizip、fast_float 和 xsimd 库到项目
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
         pugixml::pugixml
         minizip-ng
         fast_float
+        xsimd
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -89,7 +95,7 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
 )
 
 # ------------ GoogleTest 配置 ------------
-if(BUILD_TESTS)
+if(TINAXLSX_BUILD_TESTS)
     enable_testing()
 
     # 配置 GoogleTest
@@ -132,9 +138,9 @@ if(BUILD_TESTS)
 endif()
 
 # ------------ 文档生成配置 ------------
-if(BUILD_DOCS)
+if(TINAXLSX_BUILD_DOCS)
     message(STATUS "启用文档生成")
     include(DoxygenConfig)
 else()
-    message(STATUS "文档生成已禁用，使用 -DBUILD_DOCS=ON 启用")
+    message(STATUS "文档生成已禁用，使用 -DTINAXLSX_BUILD_DOCS=ON 启用")
 endif()
