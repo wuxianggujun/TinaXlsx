@@ -63,10 +63,42 @@ add_subdirectory(third_party/fast_float)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/xsimd)
 
+# -------------- 配置 fmt --------------
+# fmt 是高性能格式化库
+set(FMT_INSTALL OFF CACHE BOOL "" FORCE)
+set(FMT_TEST OFF CACHE BOOL "" FORCE)
+add_subdirectory(third_party/fmt)
+
 # -----------------------------------------
 
-# 搜索 TinaXlsx 项目源文件
-file(GLOB_RECURSE CORE_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/*.cpp)
+# TinaXlsx 核心源文件 - 极简内存优先架构
+set(CORE_SOURCES
+    # 🎯 核心内存优先架构 (必需)
+    src/TXBatchSIMDProcessor.cpp      # SIMD批量处理
+    src/TXInMemorySheet.cpp           # 内存优先工作表
+    src/TXZeroCopySerializer.cpp      # 零拷贝序列化
+    
+    # 📦 基础支撑组件 (必需)
+    src/TXCoordinate.cpp              # 坐标系统
+    src/TXTypes.cpp                   # 基础类型
+    src/TXError.cpp                   # 错误处理
+    src/TXGlobalStringPool.cpp        # 字符串池
+    src/TXUnifiedMemoryManager.cpp    # 统一内存管理
+    src/TXSlabAllocator.cpp           # Slab分配器
+    
+    # 🔧 工具库 (最小化)
+    src/TXNumberUtils.cpp             # 数字工具
+    src/TXRange.cpp                   # 范围操作
+    src/TinaXlsx.cpp                  # 主入口
+    
+    # 🎨 可选样式支持 (简化)
+    src/TXColor.cpp                   # 颜色处理
+    src/TXStyle.cpp                   # 基础样式
+    
+    # 🔄 兼容性保留 (临时)
+    src/TXWorkbook.cpp                # 传统工作簿
+    src/TXSheet.cpp                   # 传统工作表
+)
 
 
 # 创建 TinaXlsx 静态库
@@ -74,13 +106,14 @@ add_library(${PROJECT_NAME} STATIC ${CORE_SOURCES})
 
 # 编译器特定选项已在CompilerConfig.cmake中配置
 
-# 链接 pugixml、minizip、fast_float 和 xsimd 库到项目
+# 链接核心依赖库
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
         pugixml::pugixml
         minizip-ng
         fast_float
         xsimd
+        fmt::fmt
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -106,34 +139,15 @@ if(TINAXLSX_BUILD_TESTS)
     # 包含 CTest 模块
     include(CTest)
     
-    # 添加单元测试子目录
-    add_subdirectory(tests/unit)
-
-    # 添加性能测试子目录
-    add_subdirectory(tests/performance)
-
     # 创建一个运行所有测试的目标
     add_custom_target(run_all_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --verbose
         COMMENT "Running all tests"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
-
-    # 创建批量测试目标
-    create_batch_test_targets()
-
-    # 创建总的快速测试目标（运行单元测试和性能测试的快速版本）
-    add_custom_target(RunQuickTests
-        COMMAND echo "Running all quick tests..."
-        COMMENT "Running quick unit tests and performance tests"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-
-    # 添加依赖（这些目标在子目录中创建）
-    add_dependencies(RunQuickTests RunQuickUnitTests RunQuickPerformanceTests)
-
-    # 打印测试配置摘要
-    print_test_summary()
+    
+    # 包含测试配置
+    add_subdirectory(tests)
 
 endif()
 

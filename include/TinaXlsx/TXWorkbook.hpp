@@ -329,8 +329,8 @@ namespace TinaXlsx
         bool auto_component_detection_;
         TXStyleManager style_manager_;
         TXSharedStringsPool shared_strings_pool_;
-        std::unique_ptr<TXWorkbookContext> context_;
         TXWorkbookProtectionManager workbook_protection_manager_;  ///< 工作簿保护管理器
+        std::unique_ptr<TXWorkbookContext> context_;  // 必须在workbook_protection_manager_之后声明
 
         // 透视表管理
         std::unordered_map<std::string, std::vector<std::shared_ptr<class TXPivotTable>>> pivot_tables_;  ///< 工作表名称到透视表列表的映射

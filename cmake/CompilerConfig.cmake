@@ -81,9 +81,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "配置Release模式编译选项")
-    
+
     if(MSVC)
-        # MSVC Release配置
+        # MSVC Release配置 - 确保移除RTC1以避免与O2冲突
+        # 先移除默认的RTC1选项
+        string(REGEX REPLACE "/RTC[1su]" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        string(REGEX REPLACE "/RTC[1su]" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+        string(REGEX REPLACE "/RTC[1su]" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        string(REGEX REPLACE "/RTC[1su]" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+
+        # 然后添加Release优化选项
         add_compile_options(/O2 /DNDEBUG)
     else()
         # GCC/Clang Release配置

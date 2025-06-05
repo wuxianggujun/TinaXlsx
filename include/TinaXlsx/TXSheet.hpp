@@ -8,7 +8,7 @@
 
 #include "TXCoordinate.hpp"
 #include "TXRange.hpp"
-#include "TXCompactCell.hpp"
+#include "TXVariant.hpp"
 #include "TXTypes.hpp"
 #include "TXMergedCells.hpp"
 #include "TXWorkbook.hpp"
@@ -143,50 +143,8 @@ public:
     bool setCellValue(const std::string& address, const CellValue& value);
 
     // ==================== 单元格对象访问 ====================
-
-    /**
-     * @brief 获取单元格
-     * @param row 行号（1开始）
-     * @param col 列号（1开始）
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    TXCompactCell* getCell(row_t row, column_t col);
-
-    /**
-     * @brief 获取单元格（const版本）
-     * @param row 行号（1开始）
-     * @param col 列号（1开始）
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    const TXCompactCell* getCell(row_t row, column_t col) const;
-
-    /**
-     * @brief 获取单元格
-     * @param coord 单元格坐标
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    TXCompactCell* getCell(const Coordinate& coord);
-
-    /**
-     * @brief 获取单元格（const版本）
-     * @param coord 单元格坐标
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    const TXCompactCell* getCell(const Coordinate& coord) const;
-
-    /**
-     * @brief 获取单元格（使用A1格式）
-     * @param address 单元格地址，如"A1", "B2"
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    TXCompactCell* getCell(const std::string& address);
-
-    /**
-     * @brief 获取单元格（const版本，使用A1格式）
-     * @param address 单元格地址，如"A1", "B2"
-     * @return 单元格指针，如果不存在返回nullptr
-     */
-    const TXCompactCell* getCell(const std::string& address) const;
+    // 注意: 内存优先架构中，我们专注于值操作而非单元格对象访问
+    // 请使用 getCellValue() / setCellValue() 进行高性能操作
 
     // ==================== 行列操作 ====================
 
@@ -948,8 +906,7 @@ private:
     /**
      * @brief 获取单元格（内部实现）
      */
-    TXCompactCell* getCellInternal(const Coordinate& coord);
-    const TXCompactCell* getCellInternal(const Coordinate& coord) const;
+    // 内部单元格访问方法已移除 - 使用值导向操作
     
     /**
      * @brief 应用数字格式到单元格（内部辅助方法）
@@ -957,14 +914,14 @@ private:
      * @param numFmtId 数字格式ID
      * @return 成功返回true，失败返回false
      */
-    bool applyCellNumberFormat(TXCompactCell* cell, u32 numFmtId);
+    // applyCellNumberFormat方法已移除 - 使用值导向格式化
 
     /**
      * @brief 获取单元格当前的有效样式
      * @param cell 目标单元格
      * @return 当前的完整样式对象
      */
-    TXCellStyle getCellEffectiveStyle(TXCompactCell* cell);
+    // getCellEffectiveStyle方法已移除 - 使用值导向样式管理
     
     /**
      * @brief 更新已使用范围

@@ -15,7 +15,10 @@ TXSheet::TXSheet(const std::string& name, TXWorkbook* parentWorkbook)
     clearError();
 }
 
-TXSheet::~TXSheet() = default;
+TXSheet::~TXSheet() {
+    // 在析构前先清空workbook_指针，防止在管理器析构时访问无效指针
+    workbook_ = nullptr;
+}
 
 TXSheet::TXSheet(TXSheet&& other) noexcept
     : name_(std::move(other.name_))

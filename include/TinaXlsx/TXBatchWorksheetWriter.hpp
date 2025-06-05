@@ -11,6 +11,7 @@
 #include <map>
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
+#include "TXVariant.hpp"
 
 namespace TinaXlsx {
 
@@ -157,15 +158,15 @@ private:
     size_t bufferSize_;
     
     /**
-     * @brief 快速构建单元格XML
+     * @brief 快速构建单元格XML（使用变体值）
      */
-    void buildCellXml(const class TXCompactCell* cell, const std::string& cellRef, 
+    void buildCellXml(const TXVariant& cellValue, const std::string& cellRef, 
                      const TXWorkbookContext& context);
     
     /**
-     * @brief 快速构建行XML
+     * @brief 快速构建行XML（使用变体值）
      */
-    void buildRowXml(u32 rowNumber, const std::vector<class TXCompactCell*>& cells, 
+    void buildRowXml(u32 rowNumber, const std::vector<TXVariant>& cellValues, 
                     const TXWorkbookContext& context);
 };
 

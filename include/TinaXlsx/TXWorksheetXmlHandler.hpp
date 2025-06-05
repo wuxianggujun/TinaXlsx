@@ -12,8 +12,6 @@
 #include "TXRange.hpp"
 #include "TXTypes.hpp"
 #include "TXStreamXmlReader.hpp"
-#include "TXSIMDXmlParser.hpp"
-#include "TXBatchXMLGenerator.hpp"
 #include "TXUnifiedMemoryManager.hpp"
 #include <sstream>
 #include <iomanip>
@@ -76,7 +74,7 @@ namespace TinaXlsx
         void setPivotTables(const std::vector<std::shared_ptr<class TXPivotTable>>& pivotTables);
 
     private:
-        bool shouldUseInlineString(const std::string& str) const;
+        // shouldUseInlineString方法已删除，现在统一使用内联字符串处理
 
         /**
          * @brief 初始化批处理XML生成器
@@ -90,6 +88,36 @@ namespace TinaXlsx
          * @return 保存结果
          */
         TXResult<void> saveWithBatchProcessor(TXZipArchiveWriter& zipWriter, const TXWorkbookContext& context);
+
+        /**
+         * @brief 生成完整的工作表XML（使用批处理生成器）
+         * @param sheet 工作表对象
+         * @param rows_data 行数据
+         * @param context 工作簿上下文
+         * @return 完整的XML字符串
+         */
+        TXResult<std::string> generateCompleteWorksheetXML(
+            const TXSheet* sheet,
+            const std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>>& rows_data,
+            const TXWorkbookContext& context);
+
+        /**
+         * @brief 生成数据验证XML
+         */
+        std::string generateDataValidationsXML(const TXSheet* sheet);
+
+        /**
+         * @brief 生成自动筛选XML
+         */
+        std::string generateAutoFilterXML(const TXSheet* sheet);
+
+        /**
+         * @brief 收集工作表行数据
+         * @param sheet 工作表对象
+         * @param context 工作簿上下文
+         * @return 行数据集合
+         */
+        std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>> collectRowsData(const TXSheet* sheet, const TXWorkbookContext& context);
 
         /**
          * @brief 使用流式写入器保存（将被废弃）

@@ -5,7 +5,6 @@
 
 #include "TinaXlsx/TXSharedStringsStreamWriter.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
-#include "TinaXlsx/TXSIMDXmlEscaper.hpp"
 #include <sstream>
 #include <iomanip>
 
@@ -107,10 +106,10 @@ void TXSharedStringsStreamWriter::reset() {
     documentStarted_ = false;
 }
 
-// 🚀 性能优化：直接写入转义文本，使用SIMD加速
+// 🚀 性能优化：直接写入转义文本
 void TXSharedStringsStreamWriter::writeEscapedXmlText(const std::string& text) {
-    // 🚀 SIMD优化：使用SIMD指令快速检查是否需要转义
-    if (!TXSIMDXmlEscaper::needsEscape(text)) {
+    // 简单检查是否需要转义
+    if (text.find_first_of("<>&\"'") == std::string::npos) {
         writer_->write(text.c_str(), text.length());
         return;
     }

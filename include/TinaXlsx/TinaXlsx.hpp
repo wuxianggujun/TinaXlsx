@@ -12,9 +12,22 @@
 
 // ==================== 核心类型系统 ====================
 #include "TXTypes.hpp"         ///< 统一类型定义
+#include "TXError.hpp"         ///< 错误处理
+#include "TXResult.hpp"        ///< 结果包装
+#include "TXVariant.hpp"       ///< 通用数据类型
 #include "TXColor.hpp"         ///< 颜色处理类
 #include "TXCoordinate.hpp"    ///< 坐标类
-#include "TXRange.hpp"         ///< 范围类
+
+// ==================== 内存优先架构 (新) ====================
+#include "TXInMemorySheet.hpp"      ///< 内存优先工作表
+#include "TXBatchSIMDProcessor.hpp" ///< SIMD批量处理器
+#include "TXZeroCopySerializer.hpp" ///< 零拷贝序列化器
+#include "TXXMLTemplates.hpp"       ///< XML模板系统
+
+// ==================== 内存管理 ====================
+#include "TXSlabAllocator.hpp"      ///< Slab分配器
+#include "TXUnifiedMemoryManager.hpp" ///< 统一内存管理
+#include "TXGlobalStringPool.hpp"   ///< 全局字符串池
 
 // ==================== 样式系统 ====================
 #include "TXStyle.hpp"         ///< 完整样式系统
@@ -25,18 +38,18 @@
 #include "TXNumberFormat.hpp"  ///< 数字格式化类
 #include "TXStyleTemplate.hpp" ///< 样式模板系统（预设主题）
 
-// ==================== 核心业务类 ====================
-#include "TXCompactCell.hpp"   ///< 紧凑单元格类（内存优化版）
-#include "TXSheet.hpp"         ///< 工作表类
-#include "TXWorkbook.hpp"      ///< 工作簿类
+// ==================== 传统兼容类 ====================
+#include "TXCompactCell.hpp"   ///< 紧凑单元格类（兼容）
+#include "TXSheet.hpp"         ///< 工作表类（兼容）
+#include "TXWorkbook.hpp"      ///< 工作簿类（兼容）
 
 // ==================== 工具类 ====================
 #include "TXComponentManager.hpp" ///< 组件管理器
+#include "TXRange.hpp"         ///< 范围类
 
-// XML处理器
+// XML处理器（最小化）
 #include "TXWorksheetXmlHandler.hpp"
 #include "TXWorkbookXmlHandler.hpp"
-#include "TXStylesXmlHandler.hpp"
 #include "TXUnifiedXmlHandler.hpp"  // 统一的XML处理器
 
 /**
@@ -127,5 +140,70 @@ std::string getBuildInfo();
  * @return 特性描述字符串
  */
 std::string getSupportedFeatures();
+
+// ==================== 内存优先架构 快速API ====================
+
+/**
+ * @brief 内存优先架构配置
+ */
+struct MemoryFirstConfig {
+    bool enable_simd = true;             ///< 启用SIMD优化
+    bool enable_parallel = true;         ///< 启用并行处理  
+    size_t batch_size = 10000;          ///< 批处理大小
+    size_t memory_limit_gb = 4;         ///< 内存限制(GB)
+    bool enable_compression = true;      ///< 启用压缩
+    size_t parallel_threshold = 1000;   ///< 并行处理阈值
+};
+
+/**
+ * @brief 快速创建Excel文件 - 主要API (目标: <2ms)
+ */
+class QuickExcel {
+public:
+    /**
+     * @brief 快速创建数值表格
+     * @param data 二维数值数组
+     * @param filename 输出文件名
+     * @return 操作结果
+     */
+    static TXResult<void> createFromNumbers(
+        const std::vector<std::vector<double>>& data,
+        const std::string& filename
+    );
+    
+    /**
+     * @brief 快速创建混合数据表格  
+     * @param data 二维混合数据数组
+     * @param filename 输出文件名
+     * @return 操作结果
+     */
+    static TXResult<void> createFromData(
+        const std::vector<std::vector<TXVariant>>& data,
+        const std::string& filename
+    );
+    
+    /**
+     * @brief 从CSV快速创建Excel
+     * @param csv_content CSV内容
+     * @param filename 输出文件名
+     * @return 操作结果
+     */
+    static TXResult<void> createFromCSV(
+        const std::string& csv_content,
+        const std::string& filename
+    );
+    
+    /**
+     * @brief 内存优先工作簿别名 - 推荐使用
+     */
+    using MemoryWorkbook = TXInMemoryWorkbook;
+    using MemorySheet = TXInMemorySheet;
+};
+
+// 新架构别名（推荐使用）
+using MemoryWorkbook = TXInMemoryWorkbook;
+using MemorySheet = TXInMemorySheet;
+using SIMDProcessor = TXBatchSIMDProcessor;
+using ZeroCopySerializer = TXZeroCopySerializer;
 
 } // namespace TinaXlsx 

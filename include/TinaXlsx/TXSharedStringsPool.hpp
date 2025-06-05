@@ -9,16 +9,13 @@
 #include <string>
 #include "TXTypes.hpp"
 #include "TXGlobalStringPool.hpp"
-#include "TXCompactCell.hpp"  // 包含新的 TXStringPool
 
 namespace TinaXlsx
 {
     class TXSharedStringsPool {
     public:
-        // 性能优化：添加字符串并返回索引（使用新的字符串池）
+        // 性能优化：添加字符串并返回索引
         u32 add(const std::string& str) {
-            // 使用新的字符串池
-            uint32_t poolIndex = TXStringPool::getInstance().intern(str);
 
             // 优化：使用单次查找避免重复哈希计算
             auto [it, inserted] = m_uniqueIndexMap.try_emplace(str, static_cast<u32>(m_strings.size()));
@@ -46,20 +43,12 @@ namespace TinaXlsx
             return m_dirty; 
         }
     
-        // 🚀 重置状态（包括内存池清理）
+        // 🚀 重置状态
         void reset() {
             m_strings.clear();
             m_uniqueIndexMap.clear();
             m_frequencyMap.clear();
             m_dirty = false;
-
-            // 注意：内存池功能已移动到 TXCompactCell.hpp 中的 TXStringPool
-            TXStringPool::getInstance().clear();
-        }
-
-        // 获取内存使用统计
-        auto getMemoryStats() const {
-            return TXStringPool::getInstance().getStats();
         }
 
     private:

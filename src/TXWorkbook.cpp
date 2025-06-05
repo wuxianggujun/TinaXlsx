@@ -34,7 +34,7 @@ namespace TinaXlsx
 {
     // ==================== TXWorkbook 实现 ====================
 
-    TXWorkbook::TXWorkbook() 
+    TXWorkbook::TXWorkbook()
         : sheets_()
         , active_sheet_index_(0)
         , last_error_()
@@ -42,8 +42,8 @@ namespace TinaXlsx
         , auto_component_detection_(true)
         , style_manager_()
         , shared_strings_pool_()
-        , context_(std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_))
-        , workbook_protection_manager_() {
+        , workbook_protection_manager_()  // 先初始化workbook_protection_manager_
+        , context_(std::make_unique<TXWorkbookContext>(sheets_, style_manager_, component_manager_, shared_strings_pool_, workbook_protection_manager_)) {
         // 默认注册基础组件
         component_manager_.registerComponent(ExcelComponent::BasicWorkbook);
         // 默认注册SharedStrings组件，避免Content Types问题
@@ -60,8 +60,8 @@ namespace TinaXlsx
         , auto_component_detection_(other.auto_component_detection_)
         , style_manager_(std::move(other.style_manager_))
         , shared_strings_pool_(std::move(other.shared_strings_pool_))
-        , context_(std::move(other.context_))
-        , workbook_protection_manager_(std::move(other.workbook_protection_manager_)) {
+        , workbook_protection_manager_(std::move(other.workbook_protection_manager_))
+        , context_(std::move(other.context_)) {
     }
 
     TXWorkbook& TXWorkbook::operator=(TXWorkbook&& other) noexcept {
@@ -73,8 +73,8 @@ namespace TinaXlsx
             auto_component_detection_ = other.auto_component_detection_;
             style_manager_ = std::move(other.style_manager_);
             shared_strings_pool_ = std::move(other.shared_strings_pool_);
-            context_ = std::move(other.context_);
             workbook_protection_manager_ = std::move(other.workbook_protection_manager_);
+            context_ = std::move(other.context_);
         }
         return *this;
     }

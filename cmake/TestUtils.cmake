@@ -192,45 +192,6 @@ macro(add_performance_test test_name)
     )
 endmacro()
 
-# 创建快速测试目标（只运行关键测试）
-function(create_quick_test_target)
-    set(oneValueArgs TARGET_NAME)
-    set(multiValueArgs TESTS)
-    cmake_parse_arguments(QUICK "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if(NOT QUICK_TESTS)
-        message(WARNING "create_quick_test_target: No tests specified")
-        return()
-    endif()
-
-    # 如果没有指定目标名称，使用默认名称
-    if(NOT QUICK_TARGET_NAME)
-        set(QUICK_TARGET_NAME "RunQuickTests")
-    endif()
-
-    # 检查目标是否已经存在
-    if(TARGET ${QUICK_TARGET_NAME})
-        message(STATUS "Target ${QUICK_TARGET_NAME} already exists, skipping creation")
-        return()
-    endif()
-
-    add_custom_target(${QUICK_TARGET_NAME}
-        COMMAND echo "Running quick tests..."
-        COMMENT "Running quick tests (essential functionality)"
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-
-    foreach(test ${QUICK_TESTS})
-        add_custom_command(TARGET ${QUICK_TARGET_NAME} POST_BUILD
-            COMMAND ${test}
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            COMMENT "Running ${test}"
-        )
-        add_dependencies(${QUICK_TARGET_NAME} ${test})
-    endforeach()
-
-    message(STATUS "Created quick test target: ${QUICK_TARGET_NAME}")
-endfunction()
 
 # 打印测试配置摘要
 function(print_test_summary)
