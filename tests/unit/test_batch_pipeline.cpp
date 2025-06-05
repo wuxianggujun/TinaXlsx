@@ -8,10 +8,13 @@
 #include "TinaXlsx/TXBatchXMLGenerator.hpp"
 #include "TinaXlsx/TXAsyncProcessingFramework.hpp"
 #include "TinaXlsx/TXUnifiedMemoryManager.hpp"
+#include "TinaXlsx/TXWorkbook.hpp"
 #include "test_file_generator.hpp"
 #include <chrono>
 #include <random>
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 using namespace TinaXlsx;
 
@@ -364,4 +367,149 @@ TEST_F(BatchPipelineTest, AsyncFrameworkTest) {
     ASSERT_TRUE(stop_result.isOk()) << "异步框架停止失败";
     
     std::cout << "✅ 异步处理框架测试完成" << std::endl;
+}
+
+// ==================== 完整文件保存测试 ====================
+
+TEST_F(BatchPipelineTest, CompleteFileGenerationTest) {
+    std::cout << "\n=== 完整文件生成测试 ===" << std::endl;
+
+    // 创建工作簿并添加数据
+    TXWorkbook workbook;
+    auto sheet = workbook.createSheet("BatchTest");
+
+    // 添加测试数据
+    const size_t ROWS = 100;
+    const size_t COLS = 10;
+
+    std::cout << "生成 " << ROWS << "x" << COLS << " 测试数据..." << std::endl;
+
+    for (size_t row = 1; row <= ROWS; ++row) {
+        for (size_t col = 1; col <= COLS; ++col) {
+            if (col == 1) {
+                // 第一列：字符串
+                sheet->setCellValue(row, col, "Row_" + std::to_string(row));
+            } else if (col == 2) {
+                // 第二列：数字
+                sheet->setCellValue(row, col, static_cast<double>(row * col));
+            } else if (col == 3) {
+                // 第三列：布尔值
+                sheet->setCellValue(row, col, (row % 2) == 0);
+            } else {
+                // 其他列：混合数据
+                if ((row + col) % 3 == 0) {
+                    sheet->setCellValue(row, col, "Text_" + std::to_string(row + col));
+                } else {
+                    sheet->setCellValue(row, col, static_cast<double>(row + col));
+                }
+            }
+        }
+    }
+
+    std::cout << "✅ 测试数据生成完成" << std::endl;
+
+    // 保存文件
+    std::string filename = getOutputPath("batch_pipeline_test.xlsx");
+    std::cout << "保存文件到: " << filename << std::endl;
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    bool save_result = workbook.saveToFile(filename);
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    ASSERT_TRUE(save_result) << "文件保存失败: " << workbook.getLastError();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "✅ 文件保存成功，耗时: " << duration.count() << " ms" << std::endl;
+
+    // 验证文件存在
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.good()) << "保存的文件不存在或无法读取";
+    file.close();
+
+    // 获取文件大小
+    std::filesystem::path file_path(filename);
+    if (std::filesystem::exists(file_path)) {
+        auto file_size = std::filesystem::file_size(file_path);
+        std::cout << "文件大小: " << (file_size / 1024.0) << " KB" << std::endl;
+        EXPECT_GT(file_size, 1000) << "文件大小应该大于1KB";
+    }
+
+    std::cout << "✅ 完整文件生成测试完成" << std::endl;
+}
+
+// ==================== XML内容验证测试 ====================
+
+TEST_F(BatchPipelineTest, XMLContentValidationTest) {
+    std::cout << "\n=== XML内容验证测试 ===" << std::endl;
+
+    // 创建不同类型的测试单元格
+    std::vector<TXCompactCell> test_cells;
+
+    // 字符串单元格
+    TXCompactCell string_cell;
+    string_cell.setValue("Hello World");
+    test_cells.push_back(string_cell);
+
+    // 数字单元格
+    TXCompactCell number_cell;
+    number_cell.setValue(123.45);
+    test_cells.push_back(number_cell);
+
+    // 整数单元格
+    TXCompactCell int_cell;
+    int_cell.setValue(static_cast<int64_t>(42));
+    test_cells.push_back(int_cell);
+
+    // 布尔单元格
+    TXCompactCell bool_cell;
+    bool_cell.setValue(true);
+    test_cells.push_back(bool_cell);
+
+    // 空单元格
+    TXCompactCell empty_cell;
+    test_cells.push_back(empty_cell);
+
+    std::cout << "创建了 " << test_cells.size() << " 个不同类型的测试单元格" << std::endl;
+
+    // 生成XML并验证内容
+    for (size_t i = 0; i < test_cells.size(); ++i) {
+        auto xml_result = xml_generator_->generateCellXML(test_cells[i]);
+        ASSERT_TRUE(xml_result.isOk()) << "单元格 " << i << " XML生成失败";
+
+        std::string xml = xml_result.value();
+        std::cout << "单元格 " << i << " XML: " << xml << std::endl;
+
+        // 验证XML基本结构
+        EXPECT_TRUE(xml.find("<c") != std::string::npos) << "XML应该包含<c标签";
+        EXPECT_TRUE(xml.find("</c>") != std::string::npos) << "XML应该包含</c>标签";
+
+        // 验证非空单元格包含值
+        if (!test_cells[i].isEmpty()) {
+            EXPECT_TRUE(xml.find("<v>") != std::string::npos) << "非空单元格应该包含<v>标签";
+            EXPECT_TRUE(xml.find("</v>") != std::string::npos) << "非空单元格应该包含</v>标签";
+
+            // 验证值不是占位符
+            EXPECT_TRUE(xml.find("placeholder_value") == std::string::npos)
+                << "XML不应该包含占位符值";
+        }
+    }
+
+    // 测试批量生成
+    auto batch_xml_result = xml_generator_->generateCellsXML(test_cells);
+    ASSERT_TRUE(batch_xml_result.isOk()) << "批量XML生成失败";
+
+    std::string batch_xml = batch_xml_result.value();
+    std::cout << "\n批量生成的XML:\n" << batch_xml << std::endl;
+
+    // 验证批量XML包含所有单元格
+    size_t cell_count = 0;
+    size_t pos = 0;
+    while ((pos = batch_xml.find("<c", pos)) != std::string::npos) {
+        cell_count++;
+        pos++;
+    }
+
+    EXPECT_EQ(cell_count, test_cells.size()) << "批量XML应该包含所有单元格";
+
+    std::cout << "✅ XML内容验证测试完成" << std::endl;
 }

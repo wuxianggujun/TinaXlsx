@@ -422,16 +422,49 @@ std::string TXBatchXMLGenerator::escapeXML(const std::string& str) {
 }
 
 std::string TXBatchXMLGenerator::formatCellValue(const TXCompactCell& cell) {
-    // Simplified cell value formatting
-    // Actual implementation needs to be based on TXCompactCell's specific implementation
-    return "placeholder_value";
+    if (cell.isEmpty()) {
+        return "";
+    }
+
+    auto value = cell.getValue();
+    return std::visit([](const auto& val) -> std::string {
+        using T = std::decay_t<decltype(val)>;
+        if constexpr (std::is_same_v<T, std::monostate>) {
+            return "";
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return val;
+        } else if constexpr (std::is_same_v<T, double>) {
+            return std::to_string(val);
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return std::to_string(val);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            return val ? "1" : "0";
+        } else {
+            return "";
+        }
+    }, value);
 }
 
 std::string TXBatchXMLGenerator::generateCellAttributes(const TXCompactCell& cell) {
-    // Simplified attribute generation
-    // Actual implementation needs to be based on TXCompactCell's specific implementation
-    (void)cell; // Avoid unused parameter warning
-    return "";
+    std::string attributes;
+
+    // 添加单元格类型属性
+    if (!cell.isEmpty()) {
+        auto value = cell.getValue();
+        if (std::holds_alternative<std::string>(value)) {
+            attributes += " t=\"inlineStr\"";
+        } else if (std::holds_alternative<bool>(value)) {
+            attributes += " t=\"b\"";
+        }
+        // 数字类型不需要特殊属性
+    }
+
+    // 添加样式索引（如果有）
+    if (cell.hasStyle()) {
+        attributes += " s=\"" + std::to_string(cell.getStyleIndex()) + "\"";
+    }
+
+    return attributes;
 }
 
 TXResult<std::string> TXBatchXMLGenerator::generateXMLParallel(const std::vector<TXCompactCell>& cells) {
