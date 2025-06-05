@@ -92,9 +92,11 @@ public:
     // ==================== XML生成接口 ====================
     
     /**
-     * @brief 生成单个单元格XML
+     * @brief 生成单个单元格XML（Excel兼容格式）
+     * @param cell 单元格对象
+     * @param cellRef 单元格引用（如A1, B2等）
      */
-    TXResult<std::string> generateCellXML(const TXCompactCell& cell);
+    TXResult<std::string> generateCellXML(const TXCompactCell& cell, const std::string& cellRef);
     
     /**
      * @brief 批量生成单元格XML
@@ -102,20 +104,22 @@ public:
     TXResult<std::string> generateCellsXML(const std::vector<TXCompactCell>& cells);
     
     /**
-     * @brief 生成行XML
+     * @brief 生成行XML（Excel兼容格式）
+     * @param row_index 行索引
+     * @param cells 单元格列表（包含单元格引用和单元格对象）
      */
-    TXResult<std::string> generateRowXML(size_t row_index, const std::vector<TXCompactCell>& cells);
-    
+    TXResult<std::string> generateRowXML(size_t row_index, const std::vector<std::pair<std::string, TXCompactCell>>& cells);
+
     /**
-     * @brief 批量生成行XML
+     * @brief 批量生成行XML（Excel兼容格式）
      */
-    TXResult<std::string> generateRowsXML(const std::vector<std::pair<size_t, std::vector<TXCompactCell>>>& rows);
-    
+    TXResult<std::string> generateRowsXML(const std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>>& rows);
+
     /**
-     * @brief 生成工作表XML
+     * @brief 生成工作表XML（Excel兼容格式）
      */
     TXResult<std::string> generateWorksheetXML(const std::string& sheet_name,
-                                              const std::vector<std::pair<size_t, std::vector<TXCompactCell>>>& rows);
+                                              const std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>>& rows);
     
     /**
      * @brief 流式生成XML
@@ -126,8 +130,8 @@ public:
         ~TXXMLStream();
         
         TXResult<void> writeElement(const std::string& element, const std::string& content);
-        TXResult<void> writeCell(const TXCompactCell& cell);
-        TXResult<void> writeRow(size_t row_index, const std::vector<TXCompactCell>& cells);
+        TXResult<void> writeCell(const TXCompactCell& cell, const std::string& cellRef);
+        TXResult<void> writeRow(size_t row_index, const std::vector<std::pair<std::string, TXCompactCell>>& cells);
         TXResult<std::string> finalize();
         
     private:
@@ -283,7 +287,17 @@ private:
      * @brief 生成单元格属性
      */
     std::string generateCellAttributes(const TXCompactCell& cell);
-    
+
+    /**
+     * @brief 判断是否使用内联字符串（参考DOM方式的策略）
+     */
+    bool shouldUseInlineString(const std::string& str) const;
+
+    /**
+     * @brief 格式化浮点数为Excel兼容格式
+     */
+    std::string formatDoubleForExcel(double value) const;
+
     /**
      * @brief 并行生成XML
      */

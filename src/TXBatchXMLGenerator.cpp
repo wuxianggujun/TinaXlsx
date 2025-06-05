@@ -53,42 +53,74 @@ void TXBatchXMLGenerator::loadDefaultTemplates() {
     setTemplate("worksheet", worksheet_template);
 }
 
-TXResult<std::string> TXBatchXMLGenerator::generateCellXML(const TXCompactCell& cell) {
+TXResult<std::string> TXBatchXMLGenerator::generateCellXML(const TXCompactCell& cell, const std::string& cellRef) {
     auto start_time = std::chrono::steady_clock::now();
-    
+
     try {
         std::ostringstream& buffer = getXMLBuffer();
         buffer.str("");
         buffer.clear();
-        
-        // Generate cell XML
-        buffer << "<c";
-        
-        // Generate attributes
-        std::string attributes = generateCellAttributes(cell);
-        if (!attributes.empty()) {
-            buffer << " " << attributes;
+
+        // 🚀 生成Excel兼容的单元格XML
+        buffer << "<c r=\"" << cellRef << "\"";
+
+        // 处理样式索引
+        if (u32 styleIndex = cell.getStyleIndex(); styleIndex != 0) {
+            buffer << " s=\"" << styleIndex << "\"";
         }
-        
-        buffer << ">";
-        
-        // Generate value
-        if (!cell.isEmpty()) {
-            buffer << "<v>" << formatCellValue(cell) << "</v>";
+
+        // 获取单元格值和类型
+        const cell_value_t& value = cell.getValue();
+        const TXCompactCell::CellType cellType = cell.getType();
+
+        // 处理不同类型的单元格
+        if (cellType == TXCompactCell::CellType::String) {
+            const std::string& str = cell.getStringValue();
+
+            // 🚀 参考DOM方式的字符串处理逻辑
+            if (shouldUseInlineString(str)) {
+                // 内联字符串
+                buffer << " t=\"inlineStr\">";
+                buffer << "<is><t>" << escapeXML(str) << "</t></is>";
+            } else {
+                // 共享字符串 - 这里需要传入共享字符串池
+                // 暂时使用内联方式，后续需要支持共享字符串池
+                buffer << " t=\"inlineStr\">";
+                buffer << "<is><t>" << escapeXML(str) << "</t></is>";
+            }
         }
-        
+        else if (std::holds_alternative<double>(value)) {
+            // 浮点数类型
+            buffer << ">";
+            buffer << "<v>" << formatDoubleForExcel(std::get<double>(value)) << "</v>";
+        }
+        else if (std::holds_alternative<int64_t>(value)) {
+            // 整数类型
+            buffer << ">";
+            buffer << "<v>" << std::get<int64_t>(value) << "</v>";
+        }
+        else if (std::holds_alternative<bool>(value)) {
+            // 布尔类型
+            buffer << " t=\"b\">";
+            buffer << "<v>" << (std::get<bool>(value) ? "1" : "0") << "</v>";
+        }
+        else {
+            // 空单元格
+            buffer << ">";
+        }
+
         buffer << "</c>";
-        
+
         std::string result = buffer.str();
-        
+
         auto end_time = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-        
+
         // Update statistics
         updateStats(1, result.size(), duration);
-        
+
         return Ok(result);
-        
+
     } catch (const std::exception& e) {
         return Err<std::string>(TXErrorCode::Unknown, "Cell XML generation failed: " + std::string(e.what()));
     }
@@ -102,76 +134,77 @@ TXResult<std::string> TXBatchXMLGenerator::generateCellsXML(const std::vector<TX
     }
 }
 
-TXResult<std::string> TXBatchXMLGenerator::generateRowXML(size_t row_index, const std::vector<TXCompactCell>& cells) {
+TXResult<std::string> TXBatchXMLGenerator::generateRowXML(size_t row_index, const std::vector<std::pair<std::string, TXCompactCell>>& cells) {
     auto start_time = std::chrono::steady_clock::now();
-    
+
     try {
         std::ostringstream& buffer = getXMLBuffer();
         buffer.str("");
         buffer.clear();
-        
+
         buffer << "<row r=\"" << row_index << "\">";
-        
-        for (const auto& cell : cells) {
-            auto cell_result = generateCellXML(cell);
+
+        // 🚀 使用新的generateCellXML方法，传入单元格引用
+        for (const auto& [cellRef, cell] : cells) {
+            auto cell_result = generateCellXML(cell, cellRef);
             if (cell_result.isOk()) {
                 buffer << cell_result.value();
             }
         }
-        
+
         buffer << "</row>";
-        
+
         std::string result = buffer.str();
-        
+
         auto end_time = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-        
+
         updateStats(cells.size(), result.size(), duration);
-        
+
         return Ok(result);
-        
+
     } catch (const std::exception& e) {
         return Err<std::string>(TXErrorCode::Unknown, "Row XML generation failed: " + std::string(e.what()));
     }
 }
 
-TXResult<std::string> TXBatchXMLGenerator::generateRowsXML(const std::vector<std::pair<size_t, std::vector<TXCompactCell>>>& rows) {
+TXResult<std::string> TXBatchXMLGenerator::generateRowsXML(const std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>>& rows) {
     auto start_time = std::chrono::steady_clock::now();
-    
+
     try {
         std::ostringstream& buffer = getXMLBuffer();
         buffer.str("");
         buffer.clear();
-        
+
         size_t total_cells = 0;
-        
+
         for (const auto& row_pair : rows) {
             size_t row_index = row_pair.first;
             const auto& cells = row_pair.second;
-            
+
             auto row_result = generateRowXML(row_index, cells);
             if (row_result.isOk()) {
                 buffer << row_result.value();
                 total_cells += cells.size();
             }
         }
-        
+
         std::string result = buffer.str();
-        
+
         auto end_time = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-        
+
         updateStats(total_cells, result.size(), duration);
-        
+
         return Ok(result);
-        
+
     } catch (const std::exception& e) {
         return Err<std::string>(TXErrorCode::Unknown, "Rows XML generation failed: " + std::string(e.what()));
     }
 }
 
 TXResult<std::string> TXBatchXMLGenerator::generateWorksheetXML(const std::string& sheet_name,
-                                                               const std::vector<std::pair<size_t, std::vector<TXCompactCell>>>& rows) {
+                                                               const std::vector<std::pair<size_t, std::vector<std::pair<std::string, TXCompactCell>>>>& rows) {
     auto start_time = std::chrono::steady_clock::now();
     
     try {
@@ -421,6 +454,49 @@ std::string TXBatchXMLGenerator::escapeXML(const std::string& str) {
     return temp;
 }
 
+bool TXBatchXMLGenerator::shouldUseInlineString(const std::string& str) const {
+    // 🚀 参考DOM方式的字符串处理策略
+
+    // 策略1: 空字符串或单字符使用内联（避免共享字符串池污染）
+    if (str.empty() || str.length() == 1) return true;
+
+    // 策略2: 包含XML特殊字符的字符串使用内联（避免转义复杂性）
+    if (str.find_first_of("<>&\"'") != std::string::npos) return true;
+
+    // 策略3: 包含控制字符的字符串使用内联（避免XML解析问题）
+    if (str.find_first_of("\n\r\t") != std::string::npos) return true;
+
+    // 策略4: 非常长的字符串（>100字符）使用内联（避免共享字符串池膨胀）
+    if (str.length() > 100) return true;
+
+    // 策略5: 2-100字符的普通字符串使用共享字符串（最大化复用效果）
+    return false;
+}
+
+std::string TXBatchXMLGenerator::formatDoubleForExcel(double value) const {
+    // 🚀 使用与DOM方式相同的数字格式化
+    // 这里需要包含TXNumberUtils，暂时使用简单的格式化
+
+    // 处理特殊值
+    if (std::isnan(value)) return "0";
+    if (std::isinf(value)) return value > 0 ? "1E+308" : "-1E+308";
+
+    // 使用高精度格式化
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(15) << value;
+    std::string result = oss.str();
+
+    // 移除尾随零
+    if (result.find('.') != std::string::npos) {
+        result.erase(result.find_last_not_of('0') + 1, std::string::npos);
+        if (result.back() == '.') {
+            result.pop_back();
+        }
+    }
+
+    return result;
+}
+
 std::string TXBatchXMLGenerator::formatCellValue(const TXCompactCell& cell) {
     if (cell.isEmpty()) {
         return "";
@@ -480,8 +556,12 @@ TXResult<std::string> TXBatchXMLGenerator::generateXMLSerial(const std::vector<T
         buffer.str("");
         buffer.clear();
 
-        for (const auto& cell : cells) {
-            auto cell_result = generateCellXML(cell);
+        // ❌ 这个方法需要单元格引用，但这里没有提供
+        // 暂时生成简单的引用，或者标记为不支持
+        for (size_t i = 0; i < cells.size(); ++i) {
+            // 生成简单的单元格引用 A1, B1, C1...
+            std::string cellRef = "A" + std::to_string(i + 1);
+            auto cell_result = generateCellXML(cells[i], cellRef);
             if (cell_result.isOk()) {
                 buffer << cell_result.value();
             }
@@ -572,13 +652,13 @@ TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeElement(const std::string&
     return Ok();
 }
 
-TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeCell(const TXCompactCell& cell) {
+TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeCell(const TXCompactCell& cell, const std::string& cellRef) {
     if (finalized_) {
         return Err(TXErrorCode::Unknown, "Stream is finalized");
     }
 
     // Generate cell XML using the generator
-    auto cell_result = generator_.generateCellXML(cell);
+    auto cell_result = generator_.generateCellXML(cell, cellRef);
     if (cell_result.isOk()) {
         *stream_ << cell_result.value();
         return Ok();
@@ -587,7 +667,7 @@ TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeCell(const TXCompactCell& 
     }
 }
 
-TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeRow(size_t row_index, const std::vector<TXCompactCell>& cells) {
+TXResult<void> TXBatchXMLGenerator::TXXMLStream::writeRow(size_t row_index, const std::vector<std::pair<std::string, TXCompactCell>>& cells) {
     if (finalized_) {
         return Err(TXErrorCode::Unknown, "Stream is finalized");
     }
