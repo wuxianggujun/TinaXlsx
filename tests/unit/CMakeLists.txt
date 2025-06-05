@@ -100,6 +100,11 @@ add_executable(UnifiedMemoryManagerTests test_unified_memory_manager.cpp test_fi
 target_link_libraries(UnifiedMemoryManagerTests PRIVATE TinaXlsx gtest_main xsimd)
 configure_test_target(UnifiedMemoryManagerTests)
 
+# 15. 批处理流水线测试（第3周交付物）
+add_executable(BatchPipelineTests test_batch_pipeline.cpp test_file_generator.cpp)
+target_link_libraries(BatchPipelineTests PRIVATE TinaXlsx gtest_main xsimd)
+configure_test_target(BatchPipelineTests)
+
 # ==================== 创建统一的测试可执行文件（可选） ====================
 
 # 定义测试源文件
