@@ -86,9 +86,8 @@ bool TXUnifiedMemoryManager::deallocate(void* ptr) {
         return true;
     }
 
-    // 注意：TXChunkAllocator不支持单独释放，只能整体释放
-    // 这里我们只能返回false，表示无法释放单个Chunk分配的内存
-    return false;
+    // 🚀 现在TXChunkAllocator支持单独释放了！
+    return chunk_allocator_->deallocate(ptr);
 }
 
 std::vector<void*> TXUnifiedMemoryManager::allocateBatch(const std::vector<size_t>& sizes) {

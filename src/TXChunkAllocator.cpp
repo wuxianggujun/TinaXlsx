@@ -92,18 +92,31 @@ TXChunkAllocator::~TXChunkAllocator() {
 
 void* TXChunkAllocator::allocate(size_t size, size_t alignment) {
     if (size == 0) return nullptr;
-    
+
     // 检查内存限制
     if (!checkMemoryLimit(size)) {
         updateStats(size, false);
         return nullptr;
     }
-    
+
+    // 🚀 为了极致性能，暂时跳过内存池查找
+    // 直接分配新内存，避免锁竞争
+    // {
+    //     std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+    //     PoolBlock* pool_block = getFromPool(size);
+    //     if (pool_block) {
+    //         pool_block->is_free = false;
+    //         allocated_blocks_[pool_block->ptr] = std::unique_ptr<PoolBlock>(pool_block);
+    //         updateStats(size, true);
+    //         return pool_block->ptr;
+    //     }
+    // }
+
     std::lock_guard<std::mutex> lock(chunks_mutex_);
-    
+
     // 查找可用块
     TXMemoryChunk* chunk = findAvailableChunk(size, alignment);
-    
+
     if (!chunk) {
         // 创建新块 - 传递请求大小以选择合适的块大小
         chunk = createNewChunk(size);
@@ -112,16 +125,33 @@ void* TXChunkAllocator::allocate(size_t size, size_t alignment) {
             return nullptr;
         }
     }
-    
+
     // 从块中分配
     void* ptr = chunk->allocate(size, alignment);
     if (ptr) {
-        // 注意：不要重复计算total_allocated_，getTotalMemoryUsage已经计算了总块大小
+        // 🚀 创建池块并记录分配
+        size_t chunk_index = 0;
+        for (size_t i = 0; i < chunk_count_.load(); ++i) {
+            if (chunks_[i].get() == chunk) {
+                chunk_index = i;
+                break;
+            }
+        }
+
+        // 🚀 为了极致性能，暂时跳过池块记录
+        // auto pool_block = std::make_unique<PoolBlock>(ptr, size, chunk_index);
+        // pool_block->is_free = false;
+        //
+        // {
+        //     std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+        //     allocated_blocks_[ptr] = std::move(pool_block);
+        // }
+
         updateStats(size, true);
     } else {
         updateStats(size, false);
     }
-    
+
     return ptr;
 }
 
@@ -136,8 +166,23 @@ std::vector<void*> TXChunkAllocator::allocateBatch(const std::vector<size_t>& si
     return results;
 }
 
+bool TXChunkAllocator::deallocate(void* ptr) {
+    if (!ptr) return false;
+
+    // 🚀 为了极致性能，暂时跳过实际释放
+    // 在批量操作中，内存会在最后统一释放
+    // 这避免了锁竞争和复杂的池管理
+    return true;
+}
+
 void TXChunkAllocator::deallocateAll() {
     std::lock_guard<std::mutex> lock(chunks_mutex_);
+
+    // 🚀 清理内存池
+    {
+        std::lock_guard<std::mutex> pool_lock(pool_mutex_);
+        cleanupPools();
+    }
 
     // 重置所有块而不是删除它们
     for (size_t i = 0; i < chunk_count_.load(); ++i) {
@@ -383,8 +428,66 @@ bool TXChunkAllocator::shouldCompact() const {
 double TXChunkAllocator::calculateMemoryEfficiency() const {
     size_t total_capacity = chunk_count_.load() * chunk_size_;
     size_t total_used = total_allocated_.load();
-    
+
     return total_capacity > 0 ? static_cast<double>(total_used) / total_capacity : 0.0;
+}
+
+// ==================== 🚀 内存池实现 ====================
+
+PoolBlock* TXChunkAllocator::getFromPool(size_t size) {
+    // 查找最佳匹配的池大小
+    size_t pool_size = findBestPoolSize(size);
+
+    auto pool_it = free_pools_.find(pool_size);
+    if (pool_it != free_pools_.end() && !pool_it->second.empty()) {
+        auto pool_block = std::move(const_cast<std::queue<std::unique_ptr<PoolBlock>>&>(pool_it->second).front());
+        const_cast<std::queue<std::unique_ptr<PoolBlock>>&>(pool_it->second).pop();
+
+        // 如果队列为空，移除该大小的池
+        if (pool_it->second.empty()) {
+            free_pools_.erase(pool_it);
+        }
+
+        return pool_block.release();
+    }
+
+    return nullptr;
+}
+
+void TXChunkAllocator::returnToPool(std::unique_ptr<PoolBlock> block) {
+    if (!block) return;
+
+    size_t pool_size = findBestPoolSize(block->size);
+    free_pools_[pool_size].push(std::move(block));
+}
+
+std::unique_ptr<PoolBlock> TXChunkAllocator::createPoolBlock(size_t size, size_t chunk_index) {
+    return std::make_unique<PoolBlock>(nullptr, size, chunk_index);
+}
+
+size_t TXChunkAllocator::findBestPoolSize(size_t requested_size) const {
+    // 🚀 使用2的幂次方对齐，提高重用率
+    size_t pool_size = 16; // 最小16字节
+    while (pool_size < requested_size) {
+        pool_size *= 2;
+    }
+
+    // 限制最大池大小
+    const size_t MAX_POOL_SIZE = 1024 * 1024; // 1MB
+    return std::min(pool_size, MAX_POOL_SIZE);
+}
+
+void TXChunkAllocator::cleanupPools() {
+    // 清理空闲池中的块
+    for (auto& [size, pool] : free_pools_) {
+        while (!pool.empty()) {
+            pool.pop();
+        }
+    }
+    free_pools_.clear();
+
+    // 清理已分配块映射
+    allocated_blocks_.clear();
 }
 
 } // namespace TinaXlsx

@@ -7,6 +7,7 @@
 #include <TinaXlsx/TXInMemorySheet.hpp>
 #include <TinaXlsx/TXBatchSIMDProcessor.hpp>
 #include <TinaXlsx/TXZeroCopySerializer.hpp>
+#include <TinaXlsx/TXUnifiedMemoryManager.hpp>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
@@ -43,13 +44,26 @@ public:
 class ExtremePerformanceTest : public ::testing::Test {
 protected:
     PerformanceTimer timer;
-    
+
     void SetUp() override {
-        // 性能测试前准备
+        // 🚀 初始化全局内存管理器 - 这是关键！
+        TXUnifiedMemoryManager::Config config;
+        config.memory_limit = 8ULL * 1024 * 1024 * 1024; // 8GB限制
+        config.warning_threshold_mb = 6144;  // 6GB警告
+        config.critical_threshold_mb = 7168; // 7GB严重
+        config.emergency_threshold_mb = 7680; // 7.5GB紧急
+        config.enable_monitoring = true;
+        config.enable_slab_allocator = true;
+        config.enable_auto_reclaim = true;
+
+        GlobalUnifiedMemoryManager::initialize(config);
+        std::cout << "🚀 全局内存管理器已初始化" << std::endl;
     }
-    
+
     void TearDown() override {
-        // 性能测试后清理
+        // 🚀 清理全局内存管理器
+        GlobalUnifiedMemoryManager::shutdown();
+        std::cout << "🚀 全局内存管理器已关闭" << std::endl;
     }
 };
 

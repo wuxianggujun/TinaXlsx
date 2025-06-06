@@ -12,6 +12,9 @@
 #include <array>
 #include <cstdint>
 #include <chrono>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
 
 namespace TinaXlsx {
 
@@ -105,7 +108,20 @@ private:
 };
 
 /**
- * @brief 分块内存分配器
+ * @brief 🚀 内存池块信息
+ */
+struct PoolBlock {
+    void* ptr;              // 内存指针
+    size_t size;            // 块大小
+    bool is_free;           // 是否空闲
+    size_t chunk_index;     // 所属chunk索引
+
+    PoolBlock(void* p, size_t s, size_t chunk_idx)
+        : ptr(p), size(s), is_free(true), chunk_index(chunk_idx) {}
+};
+
+/**
+ * @brief 🚀 分块内存分配器 - 支持内存池和单独释放
  */
 class TXChunkAllocator {
 public:
@@ -149,7 +165,14 @@ public:
      * @brief 批量分配
      */
     std::vector<void*> allocateBatch(const std::vector<size_t>& sizes);
-    
+
+    /**
+     * @brief 🚀 释放单个内存块 - 支持内存池重用
+     * @param ptr 要释放的内存指针
+     * @return 是否成功释放
+     */
+    bool deallocate(void* ptr);
+
     /**
      * @brief 释放所有内存
      */
@@ -267,6 +290,11 @@ private:
     
     // 线程安全
     mutable std::mutex chunks_mutex_;
+
+    // 🚀 内存池管理
+    std::unordered_map<void*, std::unique_ptr<PoolBlock>> allocated_blocks_; // 已分配块映射
+    std::unordered_map<size_t, std::queue<std::unique_ptr<PoolBlock>>> free_pools_; // 按大小分类的空闲池
+    mutable std::mutex pool_mutex_; // 内存池互斥锁
     
     // ==================== 内部方法 ====================
     
@@ -299,6 +327,33 @@ private:
      * @brief 计算内存效率
      */
     double calculateMemoryEfficiency() const;
+
+    // 🚀 内存池相关方法
+
+    /**
+     * @brief 从内存池获取空闲块
+     */
+    PoolBlock* getFromPool(size_t size);
+
+    /**
+     * @brief 将块返回到内存池
+     */
+    void returnToPool(std::unique_ptr<PoolBlock> block);
+
+    /**
+     * @brief 创建新的池块
+     */
+    std::unique_ptr<PoolBlock> createPoolBlock(size_t size, size_t chunk_index);
+
+    /**
+     * @brief 查找最佳匹配的池块大小
+     */
+    size_t findBestPoolSize(size_t requested_size) const;
+
+    /**
+     * @brief 清理内存池
+     */
+    void cleanupPools();
 };
 
 // ==================== 模板实现 ====================

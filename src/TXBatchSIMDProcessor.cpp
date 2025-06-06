@@ -12,6 +12,7 @@
 #include <numeric>
 #include <immintrin.h>
 #include <chrono>
+#include <cstring>
 
 namespace TinaXlsx {
 
@@ -20,9 +21,7 @@ TXBatchSIMDProcessor::BatchPerformanceStats TXBatchSIMDProcessor::performance_st
 
 // ==================== TXCompactCellBuffer 实现 ====================
 
-TXCompactCellBuffer::TXCompactCellBuffer(size_t initial_capacity) {
-    reserve(initial_capacity);
-}
+// 构造函数已移至头文件中的内联实现
 
 void TXCompactCellBuffer::reserve(size_t new_capacity) {
     if (new_capacity <= capacity) return;
@@ -96,12 +95,12 @@ void TXCompactCellBuffer::sort_by_coordinates() {
         temp_types[i] = cell_types[old_idx];
     }
     
-    // 移动回原始容器
-    number_values = std::move(temp_numbers);
-    string_indices = std::move(temp_strings);
-    style_indices = std::move(temp_styles);
-    coordinates = std::move(temp_coords);
-    cell_types = std::move(temp_types);
+    // 🚀 高性能移动回原始容器 - 使用assign避免类型不匹配
+    number_values.assign(temp_numbers.begin(), temp_numbers.end());
+    string_indices.assign(temp_strings.begin(), temp_strings.end());
+    style_indices.assign(temp_styles.begin(), temp_styles.end());
+    coordinates.assign(temp_coords.begin(), temp_coords.end());
+    cell_types.assign(temp_types.begin(), temp_types.end());
     
     is_sorted = true;
 }
@@ -112,15 +111,10 @@ void TXBatchSIMDProcessor::batchCreateNumberCells(
     const double* values,
     TXCompactCellBuffer& buffer,
     const uint32_t* coordinates,
-    size_t count
+    size_t count,
+    size_t start_idx
 ) {
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    // 保存旧的size作为起始索引
-    const size_t start_idx = buffer.size;
-
-    // 确保有足够空间 - 使用resize而不是reserve
-    buffer.resize(buffer.size + count);
+    // 🚀 极致性能版本：跳过所有检查和统计，直接处理
 
     // 检测是否可以使用SIMD
     bool use_simd = is_memory_aligned(values) && count >= 8;
@@ -130,12 +124,6 @@ void TXBatchSIMDProcessor::batchCreateNumberCells(
     } else {
         batchCreateNumberCellsScalar(values, buffer, coordinates, count, start_idx);
     }
-
-    // size已经在resize中更新了，不需要再次更新
-    
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-    update_performance_stats(count, duration.count() / 1000.0);
 }
 
 void TXBatchSIMDProcessor::batchCreateNumberCellsSIMD(
@@ -150,21 +138,29 @@ void TXBatchSIMDProcessor::batchCreateNumberCellsSIMD(
 
     const size_t simd_end = (count / simd_size) * simd_size;
     
-    // SIMD批量处理
+    // 🚀 优化的SIMD批量处理 - 减少内存访问
     for (size_t i = 0; i < simd_end; i += simd_size) {
         // 加载数值
         auto values_simd = xsimd::load_unaligned(&values[i]);
-        
+
         // 存储数值
         values_simd.store_unaligned(&buffer.number_values[start_idx + i]);
-        
-        // 处理坐标和类型 (标量操作，因为需要类型转换)
-        for (size_t j = 0; j < simd_size && (i + j) < count; ++j) {
-            buffer.coordinates[start_idx + i + j] = coordinates[i + j];
-            buffer.cell_types[start_idx + i + j] = static_cast<uint8_t>(TXCellType::Number);
-            buffer.string_indices[start_idx + i + j] = 0; // 不是字符串
-            buffer.style_indices[start_idx + i + j] = 0;  // 默认样式
-        }
+
+        // 🚀 批量设置固定值 - 使用memset优化
+        const size_t batch_size = std::min(simd_size, count - i);
+        const size_t base_idx = start_idx + i;
+
+        // 批量复制坐标
+        std::memcpy(&buffer.coordinates[base_idx], &coordinates[i], batch_size * sizeof(uint32_t));
+
+        // 批量设置类型为Number
+        std::memset(&buffer.cell_types[base_idx], static_cast<uint8_t>(TXCellType::Number), batch_size);
+
+        // 批量设置字符串索引为0
+        std::memset(&buffer.string_indices[base_idx], 0, batch_size * sizeof(uint32_t));
+
+        // 批量设置样式索引为0
+        std::memset(&buffer.style_indices[base_idx], 0, batch_size * sizeof(uint16_t));
     }
     
     // 处理剩余元素
@@ -184,14 +180,22 @@ void TXBatchSIMDProcessor::batchCreateNumberCellsScalar(
     size_t count,
     size_t start_idx
 ) {
-    
-    for (size_t i = 0; i < count; ++i) {
-        buffer.number_values[start_idx + i] = values[i];
-        buffer.coordinates[start_idx + i] = coordinates[i];
-        buffer.cell_types[start_idx + i] = static_cast<uint8_t>(TXCellType::Number);
-        buffer.string_indices[start_idx + i] = 0;
-        buffer.style_indices[start_idx + i] = 0;
-    }
+
+    // 🚀 优化的标量处理 - 批量内存操作
+    // 批量复制数值
+    std::memcpy(&buffer.number_values[start_idx], values, count * sizeof(double));
+
+    // 批量复制坐标
+    std::memcpy(&buffer.coordinates[start_idx], coordinates, count * sizeof(uint32_t));
+
+    // 批量设置类型
+    std::memset(&buffer.cell_types[start_idx], static_cast<uint8_t>(TXCellType::Number), count);
+
+    // 批量设置字符串索引
+    std::memset(&buffer.string_indices[start_idx], 0, count * sizeof(uint32_t));
+
+    // 批量设置样式索引
+    std::memset(&buffer.style_indices[start_idx], 0, count * sizeof(uint16_t));
 }
 
 void TXBatchSIMDProcessor::batchCreateStringCells(
@@ -485,7 +489,9 @@ void TXBatchSIMDProcessor::fillRange(
     std::vector<double> values(fill_count, value);
 
     // 使用批量创建方法（它会自动处理buffer的resize）
-    batchCreateNumberCells(values.data(), buffer, coords.data(), fill_count);
+    size_t start_idx = buffer.size;
+    buffer.resize(buffer.size + fill_count);
+    batchCreateNumberCells(values.data(), buffer, coords.data(), fill_count, start_idx);
     
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
@@ -604,12 +610,12 @@ bool TXBatchSIMDProcessor::is_memory_aligned(const void* ptr, size_t alignment) 
     return reinterpret_cast<uintptr_t>(ptr) % alignment == 0;
 }
 
-void TXBatchSIMDProcessor::ensure_simd_alignment(std::vector<double>& vec) {
-    // 现代C++标准库通常已经提供了足够的对齐
-    // 这里主要是确保大小是SIMD长度的倍数
+void TXBatchSIMDProcessor::ensure_simd_alignment(TXVector<double>& vec) {
+    // 🚀 确保TXVector的SIMD对齐
+    // TXVector已经在内部处理了SIMD对齐，这里主要是确保大小是SIMD长度的倍数
     using simd_type = xsimd::simd_type<double>;
     constexpr size_t simd_size = simd_type::size;
-    
+
     size_t remainder = vec.size() % simd_size;
     if (remainder != 0) {
         vec.resize(vec.size() + (simd_size - remainder), 0.0);
@@ -624,14 +630,14 @@ size_t TXBatchSIMDProcessor::round_up_to_simd_size(size_t size) {
 }
 
 void TXBatchSIMDProcessor::warmupSIMD(size_t warmup_size) {
-    // 预热SIMD管道
+    // 🚀 预热SIMD管道 - 使用全局内存管理器
     std::vector<double> warmup_data(warmup_size, 1.0);
     std::vector<uint32_t> warmup_coords(warmup_size);
-    TXCompactCellBuffer warmup_buffer(warmup_size);
-    
+    TXCompactCellBuffer warmup_buffer(GlobalUnifiedMemoryManager::getInstance(), warmup_size);
+
     std::iota(warmup_coords.begin(), warmup_coords.end(), 0);
-    
-    batchCreateNumberCells(warmup_data.data(), warmup_buffer, warmup_coords.data(), warmup_size);
+
+    batchCreateNumberCells(warmup_data.data(), warmup_buffer, warmup_coords.data(), warmup_size, 0);
 }
 
 // ==================== 性能监控实现 ====================
@@ -685,33 +691,74 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
             sheet.reserve(sheet.getCellCount() + total_cells);
         }
         
-        // 准备批量数据
-        std::vector<TXVariant> all_variants;
-        std::vector<TXCoordinate> all_coords;
-        all_variants.reserve(total_cells);
-        all_coords.reserve(total_cells);
-        
-        // 展开二维数据
+        // 🚀 优化策略：按类型分离数据，避免混合处理
+        std::vector<TXCoordinate> number_coords, string_coords;
+        std::vector<double> numbers;
+        std::vector<std::string> strings;
+
+        // 预估容量
+        number_coords.reserve(total_cells / 2);
+        string_coords.reserve(total_cells / 2);
+        numbers.reserve(total_cells / 2);
+        strings.reserve(total_cells / 2);
+
+        // 按类型分离数据 - 避免TXVariant的性能开销
         for (size_t row_idx = 0; row_idx < data.size(); ++row_idx) {
             const auto& row = data[row_idx];
             for (size_t col_idx = 0; col_idx < row.size(); ++col_idx) {
-                if (!options.skip_empty_cells || !row[col_idx].isEmpty()) {
-                    all_variants.push_back(row[col_idx]);
-                    all_coords.emplace_back(
-                        row_t(start_coord.getRow().index() + static_cast<uint32_t>(row_idx)),
-                        column_t(start_coord.getCol().index() + static_cast<uint32_t>(col_idx))
-                    );
+                const auto& variant = row[col_idx];
+
+                if (options.skip_empty_cells && variant.isEmpty()) {
+                    continue;
+                }
+
+                TXCoordinate coord(
+                    row_t(start_coord.getRow().index() + static_cast<uint32_t>(row_idx)),
+                    column_t(start_coord.getCol().index() + static_cast<uint32_t>(col_idx))
+                );
+
+                // 快速类型检测和分离
+                switch (variant.getType()) {
+                    case TXVariant::Type::Number:
+                        number_coords.push_back(coord);
+                        numbers.push_back(variant.getNumber());
+                        break;
+                    case TXVariant::Type::String:
+                        string_coords.push_back(coord);
+                        strings.push_back(variant.getString());
+                        break;
+                    case TXVariant::Type::Boolean:
+                        number_coords.push_back(coord);
+                        numbers.push_back(variant.getBoolean() ? 1.0 : 0.0);
+                        break;
+                    default:
+                        // 跳过空单元格或未知类型
+                        break;
                 }
             }
         }
-        
-        // 批量设置
-        // **FIX:** 正确处理TXResult的返回
-        auto result = sheet.setBatchMixed(all_coords, all_variants);
-        if(result.isError()) {
-            return Err<size_t>(result.error());
+
+        size_t total_processed = 0;
+
+        // 🚀 批量处理数值 - 使用SIMD优化
+        if (!numbers.empty()) {
+            auto number_result = sheet.setBatchNumbers(number_coords, numbers);
+            if (number_result.isError()) {
+                return Err<size_t>(number_result.error());
+            }
+            total_processed += number_result.value();
         }
-        return Ok(result.value());
+
+        // 🚀 批量处理字符串 - 使用字符串池优化
+        if (!strings.empty()) {
+            auto string_result = sheet.setBatchStrings(string_coords, strings);
+            if (string_result.isError()) {
+                return Err<size_t>(string_result.error());
+            }
+            total_processed += string_result.value();
+        }
+
+        return Ok(total_processed);
         
     } catch (const std::exception& e) {
         return Err<size_t>(TXErrorCode::InvalidData, e.what());

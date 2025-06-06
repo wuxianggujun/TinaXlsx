@@ -477,7 +477,7 @@ private:
  */
 class TXInMemoryWorkbook {
 private:
-    TXUnifiedMemoryManager memory_manager_;   // 内存管理器
+    // 🚀 移除独立的内存管理器，直接使用全局实例
     TXGlobalStringPool& string_pool_;        // 全局字符串池引用
     std::vector<std::unique_ptr<TXInMemorySheet>> sheets_; // 工作表列表
     std::string filename_;                   // 文件名
@@ -550,6 +550,11 @@ private:
      * @brief 生成xl/_rels/workbook.xml.rels
      */
     std::string generateWorkbookRelsXML(size_t sheet_count);
+
+    /**
+     * @brief 估算文件大小以优化内存分配
+     */
+    size_t estimateFileSize() const;
 
 public:
     

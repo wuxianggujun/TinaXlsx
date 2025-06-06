@@ -10,6 +10,8 @@
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
 #include "TXRange.hpp"
+#include "TXUnifiedMemoryManager.hpp"
+#include "TXVector.hpp"
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -20,28 +22,99 @@ namespace TinaXlsx {
 // 前向声明 (Forward declarations)
 // 保持前向声明以避免头文件循环依赖
 class TXGlobalStringPool;
-class TXInMemorySheet; 
+class TXInMemorySheet;
 struct TXCellStats;
 
 /**
- * @brief 紧凑单元格缓冲区 - SoA(结构体数组)设计，SIMD友好
+ * @brief 🚀 高性能自定义分配器 - 使用TXUnifiedMemoryManager
+ */
+template<typename T>
+class TXHighPerformanceAllocator {
+public:
+    using value_type = T;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using reference = T&;
+    using const_reference = const T&;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    template<typename U>
+    struct rebind {
+        using other = TXHighPerformanceAllocator<U>;
+    };
+
+    TXHighPerformanceAllocator() = default;
+
+    template<typename U>
+    TXHighPerformanceAllocator(const TXHighPerformanceAllocator<U>&) noexcept {}
+
+    pointer allocate(size_type n) {
+        if (n == 0) return nullptr;
+
+        size_type bytes = n * sizeof(T);
+        void* ptr = GlobalUnifiedMemoryManager::allocate(bytes);
+
+        if (!ptr) {
+            throw std::bad_alloc();
+        }
+
+        return static_cast<pointer>(ptr);
+    }
+
+    void deallocate(pointer p, size_type) noexcept {
+        if (p) {
+            GlobalUnifiedMemoryManager::deallocate(p);
+        }
+    }
+
+    template<typename U>
+    bool operator==(const TXHighPerformanceAllocator<U>&) const noexcept {
+        return true;
+    }
+
+    template<typename U>
+    bool operator!=(const TXHighPerformanceAllocator<U>&) const noexcept {
+        return false;
+    }
+};
+
+// 🚀 高性能vector类型定义
+template<typename T>
+using TXHighPerformanceVector = std::vector<T, TXHighPerformanceAllocator<T>>;
+
+/**
+ * @brief 🚀 紧凑单元格缓冲区 - SoA(结构体数组)设计，SIMD友好，使用高性能TXVector
  */
 struct TXCompactCellBuffer {
-    // 核心数据 - 连续内存布局，SIMD优化
-    std::vector<double> number_values;        // 数值数据 (8字节对齐)
-    std::vector<uint32_t> string_indices;    // 字符串索引 (4字节)
-    std::vector<uint16_t> style_indices;     // 样式索引 (2字节)
-    std::vector<uint32_t> coordinates;       // 压缩坐标 (row << 16 | col)
-    std::vector<uint8_t> cell_types;         // 单元格类型 (1字节)
+    // 🚀 核心数据 - 使用TXVector，连续内存布局，SIMD优化，完美内存管理器集成
+    TXVector<double> number_values;        // 数值数据 (8字节对齐)
+    TXVector<uint32_t> string_indices;    // 字符串索引 (4字节)
+    TXVector<uint16_t> style_indices;     // 样式索引 (2字节)
+    TXVector<uint32_t> coordinates;       // 压缩坐标 (row << 16 | col)
+    TXVector<uint8_t> cell_types;         // 单元格类型 (1字节)
     
     // 元数据
     size_t capacity = 0;                      // 容量
     size_t size = 0;                         // 当前大小
     bool is_sorted = false;                   // 是否按坐标排序
     
-    // 构造函数
-    TXCompactCellBuffer() = default;
-    explicit TXCompactCellBuffer(size_t initial_capacity);
+    // 🚀 构造函数 - 需要内存管理器
+    explicit TXCompactCellBuffer(TXUnifiedMemoryManager& memory_manager)
+        : number_values(memory_manager)
+        , string_indices(memory_manager)
+        , style_indices(memory_manager)
+        , coordinates(memory_manager)
+        , cell_types(memory_manager) {}
+
+    TXCompactCellBuffer(TXUnifiedMemoryManager& memory_manager, size_t initial_capacity)
+        : number_values(memory_manager, initial_capacity)
+        , string_indices(memory_manager, initial_capacity)
+        , style_indices(memory_manager, initial_capacity)
+        , coordinates(memory_manager, initial_capacity)
+        , cell_types(memory_manager, initial_capacity) {
+        capacity = initial_capacity;
+    }
     
     // 内存管理
     void reserve(size_t new_capacity);
@@ -112,7 +185,8 @@ public:
         const double* values,
         TXCompactCellBuffer& buffer,
         const uint32_t* coordinates,
-        size_t count
+        size_t count,
+        size_t start_idx
     );
     
     /**
@@ -348,7 +422,7 @@ private:
 
     // SIMD工具函数
     static bool is_memory_aligned(const void* ptr, size_t alignment = 16);
-    static void ensure_simd_alignment(std::vector<double>& vec);
+    static void ensure_simd_alignment(TXVector<double>& vec);
     static size_t round_up_to_simd_size(size_t size);
     
     // 性能监控
