@@ -8,6 +8,7 @@
 #include "TXInMemorySheet.hpp"
 #include "TXUnifiedMemoryManager.hpp"
 #include "TXResult.hpp"
+#include "TXXMLTemplates.hpp"
 #include <vector>
 #include <string>
 #include <fmt/format.h>
@@ -393,119 +394,9 @@ private:
     void updateStats(size_t cells_processed, size_t bytes_written, double time_ms);
 };
 
-/**
- * @brief 预编译XML模板管理器
- */
-class TXCompiledXMLTemplates {
-public:
-    // 工作表模板
-    static constexpr const char* WORKSHEET_HEADER = 
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-        "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
-        "<sheetData>";
-    
-    static constexpr const char* WORKSHEET_FOOTER = 
-        "</sheetData></worksheet>";
-    
-    // 行模板
-    static constexpr const char* ROW_START = "<row r=\"{}\">";
-    static constexpr const char* ROW_END = "</row>";
-    
-    // 单元格模板
-    static constexpr const char* CELL_NUMBER = "<c r=\"{}\" t=\"n\"><v>{}</v></c>";
-    static constexpr const char* CELL_INLINE_STRING = "<c r=\"{}\" t=\"inlineStr\"><is><t>{}</t></is></c>";
-    static constexpr const char* CELL_STRING = "<c r=\"{}\" t=\"str\"><v>{}</v></c>";
-    static constexpr const char* CELL_FORMULA = "<c r=\"{}\" t=\"str\"><f>{}</f><v>{}</v></c>";
-    
-    // 共享字符串模板
-    static constexpr const char* SHARED_STRINGS_HEADER =
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-        "<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">";
-    
-    static constexpr const char* SHARED_STRINGS_FOOTER = "</sst>";
-    static constexpr const char* SHARED_STRING_ITEM = "<si><t>{}</t></si>";
-    
-    // 工作簿模板
-    static constexpr const char* WORKBOOK_HEADER =
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
-        "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
-        "<sheets>";
-    
-    static constexpr const char* WORKBOOK_FOOTER = "</sheets></workbook>";
-    static constexpr const char* SHEET_ENTRY = "<sheet name=\"{}\" sheetId=\"{}\" r:id=\"rId{}\"/>";
-    
-    /**
-     * @brief 快速模板应用 - 编译时优化
-     */
-    template<typename... Args>
-    static std::string applyTemplate(const char* template_str, Args&&... args) {
-        return fmt::format(template_str, std::forward<Args>(args)...);
-    }
-    
-    /**
-     * @brief 批量模板应用
-     */
-    template<typename... Args>
-    static void applyTemplateToBuffer(
-        std::string& buffer, 
-        const char* template_str, 
-        Args&&... args
-    ) {
-        fmt::format_to(std::back_inserter(buffer), template_str, std::forward<Args>(args)...);
-    }
-};
 
-/**
- * @brief 🚀 流式ZIP写入器 - Excel文件最终组装
- */
-class TXStreamingZipWriter {
-private:
-    std::vector<uint8_t> zip_buffer_;        // ZIP缓冲区
-    std::vector<struct ZipEntry> entries_;   // ZIP条目列表
-    
-    struct ZipEntry {
-        std::string filename;
-        std::vector<uint8_t> data;
-        uint32_t crc32;
-        size_t compressed_size;
-        size_t uncompressed_size;
-    };
 
-public:
-    /**
-     * @brief 构造函数
-     */
-    TXStreamingZipWriter();
-    
-    /**
-     * @brief 添加文件到ZIP
-     * @param filename 文件名
-     * @param data 文件数据
-     */
-    void addFile(const std::string& filename, std::vector<uint8_t> data);
-    
-    /**
-     * @brief 添加文件到ZIP (零拷贝)
-     * @param filename 文件名
-     * @param data 文件数据视图
-     */
-    void addFile(const std::string& filename, const std::vector<uint8_t>& data);
-    
-    /**
-     * @brief 生成最终ZIP文件
-     * @return ZIP文件数据
-     */
-    std::vector<uint8_t> generateZip();
-    
-    /**
-     * @brief 获取ZIP大小
-     */
-    size_t getZipSize() const;
 
-private:
-    uint32_t calculateCRC32(const uint8_t* data, size_t size);
-    std::vector<uint8_t> compressData(const uint8_t* data, size_t size);
-};
 
 } // namespace TinaXlsx
  

@@ -7,11 +7,14 @@
 #include "TinaXlsx/TXZeroCopySerializer.hpp"
 #include "TinaXlsx/TXBatchSIMDProcessor.hpp"
 #include "TinaXlsx/TXGlobalStringPool.hpp"
+#include "TinaXlsx/TXZipArchive.hpp"
 #include <algorithm>
 #include <chrono>
 #include <sstream>
 #include <fstream>
 #include <map>
+#include <cstdio>
+#include <cstdlib>
 
 namespace TinaXlsx {
 
@@ -817,7 +820,11 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
         TXZeroCopySerializer serializer(memory_manager_);
         
         // 序列化所有工作表
-        TXStreamingZipWriter zip_writer;
+        TXZipArchiveWriter zip_writer;
+        auto open_result = zip_writer.open(output_filename);
+        if (open_result.isError()) {
+            return TXResult<void>(open_result.error());
+        }
         
         for (size_t i = 0; i < sheets_.size(); ++i) {
             auto& sheet = *sheets_[i];
@@ -831,8 +838,11 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             
             // 添加到ZIP
             std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
-            auto serialized_data = std::move(serializer).getResult();
-            zip_writer.addFile(sheet_filename, static_cast<std::vector<uint8_t>>(std::move(serialized_data)));
+            auto result_data = std::move(serializer).getResult();
+            auto write_result = zip_writer.write(sheet_filename, result_data);
+            if (write_result.isError()) {
+                return TXResult<void>(write_result.error());
+            }
         }
         
         // 序列化共享字符串
@@ -840,7 +850,10 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
         auto shared_strings_result = serializer.serializeSharedStrings(string_pool_);
         if (shared_strings_result.isOk()) {
             auto shared_strings_data = std::move(serializer).getResult();
-            zip_writer.addFile("xl/sharedStrings.xml", static_cast<std::vector<uint8_t>>(std::move(shared_strings_data)));
+            auto write_result = zip_writer.write("xl/sharedStrings.xml", shared_strings_data);
+            if (write_result.isError()) {
+                return TXResult<void>(write_result.error());
+            }
         }
         
         // 序列化工作簿
@@ -852,19 +865,14 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
         auto workbook_result = serializer.serializeWorkbook(sheet_names);
         if (workbook_result.isOk()) {
             auto workbook_data = std::move(serializer).getResult();
-            zip_writer.addFile("xl/workbook.xml", static_cast<std::vector<uint8_t>>(std::move(workbook_data)));
+            auto write_result = zip_writer.write("xl/workbook.xml", workbook_data);
+            if (write_result.isError()) {
+                return TXResult<void>(write_result.error());
+            }
         }
         
-        // 生成最终Excel文件
-        auto excel_data = zip_writer.generateZip();
-        
-        // 写入文件
-        std::ofstream file(output_filename, std::ios::binary);
-        if (!file) {
-            return TXResult<void>(TXError(TXErrorCode::OperationFailed, "无法创建输出文件"));
-        }
-        
-        file.write(reinterpret_cast<const char*>(excel_data.data()), excel_data.size());
+        // 关闭ZIP文件
+        zip_writer.close();
         
         // 标记所有工作表为已保存
         for (auto& sheet : sheets_) {
@@ -881,27 +889,39 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
 
 TXResult<std::vector<uint8_t>> TXInMemoryWorkbook::serializeToMemory() {
     try {
-        TXZeroCopySerializer serializer(memory_manager_);
-        TXStreamingZipWriter zip_writer;
-        
-        // 序列化所有组件（同saveToFile逻辑）
-        for (size_t i = 0; i < sheets_.size(); ++i) {
-            serializer.clear();
-            auto result = sheets_[i]->serializeToMemory(serializer);
-            if (!result.isOk()) {
-                return TXResult<std::vector<uint8_t>>(result.error());
-            }
-            
-            std::string filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
-            auto data = std::move(serializer).getResult();
-            zip_writer.addFile(filename, static_cast<std::vector<uint8_t>>(std::move(data)));
+        // 使用临时文件进行序列化
+        std::string temp_filename = std::tmpnam(nullptr);
+        temp_filename += ".xlsx";
+
+        // 先保存到临时文件
+        auto save_result = saveToFile(temp_filename);
+        if (!save_result.isOk()) {
+            return TXResult<std::vector<uint8_t>>(save_result.error());
         }
-        
-        auto excel_data = zip_writer.generateZip();
+
+        // 读取临时文件内容
+        std::ifstream file(temp_filename, std::ios::binary);
+        if (!file) {
+            return TXResult<std::vector<uint8_t>>(TXError(TXErrorCode::OperationFailed, "无法读取临时文件"));
+        }
+
+        // 获取文件大小
+        file.seekg(0, std::ios::end);
+        size_t file_size = file.tellg();
+        file.seekg(0, std::ios::beg);
+
+        // 读取文件内容
+        std::vector<uint8_t> excel_data(file_size);
+        file.read(reinterpret_cast<char*>(excel_data.data()), file_size);
+        file.close();
+
+        // 删除临时文件
+        std::remove(temp_filename.c_str());
+
         return TXResult<std::vector<uint8_t>>(std::move(excel_data));
-        
+
     } catch (const std::exception& e) {
-        return TXResult<std::vector<uint8_t>>(TXError(TXErrorCode::SerializationError, 
+        return TXResult<std::vector<uint8_t>>(TXError(TXErrorCode::SerializationError,
                                                     std::string("内存序列化失败: ") + e.what()));
     }
 }

@@ -17,9 +17,11 @@
 
 namespace TinaXlsx {
 
-// 前向声明
+// 前向声明 (Forward declarations)
+// 保持前向声明以避免头文件循环依赖
 class TXGlobalStringPool;
-class TXInMemorySheet;
+class TXInMemorySheet; 
+struct TXCellStats;
 
 /**
  * @brief 紧凑单元格缓冲区 - SoA(结构体数组)设计，SIMD友好
@@ -89,8 +91,7 @@ struct TXImportOptions {
 
 /**
  * @brief 🚀 批量SIMD处理器 - 核心性能组件
- * 
- * 实现极致性能的批量操作：
+ * * 实现极致性能的批量操作：
  * - 批量单元格创建 (SIMD优化)
  * - 批量数据转换 (SIMD优化)
  * - 批量坐标处理 (SIMD优化)
@@ -329,16 +330,22 @@ private:
         const double* values,
         TXCompactCellBuffer& buffer,
         const uint32_t* coordinates,
-        size_t count
+        size_t count,
+        size_t start_idx
     );
-    
+
     static void batchCreateNumberCellsScalar(
         const double* values,
         TXCompactCellBuffer& buffer,
         const uint32_t* coordinates,
-        size_t count
+        size_t count,
+        size_t start_idx
     );
     
+    // 内部统计实现
+    // **FIX:** 添加 batchSumNumbers 的函数声明
+    static void batchSumNumbers(const TXCompactCellBuffer& buffer, TXCellStats& stats);
+
     // SIMD工具函数
     static bool is_memory_aligned(const void* ptr, size_t alignment = 16);
     static void ensure_simd_alignment(std::vector<double>& vec);
@@ -409,4 +416,4 @@ public:
     );
 };
 
-} // namespace TinaXlsx 
+} // namespace TinaXlsx

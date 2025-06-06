@@ -38,19 +38,12 @@
 #include "TXNumberFormat.hpp"  ///< 数字格式化类
 #include "TXStyleTemplate.hpp" ///< 样式模板系统（预设主题）
 
-// ==================== 传统兼容类 ====================
-// 传统单元格类已删除，使用新的内存优先架构
-#include "TXSheet.hpp"         ///< 工作表类（兼容）
-#include "TXWorkbook.hpp"      ///< 工作簿类（兼容）
 
 // ==================== 工具类 ====================
 #include "TXComponentManager.hpp" ///< 组件管理器
 #include "TXRange.hpp"         ///< 范围类
 
-// XML处理器（最小化）
-#include "TXWorksheetXmlHandler.hpp"
-#include "TXWorkbookXmlHandler.hpp"
-#include "TXUnifiedXmlHandler.hpp"  // 统一的XML处理器
+// 注意：传统XML处理器已被TXZeroCopySerializer替代
 
 /**
  * @namespace TinaXlsx
@@ -86,11 +79,11 @@ namespace Features {
 }
 
 /**
- * @brief 快速使用别名
+ * @brief 快速使用别名 - 新架构
  */
-using Workbook = TXWorkbook;
-using Sheet = TXSheet;
-using Cell = TXCompactCell;  // 使用内存优化的紧凑单元格
+using Workbook = TXInMemoryWorkbook;  // 使用内存优先工作簿
+using Sheet = TXInMemorySheet;        // 使用内存优先工作表
+// 注意：新架构中不再有独立的Cell类，使用TXCompactCellBuffer进行批量操作
 using Style = TXCellStyle;
 using Color = TXColor;
 using Coordinate = TXCoordinate;

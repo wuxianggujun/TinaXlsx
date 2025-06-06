@@ -1,5 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
-project(TinaXlsx VERSION 2.1 LANGUAGES CXX)
+project(TinaXlsx LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) 
+
+# 设置项目版本
+set(TINAXLSX_VERSION_MAJOR 2)
+set(TINAXLSX_VERSION_MINOR 1)
+set(TINAXLSX_VERSION_PATCH 0)
+set(TINAXLSX_VERSION "${TINAXLSX_VERSION_MAJOR}.${TINAXLSX_VERSION_MINOR}.${TINAXLSX_VERSION_PATCH}")
+
 
 # 添加cmake模块路径
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -85,6 +96,8 @@ set(CORE_SOURCES
     src/TXGlobalStringPool.cpp        # 字符串池
     src/TXUnifiedMemoryManager.cpp    # 统一内存管理
     src/TXSlabAllocator.cpp           # Slab分配器
+    src/TXChunkAllocator.cpp          # Chunk分配器
+    src/TXSmartMemoryManager.cpp      # 智能内存管理器
     
     # 🔧 工具库 (最小化)
     src/TXNumberUtils.cpp             # 数字工具
@@ -94,10 +107,6 @@ set(CORE_SOURCES
     # 🎨 可选样式支持 (简化)
     src/TXColor.cpp                   # 颜色处理
     src/TXStyle.cpp                   # 基础样式
-    
-    # 🔄 兼容性保留 (临时)
-    src/TXWorkbook.cpp                # 传统工作簿
-    src/TXSheet.cpp                   # 传统工作表
 )
 
 
@@ -118,13 +127,6 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}/include
-)
-
-# 定义版本宏
-target_compile_definitions(${PROJECT_NAME} PUBLIC
-    TINAXLSX_VERSION_MAJOR=2
-    TINAXLSX_VERSION_MINOR=0
-    TINAXLSX_VERSION_PATCH=0
 )
 
 # ------------ GoogleTest 配置 ------------
