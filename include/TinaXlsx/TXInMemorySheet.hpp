@@ -21,6 +21,7 @@ namespace TinaXlsx {
 // 前向声明
 class TXZeroCopySerializer;
 class TXInMemoryWorkbook;
+class TXZipArchiveWriter;
 
 /**
  * @brief 行分组信息 - 优化序列化性能
@@ -533,6 +534,24 @@ public:
      * @return 保存结果
      */
     TXResult<void> saveToFile(const std::string& filename = "");
+
+private:
+    /**
+     * @brief 添加XLSX结构文件
+     */
+    TXResult<void> addXLSXStructureFiles(TXZipArchiveWriter& zip_writer, size_t sheet_count);
+
+    /**
+     * @brief 生成[Content_Types].xml
+     */
+    std::string generateContentTypesXML(size_t sheet_count);
+
+    /**
+     * @brief 生成xl/_rels/workbook.xml.rels
+     */
+    std::string generateWorkbookRelsXML(size_t sheet_count);
+
+public:
     
     /**
      * @brief 序列化到内存

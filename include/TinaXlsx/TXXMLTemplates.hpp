@@ -8,6 +8,11 @@
 #include <string_view>
 #include <string>
 #include <fmt/format.h>
+#include <chrono>
+#include <unordered_map>
+#include <mutex>
+#include <atomic>
+#include <optional>
 
 namespace TinaXlsx {
 

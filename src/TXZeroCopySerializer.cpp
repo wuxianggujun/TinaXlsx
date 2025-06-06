@@ -513,17 +513,18 @@ std::string TXZeroCopySerializer::coordToString(uint32_t coord) const {
 std::string TXZeroCopySerializer::rowColToString(uint32_t row, uint32_t col) const {
     // 将行列转换为Excel格式 (如: A1, B2, AA10)
     std::string result;
-    
-    // 列转换为字母
-    uint32_t temp_col = col;
+
+    // 列转换为字母 (正确的Excel列转换算法)
+    uint32_t temp_col = col + 1; // Excel列从1开始
     do {
+        temp_col--;
         result = char('A' + (temp_col % 26)) + result;
         temp_col /= 26;
     } while (temp_col > 0);
-    
+
     // 行号 (1-based)
     result += std::to_string(row + 1);
-    
+
     return result;
 }
 

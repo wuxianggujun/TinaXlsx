@@ -8,6 +8,7 @@
 #include "TinaXlsx/TXBatchSIMDProcessor.hpp"
 #include "TinaXlsx/TXGlobalStringPool.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
+#include "TinaXlsx/TXXMLTemplates.hpp"
 #include <algorithm>
 #include <chrono>
 #include <sstream>
@@ -870,7 +871,13 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
                 return TXResult<void>(write_result.error());
             }
         }
-        
+
+        // 添加必要的XLSX结构文件
+        auto structure_result = addXLSXStructureFiles(zip_writer, sheets_.size());
+        if (!structure_result.isOk()) {
+            return structure_result;
+        }
+
         // 关闭ZIP文件
         zip_writer.close();
         
@@ -924,6 +931,85 @@ TXResult<std::vector<uint8_t>> TXInMemoryWorkbook::serializeToMemory() {
         return TXResult<std::vector<uint8_t>>(TXError(TXErrorCode::SerializationError,
                                                     std::string("内存序列化失败: ") + e.what()));
     }
+}
+
+TXResult<void> TXInMemoryWorkbook::addXLSXStructureFiles(TXZipArchiveWriter& zip_writer, size_t sheet_count) {
+    try {
+        // 1. [Content_Types].xml
+        std::string content_types = generateContentTypesXML(sheet_count);
+        auto result1 = zip_writer.write("[Content_Types].xml",
+                                       std::vector<uint8_t>(content_types.begin(), content_types.end()));
+        if (result1.isError()) return TXResult<void>(result1.error());
+
+        // 2. _rels/.rels
+        std::string main_rels(TXCompiledXMLTemplates::MAIN_RELS);
+        auto result2 = zip_writer.write("_rels/.rels",
+                                       std::vector<uint8_t>(main_rels.begin(), main_rels.end()));
+        if (result2.isError()) return TXResult<void>(result2.error());
+
+        // 3. xl/_rels/workbook.xml.rels
+        std::string workbook_rels = generateWorkbookRelsXML(sheet_count);
+        auto result3 = zip_writer.write("xl/_rels/workbook.xml.rels",
+                                       std::vector<uint8_t>(workbook_rels.begin(), workbook_rels.end()));
+        if (result3.isError()) return TXResult<void>(result3.error());
+
+        // 4. docProps/app.xml
+        std::string app_props(TXCompiledXMLTemplates::APP_PROPERTIES);
+        auto result4 = zip_writer.write("docProps/app.xml",
+                                       std::vector<uint8_t>(app_props.begin(), app_props.end()));
+        if (result4.isError()) return TXResult<void>(result4.error());
+
+        // 5. docProps/core.xml
+        std::string timestamp = TXCompiledXMLTemplates::getCurrentTimestamp();
+        std::string core_props = TXCompiledXMLTemplates::applyTemplate(
+            TXCompiledXMLTemplates::CORE_PROPERTIES, timestamp, timestamp);
+        auto result5 = zip_writer.write("docProps/core.xml",
+                                       std::vector<uint8_t>(core_props.begin(), core_props.end()));
+        if (result5.isError()) return TXResult<void>(result5.error());
+
+        return TXResult<void>();
+
+    } catch (const std::exception& e) {
+        return TXResult<void>(TXError(TXErrorCode::OperationFailed,
+                                    std::string("添加XLSX结构文件失败: ") + e.what()));
+    }
+}
+
+std::string TXInMemoryWorkbook::generateContentTypesXML(size_t sheet_count) {
+    std::string content = std::string(TXCompiledXMLTemplates::CONTENT_TYPES_HEADER);
+
+    // 添加工作表内容类型
+    for (size_t i = 1; i <= sheet_count; ++i) {
+        content += TXCompiledXMLTemplates::applyTemplate(
+            TXCompiledXMLTemplates::WORKSHEET_CONTENT_TYPE, i);
+    }
+
+    // 添加共享字符串内容类型（如果有的话）
+    if (string_pool_.size() > 0) {
+        content += TXCompiledXMLTemplates::SHARED_STRINGS_CONTENT_TYPE;
+    }
+
+    content += TXCompiledXMLTemplates::CONTENT_TYPES_FOOTER;
+    return content;
+}
+
+std::string TXInMemoryWorkbook::generateWorkbookRelsXML(size_t sheet_count) {
+    std::string rels = std::string(TXCompiledXMLTemplates::WORKBOOK_RELS_HEADER);
+
+    // 添加工作表关系
+    for (size_t i = 1; i <= sheet_count; ++i) {
+        rels += TXCompiledXMLTemplates::applyTemplate(
+            TXCompiledXMLTemplates::WORKSHEET_REL, i, i);
+    }
+
+    // 添加共享字符串关系（如果有的话）
+    if (string_pool_.size() > 0) {
+        rels += TXCompiledXMLTemplates::applyTemplate(
+            TXCompiledXMLTemplates::SHARED_STRINGS_REL, sheet_count + 1);
+    }
+
+    rels += TXCompiledXMLTemplates::WORKBOOK_RELS_FOOTER;
+    return rels;
 }
 
 } // namespace TinaXlsx
