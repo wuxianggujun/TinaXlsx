@@ -102,6 +102,47 @@ const std::string& TXGlobalStringPool::RELATIONSHIPS_NAMESPACE() {
     return str;
 }
 
+std::vector<std::string> TXGlobalStringPool::getAllStrings() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::string> result;
+    result.reserve(pool_.size());
+    for (const auto& str : pool_) {
+        result.push_back(str);
+    }
+    return result;
+}
+
+const std::string& TXGlobalStringPool::getString(size_t index) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (index >= pool_.size()) {
+        static const std::string empty_str = "";
+        return empty_str;
+    }
+    
+    auto it = pool_.begin();
+    std::advance(it, index);
+    return *it;
+}
+
+const std::string& TXGlobalStringPool::addString(const std::string& str) {
+    return intern(str);
+}
+
+size_t TXGlobalStringPool::getIndex(const std::string& str) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = pool_.find(str);
+    if (it == pool_.end()) {
+        return SIZE_MAX; // 字符串不存在
+    }
+    
+    // 计算字符串在池中的索引
+    size_t index = 0;
+    for (auto iter = pool_.begin(); iter != it; ++iter, ++index) {
+        // 遍历到找到的元素
+    }
+    return index;
+}
+
 void TXGlobalStringPool::initializeCommonStrings() {
     // 预内化常用字符串，避免运行时查找
     static const std::vector<std::string> commonStrings = {

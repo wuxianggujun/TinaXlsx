@@ -39,7 +39,7 @@
 #include "TXStyleTemplate.hpp" ///< 样式模板系统（预设主题）
 
 // ==================== 传统兼容类 ====================
-#include "TXCompactCell.hpp"   ///< 紧凑单元格类（兼容）
+// 传统单元格类已删除，使用新的内存优先架构
 #include "TXSheet.hpp"         ///< 工作表类（兼容）
 #include "TXWorkbook.hpp"      ///< 工作簿类（兼容）
 

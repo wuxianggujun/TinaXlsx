@@ -9,6 +9,7 @@
 #include "TXCoordinate.hpp"
 #include "TXTypes.hpp"
 #include "TXResult.hpp"
+#include "TXRange.hpp"
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -364,7 +365,7 @@ public:
     static TXResult<size_t> importDataBatch(
         TXInMemorySheet& sheet,
         const std::vector<std::vector<TXVariant>>& data,
-        const TXCoordinate& start_coord = TXCoordinate(0, 0),
+        const TXCoordinate& start_coord = TXCoordinate(row_t(1), column_t(1)),
         const TXImportOptions& options = {}
     );
     
@@ -378,7 +379,7 @@ public:
     static TXResult<size_t> importNumbersBatch(
         TXInMemorySheet& sheet,
         const std::vector<std::vector<double>>& numbers,
-        const TXCoordinate& start_coord = TXCoordinate(0, 0)
+        const TXCoordinate& start_coord = TXCoordinate(row_t(1), column_t(1))
     );
     
     /**
@@ -391,7 +392,7 @@ public:
     static TXResult<size_t> importStringsBatch(
         TXInMemorySheet& sheet,
         const std::vector<std::vector<std::string>>& strings,
-        const TXCoordinate& start_coord = TXCoordinate(0, 0)
+        const TXCoordinate& start_coord = TXCoordinate(row_t(1), column_t(1))
     );
     
     /**

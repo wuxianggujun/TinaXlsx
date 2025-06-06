@@ -79,8 +79,8 @@ TXResult<void> TXZeroCopySerializer::serializeWorksheet(const TXInMemorySheet& s
         size_t serialized_cells = 0;
         if (options_.enable_parallel && cell_buffer.size >= options_.parallel_threshold) {
             auto result = serializeParallel(cell_buffer, row_groups);
-            if (!result.isSuccess()) {
-                return TXResult<void>::error(result.getError());
+            if (!result.isOk()) {
+                return TXResult<void>(result.error());
             }
             serialized_cells = cell_buffer.size;
         } else {
@@ -95,11 +95,11 @@ TXResult<void> TXZeroCopySerializer::serializeWorksheet(const TXInMemorySheet& s
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(serialized_cells, current_pos_, duration.count() / 1000.0);
         
-        return TXResult<void>::success();
+        return TXResult<void>();
         
     } catch (const std::exception& e) {
-        return TXResult<void>::error(TXError::SerializationError, 
-                                   fmt::format("工作表序列化失败: {}", e.what()));
+        return TXResult<void>(TXError(TXErrorCode::SerializationError, 
+                                     fmt::format("工作表序列化失败: {}", e.what())));
     }
 }
 
@@ -120,11 +120,11 @@ TXResult<void> TXZeroCopySerializer::serializeSharedStrings(const TXGlobalString
         // 写入尾部
         writeStringView(TXCompiledXMLTemplates::SHARED_STRINGS_FOOTER);
         
-        return TXResult<void>::success();
+        return TXResult<void>();
         
     } catch (const std::exception& e) {
-        return TXResult<void>::error(TXError::SerializationError, 
-                                   fmt::format("共享字符串序列化失败: {}", e.what()));
+        return TXResult<void>(TXError(TXErrorCode::SerializationError, 
+                                     fmt::format("共享字符串序列化失败: {}", e.what())));
     }
 }
 
@@ -145,11 +145,11 @@ TXResult<void> TXZeroCopySerializer::serializeWorkbook(const std::vector<std::st
         // 写入尾部
         writeStringView(TXCompiledXMLTemplates::WORKBOOK_FOOTER);
         
-        return TXResult<void>::success();
+        return TXResult<void>();
         
     } catch (const std::exception& e) {
-        return TXResult<void>::error(TXError::SerializationError, 
-                                   fmt::format("工作簿序列化失败: {}", e.what()));
+        return TXResult<void>(TXError(TXErrorCode::SerializationError, 
+                                   std::string("工作簿序列化失败: ") + e.what()));
     }
 }
 
@@ -193,7 +193,7 @@ size_t TXZeroCopySerializer::serializeRowBatch(
             writeNumberCell(coord_str, buffer.number_values[i]);
         } else if (cell_type == static_cast<uint8_t>(TXCellType::String)) {
             // 这里应该从字符串池获取实际字符串，简化版本直接使用索引
-            writeInlineStringCell(coord_str, fmt::format("String_{}", buffer.string_indices[i]));
+            writeInlineStringCell(coord_str, std::string("String_") + std::to_string(buffer.string_indices[i]));
         }
         // 其他类型可以在这里添加
         
@@ -231,7 +231,7 @@ TXResult<void> TXZeroCopySerializer::serializeParallel(
                     const auto& row_group = row_groups[g];
                     
                     // 写入行开始标签
-                    oss << fmt::format(TXCompiledXMLTemplates::ROW_START, row_group.row_index + 1);
+                    oss << "<row r=\"" << (row_group.row_index + 1) << "\">";
                     
                     // 序列化该行的所有单元格
                     for (size_t i = row_group.start_cell_index; 
@@ -241,17 +241,15 @@ TXResult<void> TXZeroCopySerializer::serializeParallel(
                         uint8_t cell_type = buffer.cell_types[i];
                         
                         if (cell_type == static_cast<uint8_t>(TXCellType::Number)) {
-                            oss << fmt::format(TXCompiledXMLTemplates::CELL_NUMBER, 
-                                             coord_str, buffer.number_values[i]);
+                            oss << "<c r=\"" << coord_str << "\"><v>" << buffer.number_values[i] << "</v></c>";
                         } else if (cell_type == static_cast<uint8_t>(TXCellType::String)) {
-                            std::string text = fmt::format("String_{}", buffer.string_indices[i]);
-                            oss << fmt::format(TXCompiledXMLTemplates::CELL_INLINE_STRING, 
-                                             coord_str, escapeXMLString(text));
+                            std::string text = std::string("String_") + std::to_string(buffer.string_indices[i]);
+                            oss << "<c r=\"" << coord_str << "\" t=\"inlineStr\"><is><t>" << escapeXMLString(text) << "</t></is></c>";
                         }
                     }
                     
                     // 写入行结束标签
-                    oss << TXCompiledXMLTemplates::ROW_END;
+                                                oss << "</row>";
                 }
                 
                 thread_outputs[t] = oss.str();
@@ -268,11 +266,11 @@ TXResult<void> TXZeroCopySerializer::serializeParallel(
             writeString(output);
         }
         
-        return TXResult<void>::success();
+        return TXResult<void>();
         
     } catch (const std::exception& e) {
-        return TXResult<void>::error(TXError::SerializationError, 
-                                   fmt::format("并行序列化失败: {}", e.what()));
+        return TXResult<void>(TXError(TXErrorCode::SerializationError, 
+                                   std::string("并行序列化失败: ") + e.what()));
     }
 }
 
@@ -318,8 +316,8 @@ void TXZeroCopySerializer::writeStringsBatch(const std::vector<std::string>& str
 
 template<typename... Args>
 void TXZeroCopySerializer::applyTemplate(const std::string& template_str, Args&&... args) {
-    std::string result = fmt::format(template_str, std::forward<Args>(args)...);
-    writeString(result);
+    // 简化版本，暂时不使用模板
+    writeString(template_str);
 }
 
 // ==================== 快速单元格写入 ====================
@@ -373,7 +371,7 @@ void TXZeroCopySerializer::writeWorksheetEnd() {
 }
 
 void TXZeroCopySerializer::writeRowStart(uint32_t row_index) {
-    std::string row_start = fmt::format(TXCompiledXMLTemplates::ROW_START, row_index);
+    std::string row_start = "<row r=\"" + std::to_string(row_index) + "\">";
     writeString(row_start);
 }
 
@@ -456,8 +454,8 @@ std::vector<uint8_t> TXZeroCopySerializer::getResult() && {
     return std::move(output_buffer_);
 }
 
-std::span<const uint8_t> TXZeroCopySerializer::getResultView() const {
-    return std::span<const uint8_t>(output_buffer_.data(), current_pos_);
+std::vector<uint8_t> TXZeroCopySerializer::getResultView() const {
+    return std::vector<uint8_t>(output_buffer_.begin(), output_buffer_.begin() + current_pos_);
 }
 
 void TXZeroCopySerializer::clear() {
@@ -595,8 +593,8 @@ void TXStreamingZipWriter::addFile(const std::string& filename, std::vector<uint
     entries_.push_back(std::move(entry));
 }
 
-void TXStreamingZipWriter::addFile(const std::string& filename, std::span<const uint8_t> data) {
-    std::vector<uint8_t> data_copy(data.begin(), data.end());
+void TXStreamingZipWriter::addFile(const std::string& filename, const std::vector<uint8_t>& data) {
+    std::vector<uint8_t> data_copy(data);
     addFile(filename, std::move(data_copy));
 }
 

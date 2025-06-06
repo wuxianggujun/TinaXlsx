@@ -204,7 +204,7 @@ void TXBatchSIMDProcessor::batchCreateStringCells(
     
     // 批量处理字符串
     for (size_t i = 0; i < count; ++i) {
-        uint32_t string_index = string_pool.addString(strings[i]);
+                    uint32_t string_index = static_cast<uint32_t>(std::distance(string_pool.intern(strings[i]).data(), string_pool.intern(strings[i]).data()));
         
         buffer.string_indices[start_idx + i] = string_index;
         buffer.coordinates[start_idx + i] = coordinates[i];
@@ -284,8 +284,8 @@ size_t TXBatchSIMDProcessor::batchConvertCoordinates(
     
     for (size_t i = 0; i < count && i < cell_refs.size(); ++i) {
         try {
-            TXCoordinate coord = TXCoordinate::fromA1(cell_refs[i]);
-            coordinates[i] = (coord.row << 16) | coord.col;
+            TXCoordinate coord = TXCoordinate::fromAddress(cell_refs[i]);
+            coordinates[i] = (static_cast<uint32_t>(coord.getRow().index()) << 16) | static_cast<uint32_t>(coord.getCol().index());
             ++converted;
         } catch (...) {
             coordinates[i] = 0; // 无效坐标
@@ -313,8 +313,8 @@ TXCellStats TXBatchSIMDProcessor::batchCalculateStats(
     
     if (range) {
         // 如果指定了范围，需要找到对应的单元格
-        uint32_t range_start = (range->start_row << 16) | range->start_col;
-        uint32_t range_end = (range->end_row << 16) | range->end_col;
+        uint32_t range_start = (range->getStart().getRow().index() << 16) | range->getStart().getCol().index();
+        uint32_t range_end = (range->getEnd().getRow().index() << 16) | range->getEnd().getCol().index();
         
         // 简化版本：遍历所有单元格检查是否在范围内
         std::vector<size_t> valid_indices;
@@ -451,11 +451,12 @@ void TXBatchSIMDProcessor::fillRange(
 ) {
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    uint32_t range_start = (range.start_row << 16) | range.start_col;
-    uint32_t range_end = (range.end_row << 16) | range.end_col;
+    uint32_t range_start = (range.getStart().getRow().index() << 16) | range.getStart().getCol().index();
+    uint32_t range_end = (range.getEnd().getRow().index() << 16) | range.getEnd().getCol().index();
     
     // 计算需要填充的单元格数量
-    size_t fill_count = (range.end_row - range.start_row + 1) * (range.end_col - range.start_col + 1);
+    size_t fill_count = (range.getEnd().getRow().index() - range.getStart().getRow().index() + 1) * 
+                        (range.getEnd().getCol().index() - range.getStart().getCol().index() + 1);
     
     // 确保缓冲区有足够空间
     buffer.reserve(buffer.size + fill_count);
@@ -464,8 +465,8 @@ void TXBatchSIMDProcessor::fillRange(
     std::vector<uint32_t> coords;
     coords.reserve(fill_count);
     
-    for (uint32_t row = range.start_row; row <= range.end_row; ++row) {
-        for (uint32_t col = range.start_col; col <= range.end_col; ++col) {
+    for (uint32_t row = range.getStart().getRow().index(); row <= range.getEnd().getRow().index(); ++row) {
+        for (uint32_t col = range.getStart().getCol().index(); col <= range.getEnd().getCol().index(); ++col) {
             coords.push_back((row << 16) | col);
         }
     }
@@ -490,8 +491,8 @@ void TXBatchSIMDProcessor::copyRange(
     
     // 找到源范围内的所有单元格
     std::vector<size_t> src_indices;
-    uint32_t src_start = (src_range.start_row << 16) | src_range.start_col;
-    uint32_t src_end = (src_range.end_row << 16) | src_range.end_col;
+    uint32_t src_start = (src_range.getStart().getRow().index() << 16) | src_range.getStart().getCol().index();
+    uint32_t src_end = (src_range.getEnd().getRow().index() << 16) | src_range.getEnd().getCol().index();
     
     for (size_t i = 0; i < buffer.size; ++i) {
         uint32_t coord = buffer.coordinates[i];
@@ -503,8 +504,8 @@ void TXBatchSIMDProcessor::copyRange(
     if (src_indices.empty()) return;
     
     // 计算偏移量
-    int32_t row_offset = dst_start.row - src_range.start_row;
-    int32_t col_offset = dst_start.col - src_range.start_col;
+    int32_t row_offset = static_cast<int32_t>(dst_start.getRow().index()) - static_cast<int32_t>(src_range.getStart().getRow().index());
+    int32_t col_offset = static_cast<int32_t>(dst_start.getCol().index()) - static_cast<int32_t>(src_range.getStart().getCol().index());
     
     // 批量复制
     buffer.reserve(buffer.size + src_indices.size());
@@ -658,7 +659,7 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
     const TXImportOptions& options
 ) {
     if (data.empty()) {
-        return TXResult<size_t>::success(0);
+        return TXResult<size_t>(static_cast<size_t>(0));
     }
     
     try {
@@ -687,8 +688,8 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
                 if (!options.skip_empty_cells || !row[col_idx].isEmpty()) {
                     all_variants.push_back(row[col_idx]);
                     all_coords.push_back(TXCoordinate(
-                        start_coord.row + row_idx,
-                        start_coord.col + col_idx
+                        row_t(start_coord.getRow().index() + static_cast<uint32_t>(row_idx)),
+                        column_t(start_coord.getCol().index() + static_cast<uint32_t>(col_idx))
                     ));
                 }
             }
@@ -699,7 +700,7 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
         return result;
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, e.what());
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, e.what()));
     }
 }
 
@@ -709,7 +710,7 @@ TXResult<size_t> TXBatchOperations::importNumbersBatch(
     const TXCoordinate& start_coord
 ) {
     if (numbers.empty()) {
-        return TXResult<size_t>::success(0);
+        return TXResult<size_t>(static_cast<size_t>(0));
     }
     
     try {
@@ -733,8 +734,8 @@ TXResult<size_t> TXBatchOperations::importNumbersBatch(
             for (size_t col_idx = 0; col_idx < row.size(); ++col_idx) {
                 all_numbers.push_back(row[col_idx]);
                 all_coords.push_back(TXCoordinate(
-                    start_coord.row + row_idx,
-                    start_coord.col + col_idx
+                    row_t(start_coord.getRow().index() + static_cast<uint32_t>(row_idx)),
+                    column_t(start_coord.getCol().index() + static_cast<uint32_t>(col_idx))
                 ));
             }
         }
@@ -744,7 +745,7 @@ TXResult<size_t> TXBatchOperations::importNumbersBatch(
         return result;
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, e.what());
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, e.what()));
     }
 }
 

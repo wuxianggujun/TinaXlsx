@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <mutex>
 #include <string_view>
+#include <vector>
 
 namespace TinaXlsx {
 
@@ -51,6 +52,35 @@ public:
      * @brief 清空池（谨慎使用）
      */
     void clear();
+
+    /**
+     * @brief 获取所有字符串
+     * @return 池中所有字符串的向量
+     */
+    std::vector<std::string> getAllStrings() const;
+
+    /**
+     * @brief 根据索引获取字符串
+     * @param index 字符串索引
+     * @return 字符串引用
+     */
+    const std::string& getString(size_t index) const;
+
+    /**
+     * @brief 添加字符串到池中 (addString方法，等价于intern)
+     * @param str 要添加的字符串
+     * @return 内化后的字符串引用
+     */
+    const std::string& addString(const std::string& str);
+
+    /**
+     * @brief 获取字符串的索引
+     * @param str 要查找的字符串
+     * @return 字符串在池中的索引，如果不存在则返回SIZE_MAX
+     */
+    size_t getIndex(const std::string& str) const;
+    
+
 
     // 🚀 常用字符串常量 - 预内化的高频字符串
     static const std::string& EMPTY_STRING();

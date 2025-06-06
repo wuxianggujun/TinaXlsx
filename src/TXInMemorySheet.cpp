@@ -6,9 +6,12 @@
 #include "TinaXlsx/TXInMemorySheet.hpp"
 #include "TinaXlsx/TXZeroCopySerializer.hpp"
 #include "TinaXlsx/TXBatchSIMDProcessor.hpp"
+#include "TinaXlsx/TXGlobalStringPool.hpp"
 #include <algorithm>
 #include <chrono>
 #include <sstream>
+#include <fstream>
+#include <map>
 
 namespace TinaXlsx {
 
@@ -118,11 +121,11 @@ TXResult<size_t> TXInMemorySheet::setBatchNumbers(
     auto start_time = std::chrono::high_resolution_clock::now();
     
     if (coords.size() != values.size()) {
-        return TXResult<size_t>::error(TXError::InvalidParameter, "坐标和数值数组大小不匹配");
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidArgument, "坐标和数值数组大小不匹配"));
     }
     
     if (coords.empty()) {
-        return TXResult<size_t>::success(0);
+        return TXResult<size_t>(static_cast<size_t>(0));
     }
     
     try {
@@ -150,11 +153,11 @@ TXResult<size_t> TXInMemorySheet::setBatchNumbers(
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(coords.size(), duration.count() / 1000.0);
         
-        return TXResult<size_t>::success(coords.size());
+        return TXResult<size_t>(coords.size());
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::MemoryError, 
-                                      fmt::format("批量数值设置失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::MemoryError, 
+                                      std::string("批量数值设置失败: ") + e.what()));
     }
 }
 
@@ -165,11 +168,11 @@ TXResult<size_t> TXInMemorySheet::setBatchStrings(
     auto start_time = std::chrono::high_resolution_clock::now();
     
     if (coords.size() != values.size()) {
-        return TXResult<size_t>::error(TXError::InvalidParameter, "坐标和字符串数组大小不匹配");
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidParameter, "坐标和字符串数组大小不匹配"));
     }
     
     if (coords.empty()) {
-        return TXResult<size_t>::success(0);
+        return TXResult<size_t>(static_cast<size_t>(0));
     }
     
     try {
@@ -197,11 +200,11 @@ TXResult<size_t> TXInMemorySheet::setBatchStrings(
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(coords.size(), duration.count() / 1000.0);
         
-        return TXResult<size_t>::success(coords.size());
+        return TXResult<size_t>(coords.size());
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::MemoryError, 
-                                      fmt::format("批量字符串设置失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::MemoryError, 
+                                      std::string("批量字符串设置失败: ") + e.what()));
     }
 }
 
@@ -210,7 +213,7 @@ TXResult<size_t> TXInMemorySheet::setBatchStyles(
     const std::vector<uint16_t>& style_indices
 ) {
     if (coords.size() != style_indices.size()) {
-        return TXResult<size_t>::error(TXError::InvalidParameter, "坐标和样式数组大小不匹配");
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidParameter, "坐标和样式数组大小不匹配"));
     }
     
     try {
@@ -230,11 +233,11 @@ TXResult<size_t> TXInMemorySheet::setBatchStyles(
             dirty_ = true;
         }
         
-        return TXResult<size_t>::success(applied);
+        return TXResult<size_t>(applied);
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, 
-                                      fmt::format("批量样式设置失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, 
+                                      std::string("批量样式设置失败: ") + e.what()));
     }
 }
 
@@ -245,11 +248,11 @@ TXResult<size_t> TXInMemorySheet::setBatchMixed(
     auto start_time = std::chrono::high_resolution_clock::now();
     
     if (coords.size() != variants.size()) {
-        return TXResult<size_t>::error(TXError::InvalidParameter, "坐标和数据数组大小不匹配");
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidParameter, "坐标和数据数组大小不匹配"));
     }
     
     if (coords.empty()) {
-        return TXResult<size_t>::success(0);
+        return TXResult<size_t>(static_cast<size_t>(0));
     }
     
     try {
@@ -277,48 +280,41 @@ TXResult<size_t> TXInMemorySheet::setBatchMixed(
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(coords.size(), duration.count() / 1000.0);
         
-        return TXResult<size_t>::success(coords.size());
+        return TXResult<size_t>(coords.size());
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::MemoryError, 
-                                      fmt::format("批量混合数据设置失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::MemoryError, 
+                                      std::string("批量混合数据设置失败: ") + e.what()));
     }
 }
 
 // ==================== SIMD优化的范围操作 ====================
 
 TXResult<size_t> TXInMemorySheet::fillRange(const TXRange& range, double value) {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    if (!range.isValid()) {
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidRange, "无效的范围"));
+    }
+    
+    auto start_coord = range.getStart();
+    auto end_coord = range.getEnd();
     
     try {
-        size_t old_size = cell_buffer_.size;
-        TXBatchSIMDProcessor::fillRange(cell_buffer_, range, value);
-        size_t filled = cell_buffer_.size - old_size;
+        std::vector<TXCoordinate> coords;
+        coords.reserve(static_cast<size_t>(range.getCellCount()));
         
-        // 更新边界
-        updateBounds(TXCoordinate(range.start_row, range.start_col));
-        updateBounds(TXCoordinate(range.end_row, range.end_col));
-        
-        // 更新索引（简化版本）
-        for (uint32_t row = range.start_row; row <= range.end_row; ++row) {
-            for (uint32_t col = range.start_col; col <= range.end_col; ++col) {
-                TXCoordinate coord(row, col);
-                updateIndex(coord, old_size++);
+        for (uint32_t row = start_coord.getRow().index(); row <= end_coord.getRow().index(); ++row) {
+            for (uint32_t col = start_coord.getCol().index(); col <= end_coord.getCol().index(); ++col) {
+                coords.emplace_back(row_t(row), column_t(col));
+                updateBounds(coords.back());
             }
         }
         
-        dirty_ = true;
-        maybeOptimize();
-        
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-        updateStats(filled, duration.count() / 1000.0);
-        
-        return TXResult<size_t>::success(filled);
+        std::vector<double> values(coords.size(), value);
+        return setBatchNumbers(coords, values);
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, 
-                                      fmt::format("范围填充失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::OperationFailed, 
+                                      std::string("范围填充失败: ") + e.what()));
     }
 }
 
@@ -327,9 +323,9 @@ TXResult<size_t> TXInMemorySheet::fillRange(const TXRange& range, const std::str
     std::vector<TXCoordinate> coords;
     std::vector<std::string> values;
     
-    for (uint32_t row = range.start_row; row <= range.end_row; ++row) {
-        for (uint32_t col = range.start_col; col <= range.end_col; ++col) {
-            coords.emplace_back(row, col);
+    for (uint32_t row = range.getStart().getRow().index(); row <= range.getEnd().getRow().index(); ++row) {
+        for (uint32_t col = range.getStart().getCol().index(); col <= range.getEnd().getCol().index(); ++col) {
+            coords.emplace_back(row_t(row), column_t(col));
             values.push_back(value);
         }
     }
@@ -346,13 +342,13 @@ TXResult<size_t> TXInMemorySheet::copyRange(const TXRange& src_range, const TXCo
         size_t copied = cell_buffer_.size - old_size;
         
         // 更新边界和索引（简化版本）
-        int32_t row_offset = dst_start.row - src_range.start_row;
-        int32_t col_offset = dst_start.col - src_range.start_col;
+        int32_t row_offset = dst_start.getRow().index() - src_range.getStart().getRow().index();
+        int32_t col_offset = dst_start.getCol().index() - src_range.getStart().getCol().index();
         
         size_t index = old_size;
-        for (uint32_t row = src_range.start_row; row <= src_range.end_row; ++row) {
-            for (uint32_t col = src_range.start_col; col <= src_range.end_col; ++col) {
-                TXCoordinate dst_coord(row + row_offset, col + col_offset);
+        for (uint32_t row = src_range.getStart().getRow().index(); row <= src_range.getEnd().getRow().index(); ++row) {
+            for (uint32_t col = src_range.getStart().getCol().index(); col <= src_range.getEnd().getCol().index(); ++col) {
+                TXCoordinate dst_coord(row_t(row + row_offset), column_t(col + col_offset));
                 updateBounds(dst_coord);
                 updateIndex(dst_coord, index++);
             }
@@ -364,11 +360,11 @@ TXResult<size_t> TXInMemorySheet::copyRange(const TXRange& src_range, const TXCo
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(copied, duration.count() / 1000.0);
         
-        return TXResult<size_t>::success(copied);
+        return TXResult<size_t>(copied);
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, 
-                                      fmt::format("范围复制失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, 
+                                      std::string("范围复制失败: ") + e.what()));
     }
 }
 
@@ -378,8 +374,8 @@ TXResult<size_t> TXInMemorySheet::clearRange(const TXRange& range) {
         
         // 找到范围内的所有单元格并标记为删除
         std::vector<size_t> to_remove;
-        uint32_t range_start = (range.start_row << 16) | range.start_col;
-        uint32_t range_end = (range.end_row << 16) | range.end_col;
+        uint32_t range_start = (range.getStart().getRow().index() << 16) | range.getStart().getCol().index();
+        uint32_t range_end = (range.getEnd().getRow().index() << 16) | range.getEnd().getCol().index();
         
         for (size_t i = 0; i < cell_buffer_.size; ++i) {
             uint32_t coord = cell_buffer_.coordinates[i];
@@ -407,37 +403,87 @@ TXResult<size_t> TXInMemorySheet::clearRange(const TXRange& range) {
             }
         }
         
-        return TXResult<size_t>::success(cleared);
+        return TXResult<size_t>(cleared);
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, 
-                                      fmt::format("范围清除失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, 
+                                      std::string("范围清除失败: ") + e.what()));
     }
 }
 
 // ==================== 单个单元格操作 ====================
 
 TXResult<void> TXInMemorySheet::setNumber(const TXCoordinate& coord, double value) {
-    std::vector<TXCoordinate> coords = {coord};
-    std::vector<double> values = {value};
-    auto result = setBatchNumbers(coords, values);
-    
-    if (result.isSuccess()) {
-        return TXResult<void>::success();
-    } else {
-        return TXResult<void>::error(result.getError());
+    try {
+        uint32_t key = coordToKey(coord);
+        auto it = coord_to_index_.find(key);
+        
+        if (it != coord_to_index_.end()) {
+            // 更新现有单元格
+            size_t index = it->second;
+            cell_buffer_.number_values[index] = value;
+            cell_buffer_.cell_types[index] = static_cast<uint8_t>(TXCellType::Number);
+        } else {
+            // 创建新单元格
+            if (cell_buffer_.size >= cell_buffer_.capacity) {
+                return TXResult<void>(TXError(TXErrorCode::MemoryError, "单元格缓冲区已满"));
+            }
+            
+            size_t index = cell_buffer_.size++;
+            cell_buffer_.coordinates[index] = key;
+            cell_buffer_.number_values[index] = value;
+            cell_buffer_.cell_types[index] = static_cast<uint8_t>(TXCellType::Number);
+            cell_buffer_.style_indices[index] = 0;
+            
+            coord_to_index_[key] = index;
+            updateBounds(coord);
+        }
+        
+        dirty_ = true;
+        return TXResult<void>();
+        
+    } catch (const std::exception& e) {
+        return TXResult<void>(TXError(TXErrorCode::MemoryError, 
+                                     std::string("设置数值失败: ") + e.what()));
     }
 }
 
 TXResult<void> TXInMemorySheet::setString(const TXCoordinate& coord, const std::string& value) {
-    std::vector<TXCoordinate> coords = {coord};
-    std::vector<std::string> values = {value};
-    auto result = setBatchStrings(coords, values);
-    
-    if (result.isSuccess()) {
-        return TXResult<void>::success();
-    } else {
-        return TXResult<void>::error(result.getError());
+    try {
+        const std::string& interned_str = string_pool_.intern(value);
+        
+        uint32_t key = coordToKey(coord);
+        auto it = coord_to_index_.find(key);
+        
+        if (it != coord_to_index_.end()) {
+            // 更新现有单元格
+            size_t index = it->second;
+            string_pool_.intern(interned_str); // 确保字符串在池中
+            cell_buffer_.string_indices[index] = static_cast<uint32_t>(string_pool_.getIndex(interned_str));
+            cell_buffer_.cell_types[index] = static_cast<uint8_t>(TXCellType::String);
+        } else {
+            // 创建新单元格
+            if (cell_buffer_.size >= cell_buffer_.capacity) {
+                return TXResult<void>(TXError(TXErrorCode::MemoryError, "单元格缓冲区已满"));
+            }
+            
+            size_t index = cell_buffer_.size++;
+            cell_buffer_.coordinates[index] = key;
+            string_pool_.intern(interned_str); // 确保字符串在池中
+            cell_buffer_.string_indices[index] = static_cast<uint32_t>(string_pool_.getIndex(interned_str));
+            cell_buffer_.cell_types[index] = static_cast<uint8_t>(TXCellType::String);
+            cell_buffer_.style_indices[index] = 0;
+            
+            coord_to_index_[key] = index;
+            updateBounds(coord);
+        }
+        
+        dirty_ = true;
+        return TXResult<void>();
+        
+    } catch (const std::exception& e) {
+        return TXResult<void>(TXError(TXErrorCode::MemoryError, 
+                                     std::string("设置字符串失败: ") + e.what()));
     }
 }
 
@@ -446,7 +492,7 @@ TXResult<TXVariant> TXInMemorySheet::getValue(const TXCoordinate& coord) const {
     auto it = coord_to_index_.find(key);
     
     if (it == coord_to_index_.end()) {
-        return TXResult<TXVariant>::success(TXVariant()); // 空单元格
+        return TXResult<TXVariant>(TXVariant()); // 空单元格
     }
     
     size_t index = it->second;
@@ -454,17 +500,17 @@ TXResult<TXVariant> TXInMemorySheet::getValue(const TXCoordinate& coord) const {
     
     switch (static_cast<TXCellType>(type)) {
         case TXCellType::Number:
-            return TXResult<TXVariant>::success(TXVariant(cell_buffer_.number_values[index]));
+            return TXResult<TXVariant>(TXVariant(cell_buffer_.number_values[index]));
         case TXCellType::String: {
             // 这里应该从字符串池获取实际字符串
             uint32_t string_index = cell_buffer_.string_indices[index];
             std::string str = string_pool_.getString(string_index);
-            return TXResult<TXVariant>::success(TXVariant(str));
+            return TXResult<TXVariant>(TXVariant(str));
         }
         case TXCellType::Boolean:
-            return TXResult<TXVariant>::success(TXVariant(cell_buffer_.number_values[index] != 0.0));
+            return TXResult<TXVariant>(TXVariant(cell_buffer_.number_values[index] != 0.0));
         default:
-            return TXResult<TXVariant>::success(TXVariant()); // 空单元格
+            return TXResult<TXVariant>(TXVariant()); // 空单元格
     }
 }
 
@@ -524,11 +570,11 @@ TXResult<size_t> TXInMemorySheet::importFromCSV(
             }
         }
         
-        return importData(data, TXCoordinate(0, 0), options);
+        return importData(data, TXCoordinate(row_t(1), column_t(1)), options);
         
     } catch (const std::exception& e) {
-        return TXResult<size_t>::error(TXError::InvalidData, 
-                                      fmt::format("CSV导入失败: {}", e.what()));
+        return TXResult<size_t>(TXError(TXErrorCode::InvalidData, 
+                                      std::string("CSV导入失败: ") + e.what()));
     }
 }
 
@@ -541,10 +587,10 @@ TXCellStats TXInMemorySheet::getStats(const TXRange* range) const {
 TXResult<double> TXInMemorySheet::sum(const TXRange& range) const {
     try {
         double result = TXBatchSIMDProcessor::batchSum(cell_buffer_, range);
-        return TXResult<double>::success(result);
+        return TXResult<double>(result);
     } catch (const std::exception& e) {
-        return TXResult<double>::error(TXError::CalculationError, 
-                                      fmt::format("求和失败: {}", e.what()));
+        return TXResult<double>(TXError(TXErrorCode::OperationFailed, 
+                                      std::string("求和失败: ") + e.what()));
     }
 }
 
@@ -612,16 +658,16 @@ TXResult<std::string> TXInMemorySheet::exportToCSV(const TXRange* range) const {
         
         TXRange export_range = range ? *range : getUsedRange();
         
-        for (uint32_t row = export_range.start_row; row <= export_range.end_row; ++row) {
+        for (uint32_t row = export_range.getStart().getRow().index(); row <= export_range.getEnd().getRow().index(); ++row) {
             bool first_col = true;
-            for (uint32_t col = export_range.start_col; col <= export_range.end_col; ++col) {
+            for (uint32_t col = export_range.getStart().getCol().index(); col <= export_range.getEnd().getCol().index(); ++col) {
                 if (!first_col) csv << ",";
                 first_col = false;
                 
-                TXCoordinate coord(row, col);
+                TXCoordinate coord{row_t(row), column_t(col)};
                 auto value_result = getValue(coord);
-                if (value_result.isSuccess()) {
-                    const auto& variant = value_result.getValue();
+                if (value_result.isOk()) {
+                    const auto& variant = value_result.value();
                     if (variant.getType() == TXVariant::Type::String) {
                         csv << "\"" << variant.getString() << "\"";
                     } else if (variant.getType() == TXVariant::Type::Number) {
@@ -632,11 +678,11 @@ TXResult<std::string> TXInMemorySheet::exportToCSV(const TXRange* range) const {
             csv << "\n";
         }
         
-        return TXResult<std::string>::success(csv.str());
+        return TXResult<std::string>(csv.str());
         
     } catch (const std::exception& e) {
-        return TXResult<std::string>::error(TXError::SerializationError, 
-                                           fmt::format("CSV导出失败: {}", e.what()));
+        return TXResult<std::string>(TXError(TXErrorCode::SerializationError, 
+                                           std::string("CSV导出失败: ") + e.what()));
     }
 }
 
@@ -644,10 +690,10 @@ TXResult<std::string> TXInMemorySheet::exportToCSV(const TXRange* range) const {
 
 TXRange TXInMemorySheet::getUsedRange() const {
     if (cell_buffer_.empty()) {
-        return TXRange(TXCoordinate(0, 0), TXCoordinate(0, 0));
+        return TXRange(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(1), column_t(1)));
     }
     
-    return TXRange(TXCoordinate(0, 0), TXCoordinate(max_row_, max_col_));
+    return TXRange(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(max_row_), column_t(max_col_)));
 }
 
 // ==================== 性能监控 ====================
@@ -678,8 +724,8 @@ std::vector<TXRowGroup> TXInMemorySheet::generateRowGroups() const {
 // ==================== 内部辅助方法 ====================
 
 void TXInMemorySheet::updateBounds(const TXCoordinate& coord) {
-    max_row_ = std::max(max_row_, coord.row);
-    max_col_ = std::max(max_col_, coord.col);
+    max_row_ = std::max(max_row_, coord.getRow().index());
+    max_col_ = std::max(max_col_, coord.getCol().index());
 }
 
 void TXInMemorySheet::updateIndex(const TXCoordinate& coord, size_t buffer_index) {
@@ -708,11 +754,13 @@ void TXInMemorySheet::updateStats(size_t cells_processed, double time_ms) const 
 }
 
 uint32_t TXInMemorySheet::coordToKey(const TXCoordinate& coord) {
-    return (coord.row << 16) | coord.col;
+    return (coord.getRow().index() << 16) | coord.getCol().index();
 }
 
 TXCoordinate TXInMemorySheet::keyToCoord(uint32_t key) {
-    return TXCoordinate(key >> 16, key & 0xFFFF);
+    uint32_t row = key >> 16;
+    uint32_t col = key & 0xFFFF;
+    return TXCoordinate(row_t(row), column_t(col));
 }
 
 // ==================== TXInMemoryWorkbook 实现 ====================
@@ -722,7 +770,7 @@ std::unique_ptr<TXInMemoryWorkbook> TXInMemoryWorkbook::create(const std::string
 }
 
 TXInMemoryWorkbook::TXInMemoryWorkbook(const std::string& filename) 
-    : filename_(filename) {
+    : filename_(filename), string_pool_(TXGlobalStringPool::instance()) {
 }
 
 TXInMemorySheet& TXInMemoryWorkbook::createSheet(const std::string& name) {
@@ -777,22 +825,22 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             // 序列化工作表
             serializer.clear();
             auto result = sheet.serializeToMemory(serializer);
-            if (!result.isSuccess()) {
+            if (!result.isOk()) {
                 return result;
             }
             
             // 添加到ZIP
-            std::string sheet_filename = fmt::format("xl/worksheets/sheet{}.xml", i + 1);
+            std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
             auto serialized_data = std::move(serializer).getResult();
-            zip_writer.addFile(sheet_filename, std::move(serialized_data));
+            zip_writer.addFile(sheet_filename, static_cast<std::vector<uint8_t>>(std::move(serialized_data)));
         }
         
         // 序列化共享字符串
         serializer.clear();
         auto shared_strings_result = serializer.serializeSharedStrings(string_pool_);
-        if (shared_strings_result.isSuccess()) {
+        if (shared_strings_result.isOk()) {
             auto shared_strings_data = std::move(serializer).getResult();
-            zip_writer.addFile("xl/sharedStrings.xml", std::move(shared_strings_data));
+            zip_writer.addFile("xl/sharedStrings.xml", static_cast<std::vector<uint8_t>>(std::move(shared_strings_data)));
         }
         
         // 序列化工作簿
@@ -802,9 +850,9 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             sheet_names.push_back(sheet->getName());
         }
         auto workbook_result = serializer.serializeWorkbook(sheet_names);
-        if (workbook_result.isSuccess()) {
+        if (workbook_result.isOk()) {
             auto workbook_data = std::move(serializer).getResult();
-            zip_writer.addFile("xl/workbook.xml", std::move(workbook_data));
+            zip_writer.addFile("xl/workbook.xml", static_cast<std::vector<uint8_t>>(std::move(workbook_data)));
         }
         
         // 生成最终Excel文件
@@ -813,7 +861,7 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
         // 写入文件
         std::ofstream file(output_filename, std::ios::binary);
         if (!file) {
-            return TXResult<void>::error(TXError::FileError, "无法创建输出文件");
+            return TXResult<void>(TXError(TXErrorCode::OperationFailed, "无法创建输出文件"));
         }
         
         file.write(reinterpret_cast<const char*>(excel_data.data()), excel_data.size());
@@ -823,11 +871,11 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             sheet->markClean();
         }
         
-        return TXResult<void>::success();
+        return TXResult<void>();
         
     } catch (const std::exception& e) {
-        return TXResult<void>::error(TXError::FileError, 
-                                    fmt::format("保存文件失败: {}", e.what()));
+        return TXResult<void>(TXError(TXErrorCode::OperationFailed, 
+                                    std::string("保存文件失败: ") + e.what()));
     }
 }
 
@@ -840,21 +888,21 @@ TXResult<std::vector<uint8_t>> TXInMemoryWorkbook::serializeToMemory() {
         for (size_t i = 0; i < sheets_.size(); ++i) {
             serializer.clear();
             auto result = sheets_[i]->serializeToMemory(serializer);
-            if (!result.isSuccess()) {
-                return TXResult<std::vector<uint8_t>>::error(result.getError());
+            if (!result.isOk()) {
+                return TXResult<std::vector<uint8_t>>(result.error());
             }
             
-            std::string filename = fmt::format("xl/worksheets/sheet{}.xml", i + 1);
+            std::string filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
             auto data = std::move(serializer).getResult();
-            zip_writer.addFile(filename, std::move(data));
+            zip_writer.addFile(filename, static_cast<std::vector<uint8_t>>(std::move(data)));
         }
         
         auto excel_data = zip_writer.generateZip();
-        return TXResult<std::vector<uint8_t>>::success(std::move(excel_data));
+        return TXResult<std::vector<uint8_t>>(std::move(excel_data));
         
     } catch (const std::exception& e) {
-        return TXResult<std::vector<uint8_t>>::error(TXError::SerializationError, 
-                                                    fmt::format("内存序列化失败: {}", e.what()));
+        return TXResult<std::vector<uint8_t>>(TXError(TXErrorCode::SerializationError, 
+                                                    std::string("内存序列化失败: ") + e.what()));
     }
 }
 

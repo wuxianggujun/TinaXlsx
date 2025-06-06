@@ -47,10 +47,18 @@ public:
     const column_t& getCol() const { return col_; }
     
     /**
+     * @brief 获取列对象（兼容性接口）
+     * @return 列对象
+     */
+    const column_t& getColumn() const { return col_; }
+    
+    /**
      * @brief 获取坐标对
      * @return {row, col}
      */
     std::pair<row_t, column_t> getPair() const { return {row_, col_}; }
+    
+
     
     // ==================== 设置器 ====================
     
@@ -207,10 +215,12 @@ public:
     
     /**
      * @brief 从A1格式地址创建坐标
-     * @param address A1格式地址
+     * @param address A1格式地址 (如 "A1", "B5", "AA10")
      * @return 坐标对象
      */
     static TXCoordinate fromAddress(const std::string& address);
+    
+
     
     /**
      * @brief 从列名和行创建坐标

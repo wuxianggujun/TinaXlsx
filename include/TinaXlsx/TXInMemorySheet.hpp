@@ -256,7 +256,7 @@ public:
      */
     TXResult<size_t> importData(
         const std::vector<std::vector<TXVariant>>& data,
-        const TXCoordinate& start_coord = TXCoordinate(0, 0),
+        const TXCoordinate& start_coord = TXCoordinate(row_t(1), column_t(1)),
         const TXImportOptions& options = {}
     );
     
@@ -268,7 +268,7 @@ public:
      */
     TXResult<size_t> importNumbers(
         const std::vector<std::vector<double>>& numbers,
-        const TXCoordinate& start_coord = TXCoordinate(0, 0)
+        const TXCoordinate& start_coord = TXCoordinate(row_t(1), column_t(1))
     );
     
     /**
@@ -477,7 +477,7 @@ private:
 class TXInMemoryWorkbook {
 private:
     TXUnifiedMemoryManager memory_manager_;   // 内存管理器
-    TXGlobalStringPool string_pool_;         // 全局字符串池
+    TXGlobalStringPool& string_pool_;        // 全局字符串池引用
     std::vector<std::unique_ptr<TXInMemorySheet>> sheets_; // 工作表列表
     std::string filename_;                   // 文件名
     bool auto_save_ = false;                 // 自动保存

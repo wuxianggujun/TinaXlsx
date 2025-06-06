@@ -321,7 +321,7 @@ public:
      * @brief 获取结果视图 (零拷贝)
      * @return 数据视图
      */
-    std::span<const uint8_t> getResultView() const;
+    std::vector<uint8_t> getResultView() const;
     
     /**
      * @brief 获取结果大小
@@ -489,7 +489,7 @@ public:
      * @param filename 文件名
      * @param data 文件数据视图
      */
-    void addFile(const std::string& filename, std::span<const uint8_t> data);
+    void addFile(const std::string& filename, const std::vector<uint8_t>& data);
     
     /**
      * @brief 生成最终ZIP文件

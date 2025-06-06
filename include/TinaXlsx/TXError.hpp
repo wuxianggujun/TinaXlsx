@@ -33,11 +33,15 @@ namespace TinaXlsx
         // 通用错误 (1-99)
         Unknown = 1, // 未知错误
         InvalidArgument = 2, // 无效参数
+        InvalidParameter = 2, // 无效参数 (别名)
         NullPointer = 3, // 空指针
         OutOfRange = 4, // 超出范围
         InvalidOperation = 5, // 无效操作
         MemoryAllocation = 6, // 内存分配失败
+        MemoryError = 6, // 内存错误 (别名)
         OperationFailed = 7, // 操作失败 (通用)
+        InvalidData = 8, // 无效数据
+        SerializationError = 9, // 序列化错误
 
         // 文件I/O错误 (100-199)
         FileNotFound = 100, // 文件未找到
