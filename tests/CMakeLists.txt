@@ -21,8 +21,13 @@ add_unit_test(MemoryFirstAPI
 )
 
 
-add_unit_test(Variant 
+add_unit_test(Variant
     unit/test_variant.cpp
+)
+
+# 🚀 高性能日志库测试
+add_unit_test(HighPerformanceLogger
+    unit/test_high_performance_logger.cpp
 )
 
 

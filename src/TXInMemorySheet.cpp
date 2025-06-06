@@ -881,55 +881,60 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             return TXResult<void>(open_result.error());
         }
         
+        // 🚀 批量序列化优化：预分配所有数据
+        std::vector<std::pair<std::string, std::vector<uint8_t>>> batch_data;
+        batch_data.reserve(sheets_.size() + 10); // 预留额外空间
+
         for (size_t i = 0; i < sheets_.size(); ++i) {
             auto& sheet = *sheets_[i];
-            
-            // 序列化工作表
-            serializer.clear();
-            auto result = sheet.serializeToMemory(serializer);
+
+            // 🚀 使用独立的序列化器避免清理开销
+            TXZeroCopySerializer sheet_serializer(GlobalUnifiedMemoryManager::getInstance());
+            auto result = sheet.serializeToMemory(sheet_serializer);
             if (!result.isOk()) {
                 return result;
             }
-            
-            // 添加到ZIP
+
+            // 🚀 批量收集数据，稍后一次性写入
             std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
-            auto result_data = std::move(serializer).getResult();
-            auto write_result = zip_writer.write(sheet_filename, result_data);
-            if (write_result.isError()) {
-                return TXResult<void>(write_result.error());
-            }
+            batch_data.emplace_back(sheet_filename, std::move(sheet_serializer).getResult());
         }
         
+        // 🚀 批量序列化其他文件
+
         // 序列化共享字符串
-        serializer.clear();
-        auto shared_strings_result = serializer.serializeSharedStrings(string_pool_);
-        if (shared_strings_result.isOk()) {
-            auto shared_strings_data = std::move(serializer).getResult();
-            auto write_result = zip_writer.write("xl/sharedStrings.xml", shared_strings_data);
-            if (write_result.isError()) {
-                return TXResult<void>(write_result.error());
-            }
-        }
-        
-        // 序列化工作簿
-        serializer.clear();
-        std::vector<std::string> sheet_names;
-        for (const auto& sheet : sheets_) {
-            sheet_names.push_back(sheet->getName());
-        }
-        auto workbook_result = serializer.serializeWorkbook(sheet_names);
-        if (workbook_result.isOk()) {
-            auto workbook_data = std::move(serializer).getResult();
-            auto write_result = zip_writer.write("xl/workbook.xml", workbook_data);
-            if (write_result.isError()) {
-                return TXResult<void>(write_result.error());
+        if (string_pool_.size() > 0) {
+            TXZeroCopySerializer shared_serializer(GlobalUnifiedMemoryManager::getInstance());
+            auto shared_strings_result = shared_serializer.serializeSharedStrings(string_pool_);
+            if (shared_strings_result.isOk()) {
+                batch_data.emplace_back("xl/sharedStrings.xml", std::move(shared_serializer).getResult());
             }
         }
 
-        // 添加必要的XLSX结构文件
-        auto structure_result = addXLSXStructureFiles(zip_writer, sheets_.size());
+        // 序列化工作簿
+        TXZeroCopySerializer workbook_serializer(GlobalUnifiedMemoryManager::getInstance());
+        std::vector<std::string> sheet_names;
+        sheet_names.reserve(sheets_.size());
+        for (const auto& sheet : sheets_) {
+            sheet_names.push_back(sheet->getName());
+        }
+        auto workbook_result = workbook_serializer.serializeWorkbook(sheet_names);
+        if (workbook_result.isOk()) {
+            batch_data.emplace_back("xl/workbook.xml", std::move(workbook_serializer).getResult());
+        }
+
+        // 🚀 批量添加XLSX结构文件到批量数据
+        auto structure_result = addXLSXStructureFilesToBatch(batch_data, sheets_.size());
         if (!structure_result.isOk()) {
             return structure_result;
+        }
+
+        // 🚀 一次性批量写入所有文件到ZIP
+        for (const auto& [filename, data] : batch_data) {
+            auto write_result = zip_writer.write(filename, data);
+            if (write_result.isError()) {
+                return TXResult<void>(write_result.error());
+            }
         }
 
         // 关闭ZIP文件
@@ -987,39 +992,37 @@ TXResult<std::vector<uint8_t>> TXInMemoryWorkbook::serializeToMemory() {
     }
 }
 
-TXResult<void> TXInMemoryWorkbook::addXLSXStructureFiles(TXZipArchiveWriter& zip_writer, size_t sheet_count) {
+TXResult<void> TXInMemoryWorkbook::addXLSXStructureFilesToBatch(
+    std::vector<std::pair<std::string, std::vector<uint8_t>>>& batch_data, size_t sheet_count) {
     try {
+        // 🚀 批量添加所有结构文件到batch_data
+
         // 1. [Content_Types].xml
         std::string content_types = generateContentTypesXML(sheet_count);
-        auto result1 = zip_writer.write("[Content_Types].xml",
-                                       std::vector<uint8_t>(content_types.begin(), content_types.end()));
-        if (result1.isError()) return TXResult<void>(result1.error());
+        batch_data.emplace_back("[Content_Types].xml",
+                               std::vector<uint8_t>(content_types.begin(), content_types.end()));
 
         // 2. _rels/.rels
         std::string main_rels(TXCompiledXMLTemplates::MAIN_RELS);
-        auto result2 = zip_writer.write("_rels/.rels",
-                                       std::vector<uint8_t>(main_rels.begin(), main_rels.end()));
-        if (result2.isError()) return TXResult<void>(result2.error());
+        batch_data.emplace_back("_rels/.rels",
+                               std::vector<uint8_t>(main_rels.begin(), main_rels.end()));
 
         // 3. xl/_rels/workbook.xml.rels
         std::string workbook_rels = generateWorkbookRelsXML(sheet_count);
-        auto result3 = zip_writer.write("xl/_rels/workbook.xml.rels",
-                                       std::vector<uint8_t>(workbook_rels.begin(), workbook_rels.end()));
-        if (result3.isError()) return TXResult<void>(result3.error());
+        batch_data.emplace_back("xl/_rels/workbook.xml.rels",
+                               std::vector<uint8_t>(workbook_rels.begin(), workbook_rels.end()));
 
         // 4. docProps/app.xml
         std::string app_props(TXCompiledXMLTemplates::APP_PROPERTIES);
-        auto result4 = zip_writer.write("docProps/app.xml",
-                                       std::vector<uint8_t>(app_props.begin(), app_props.end()));
-        if (result4.isError()) return TXResult<void>(result4.error());
+        batch_data.emplace_back("docProps/app.xml",
+                               std::vector<uint8_t>(app_props.begin(), app_props.end()));
 
         // 5. docProps/core.xml
         std::string timestamp = TXCompiledXMLTemplates::getCurrentTimestamp();
         std::string core_props = TXCompiledXMLTemplates::applyTemplate(
             TXCompiledXMLTemplates::CORE_PROPERTIES, timestamp, timestamp);
-        auto result5 = zip_writer.write("docProps/core.xml",
-                                       std::vector<uint8_t>(core_props.begin(), core_props.end()));
-        if (result5.isError()) return TXResult<void>(result5.error());
+        batch_data.emplace_back("docProps/core.xml",
+                               std::vector<uint8_t>(core_props.begin(), core_props.end()));
 
         return TXResult<void>();
 

@@ -537,9 +537,10 @@ public:
 
 private:
     /**
-     * @brief 添加XLSX结构文件
+     * @brief 🚀 批量添加XLSX结构文件到批量数据
      */
-    TXResult<void> addXLSXStructureFiles(TXZipArchiveWriter& zip_writer, size_t sheet_count);
+    TXResult<void> addXLSXStructureFilesToBatch(
+        std::vector<std::pair<std::string, std::vector<uint8_t>>>& batch_data, size_t sheet_count);
 
     /**
      * @brief 生成[Content_Types].xml

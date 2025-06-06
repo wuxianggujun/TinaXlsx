@@ -60,21 +60,22 @@ TXZeroCopySerializer& TXZeroCopySerializer::operator=(TXZeroCopySerializer&& oth
 
 TXResult<void> TXZeroCopySerializer::serializeWorksheet(const TXInMemorySheet& sheet) {
     auto start_time = std::chrono::high_resolution_clock::now();
-    
+
     try {
+        // 🚀 回滚到之前的高性能版本
         // 预估大小并预分配内存
         size_t estimated_size = estimateWorksheetSize(sheet);
         reserve(estimated_size);
-        
+
         // 写入XML声明和工作表开始
         writeXMLDeclaration();
         writeWorksheetStart();
         writeSheetDataStart();
-        
+
         // 获取单元格数据和行分组
         const auto& cell_buffer = sheet.getCellBuffer();
         auto row_groups = sheet.generateRowGroups();
-        
+
         // 批量序列化单元格数据
         size_t serialized_cells = 0;
         if (options_.enable_parallel && cell_buffer.size >= options_.parallel_threshold) {
@@ -86,19 +87,19 @@ TXResult<void> TXZeroCopySerializer::serializeWorksheet(const TXInMemorySheet& s
         } else {
             serialized_cells = serializeCellDataBatch(cell_buffer, row_groups);
         }
-        
+
         // 写入结束标签
         writeSheetDataEnd();
         writeWorksheetEnd();
-        
+
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         updateStats(serialized_cells, current_pos_, duration.count() / 1000.0);
-        
+
         return TXResult<void>();
-        
+
     } catch (const std::exception& e) {
-        return TXResult<void>(TXError(TXErrorCode::SerializationError, 
+        return TXResult<void>(TXError(TXErrorCode::SerializationError,
                                      fmt::format("工作表序列化失败: {}", e.what())));
     }
 }
