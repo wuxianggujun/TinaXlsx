@@ -82,19 +82,15 @@ add_subdirectory(third_party/fmt)
 
 # -----------------------------------------
 
-# TinaXlsx 核心源文件 - 极简内存优先架构
+# TinaXlsx 核心源文件 - 清理后的基础架构
 set(CORE_SOURCES
-    # 🎯 核心内存优先架构 (必需)
-    src/TXBatchSIMDProcessor.cpp      # SIMD批量处理
+    # 🚀 核心高性能组件 (保留)
     src/TXInMemorySheet.cpp           # 内存优先工作表
+    src/TXBatchSIMDProcessor.cpp      # SIMD批量处理
     src/TXZeroCopySerializer.cpp      # 零拷贝序列化
-    src/TXFastXmlWriter.cpp           # 🚀 超高性能XML写入器
-    src/TXCoordUtils.cpp              # 🚀 统一坐标转换工具
-    src/user/TXCell.cpp               # 🚀 用户层单元格类
-    src/user/TXSheet.cpp              # 🚀 用户层工作表类
     src/TXHighPerformanceLogger.cpp   # 高性能日志库
-    
-    # 📦 基础支撑组件 (必需)
+
+    # 📦 基础支撑组件 (保留)
     src/TXCoordinate.cpp              # 坐标系统
     src/TXTypes.cpp                   # 基础类型
     src/TXError.cpp                   # 错误处理
@@ -103,23 +99,11 @@ set(CORE_SOURCES
     src/TXSlabAllocator.cpp           # Slab分配器
     src/TXChunkAllocator.cpp          # Chunk分配器
     src/TXSmartMemoryManager.cpp      # 智能内存管理器
-    
-    # 🔧 工具库 (最小化)
+
+    # 🔧 工具库 (保留)
     src/TXNumberUtils.cpp             # 数字工具
     src/TXRange.cpp                   # 范围操作
     src/TinaXlsx.cpp                  # 主入口
-
-    # 🚀 用户层API
-    src/user/TXSheet.cpp              # 用户层工作表
-    src/user/TXWorkbook.cpp           # 用户层工作簿
-
-    # 📁 文件I/O处理
-    src/io/TXExcelIO.cpp
-    src/io/TXHighPerformanceXLSXReader.cpp              # Excel文件读写
-
-    # 🎨 可选样式支持 (简化)
-    src/TXColor.cpp                   # 颜色处理
-    src/TXStyle.cpp                   # 基础样式
 )
 
 

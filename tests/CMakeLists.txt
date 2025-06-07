@@ -25,35 +25,7 @@ add_unit_test(Variant
     unit/test_variant.cpp
 )
 
-# 🚀 统一坐标转换工具测试
-add_unit_test(CoordUtils
-    unit/test_coord_utils.cpp
-)
-
-# 🚀 用户层单元格类测试
-add_unit_test(TXCell
-    unit/test_tx_cell.cpp
-)
-
-# 🚀 用户层工作表类测试
-add_unit_test(TXSheet
-    unit/test_tx_sheet.cpp
-)
-
-# 🚀 用户层工作簿类测试
-add_unit_test(TXWorkbook
-    unit/test_tx_workbook.cpp
-)
-
-# 📁 Excel文件I/O测试
-add_unit_test(TXExcelIO
-    unit/test_tx_excel_io.cpp
-)
-
-# 🚀 高性能XLSX读取器测试
-add_unit_test(TXHighPerformanceXLSXReader
-    unit/test_tx_high_performance_xlsx_reader.cpp
-)
+# 基础测试保留，其他测试将在重构后重新添加
 
 # 🚀 高性能日志库测试
 add_unit_test(HighPerformanceLogger
