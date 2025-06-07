@@ -88,6 +88,7 @@ set(CORE_SOURCES
     src/TXBatchSIMDProcessor.cpp      # SIMD批量处理
     src/TXInMemorySheet.cpp           # 内存优先工作表
     src/TXZeroCopySerializer.cpp      # 零拷贝序列化
+    src/TXFastXmlWriter.cpp           # 🚀 超高性能XML写入器
     src/TXHighPerformanceLogger.cpp   # 高性能日志库
     
     # 📦 基础支撑组件 (必需)

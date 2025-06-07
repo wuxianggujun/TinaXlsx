@@ -7,6 +7,7 @@
 #include "TinaXlsx/TXGlobalStringPool.hpp"
 #include "TinaXlsx/TXCoordinate.hpp"
 #include "TinaXlsx/TXInMemorySheet.hpp" // **FIX:** 包含了 TXInMemorySheet 的完整定义
+#include "TinaXlsx/TXHighPerformanceLogger.hpp"
 #include <xsimd/xsimd.hpp>
 #include <algorithm>
 #include <numeric>
@@ -679,32 +680,40 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
     }
     
     try {
+        // 🚀 性能监控开始
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         size_t total_cells = 0;
-        
+
         // 计算总单元格数
         for (const auto& row : data) {
             total_cells += row.size();
         }
-        
+        TX_LOG_DEBUG("混合数据导入开始，总单元格数: {}", total_cells);
+
         // 预分配内存
         if (options.optimize_memory) {
             sheet.reserve(sheet.getCellCount() + total_cells);
         }
-        
+
         // 🚀 优化策略：按类型分离数据，避免混合处理
         std::vector<TXCoordinate> number_coords, string_coords;
         std::vector<double> numbers;
         std::vector<std::string> strings;
 
-        // 预估容量
-        number_coords.reserve(total_cells / 2);
-        string_coords.reserve(total_cells / 2);
-        numbers.reserve(total_cells / 2);
-        strings.reserve(total_cells / 2);
+        // 🚀 更激进的预分配策略
+        number_coords.reserve(total_cells);
+        string_coords.reserve(total_cells);
+        numbers.reserve(total_cells);
+        strings.reserve(total_cells);
 
-        // 按类型分离数据 - 避免TXVariant的性能开销
+        // 🚀 高性能数据分离 - 减少TXVariant的性能开销
+        auto separation_start = std::chrono::high_resolution_clock::now();
+
         for (size_t row_idx = 0; row_idx < data.size(); ++row_idx) {
             const auto& row = data[row_idx];
+            uint32_t base_row = start_coord.getRow().index() + static_cast<uint32_t>(row_idx);
+
             for (size_t col_idx = 0; col_idx < row.size(); ++col_idx) {
                 const auto& variant = row[col_idx];
 
@@ -713,34 +722,35 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
                 }
 
                 TXCoordinate coord(
-                    row_t(start_coord.getRow().index() + static_cast<uint32_t>(row_idx)),
+                    row_t(base_row),
                     column_t(start_coord.getCol().index() + static_cast<uint32_t>(col_idx))
                 );
 
-                // 快速类型检测和分离
-                switch (variant.getType()) {
-                    case TXVariant::Type::Number:
-                        number_coords.push_back(coord);
-                        numbers.push_back(variant.getNumber());
-                        break;
-                    case TXVariant::Type::String:
-                        string_coords.push_back(coord);
-                        strings.push_back(variant.getString());
-                        break;
-                    case TXVariant::Type::Boolean:
-                        number_coords.push_back(coord);
-                        numbers.push_back(variant.getBoolean() ? 1.0 : 0.0);
-                        break;
-                    default:
-                        // 跳过空单元格或未知类型
-                        break;
+                // 🚀 优化：内联类型检测，减少函数调用
+                TXVariant::Type type = variant.getType();
+                if (type == TXVariant::Type::Number) {
+                    number_coords.push_back(coord);
+                    numbers.push_back(variant.getNumber());
+                } else if (type == TXVariant::Type::String) {
+                    string_coords.push_back(coord);
+                    strings.push_back(variant.getString());
+                } else if (type == TXVariant::Type::Boolean) {
+                    number_coords.push_back(coord);
+                    numbers.push_back(variant.getBoolean() ? 1.0 : 0.0);
                 }
+                // 跳过空单元格或未知类型
             }
         }
+
+        auto separation_end = std::chrono::high_resolution_clock::now();
+        auto separation_duration = std::chrono::duration_cast<std::chrono::microseconds>(separation_end - separation_start);
+        TX_LOG_DEBUG("数据分离耗时: {:.3f}ms, 数值: {}, 字符串: {}",
+                     separation_duration.count() / 1000.0, numbers.size(), strings.size());
 
         size_t total_processed = 0;
 
         // 🚀 批量处理数值 - 使用SIMD优化
+        auto numbers_start = std::chrono::high_resolution_clock::now();
         if (!numbers.empty()) {
             auto number_result = sheet.setBatchNumbers(number_coords, numbers);
             if (number_result.isError()) {
@@ -748,8 +758,11 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
             }
             total_processed += number_result.value();
         }
+        auto numbers_end = std::chrono::high_resolution_clock::now();
+        auto numbers_duration = std::chrono::duration_cast<std::chrono::microseconds>(numbers_end - numbers_start);
 
         // 🚀 批量处理字符串 - 使用字符串池优化
+        auto strings_start = std::chrono::high_resolution_clock::now();
         if (!strings.empty()) {
             auto string_result = sheet.setBatchStrings(string_coords, strings);
             if (string_result.isError()) {
@@ -757,6 +770,17 @@ TXResult<size_t> TXBatchOperations::importDataBatch(
             }
             total_processed += string_result.value();
         }
+        auto strings_end = std::chrono::high_resolution_clock::now();
+        auto strings_duration = std::chrono::duration_cast<std::chrono::microseconds>(strings_end - strings_start);
+
+        // 🚀 总体性能统计
+        auto total_end = std::chrono::high_resolution_clock::now();
+        auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(total_end - start_time);
+        TX_LOG_DEBUG("混合数据导入完成:");
+        TX_LOG_DEBUG("  - 数值处理: {:.3f}ms", numbers_duration.count() / 1000.0);
+        TX_LOG_DEBUG("  - 字符串处理: {:.3f}ms", strings_duration.count() / 1000.0);
+        TX_LOG_DEBUG("  - 总耗时: {:.3f}ms", total_duration.count() / 1000.0);
+        TX_LOG_DEBUG("  - 处理速度: {:.0f} 单元格/秒", total_processed / (total_duration.count() / 1000000.0));
 
         return Ok(total_processed);
         

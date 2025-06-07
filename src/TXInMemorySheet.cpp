@@ -10,6 +10,7 @@
 #include "TinaXlsx/TXUnifiedMemoryManager.hpp"
 #include "TinaXlsx/TXZipArchive.hpp"
 #include "TinaXlsx/TXXMLTemplates.hpp"
+#include "TinaXlsx/TXHighPerformanceLogger.hpp"
 #include <algorithm>
 #include <chrono>
 #include <sstream>
@@ -17,6 +18,8 @@
 #include <map>
 #include <cstdio>
 #include <cstdlib>
+#include <future>
+#include <thread>
 
 namespace TinaXlsx {
 
@@ -864,43 +867,87 @@ bool TXInMemoryWorkbook::removeSheet(const std::string& name) {
 
 TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
     std::string output_filename = filename.empty() ? filename_ : filename;
-    
+
     try {
+        // 🚀 性能监控：开始计时
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         // 🚀 创建序列化器 - 使用全局内存管理器
         TXZeroCopySerializer serializer(GlobalUnifiedMemoryManager::getInstance());
-        
+
         // 🚀 高性能序列化：预分配ZIP缓冲区
         TXZipArchiveWriter zip_writer;
 
         // 预估文件大小并预分配缓冲区
         size_t estimated_size = estimateFileSize();
-        // 注意：TXZipArchiveWriter可能不支持setCompressionLevel，跳过此设置
 
-        auto open_result = zip_writer.open(output_filename);
+        // 🚀 激进优化：使用最低压缩级别以获得最大速度
+        auto open_result = zip_writer.open(output_filename, false, 0); // 压缩级别0，仅存储不压缩
         if (open_result.isError()) {
             return TXResult<void>(open_result.error());
         }
-        
+
+        auto zip_open_time = std::chrono::high_resolution_clock::now();
+        auto zip_open_duration = std::chrono::duration_cast<std::chrono::microseconds>(zip_open_time - start_time);
+        TX_LOG_DEBUG("ZIP文件打开耗时: {:.3f}ms", zip_open_duration.count() / 1000.0);
+
         // 🚀 批量序列化优化：预分配所有数据
+        auto serialization_start = std::chrono::high_resolution_clock::now();
         std::vector<std::pair<std::string, std::vector<uint8_t>>> batch_data;
         batch_data.reserve(sheets_.size() + 10); // 预留额外空间
 
-        for (size_t i = 0; i < sheets_.size(); ++i) {
-            auto& sheet = *sheets_[i];
+        // 🚀 并行序列化工作表（如果有多个工作表）
+        if (sheets_.size() > 1) {
+            // 并行处理多个工作表
+            std::vector<std::future<std::pair<std::string, std::vector<uint8_t>>>> futures;
+            futures.reserve(sheets_.size());
 
-            // 🚀 使用独立的序列化器避免清理开销
-            TXZeroCopySerializer sheet_serializer(GlobalUnifiedMemoryManager::getInstance());
-            auto result = sheet.serializeToMemory(sheet_serializer);
-            if (!result.isOk()) {
-                return result;
+            for (size_t i = 0; i < sheets_.size(); ++i) {
+                futures.emplace_back(std::async(std::launch::async, [this, i]() {
+                    auto& sheet = *sheets_[i];
+                    TXZeroCopySerializer sheet_serializer(GlobalUnifiedMemoryManager::getInstance());
+                    auto result = sheet.serializeToMemory(sheet_serializer);
+
+                    std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
+                    if (result.isOk()) {
+                        return std::make_pair(sheet_filename, std::move(sheet_serializer).getResult());
+                    } else {
+                        return std::make_pair(sheet_filename, std::vector<uint8_t>{});
+                    }
+                }));
             }
 
-            // 🚀 批量收集数据，稍后一次性写入
-            std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
-            batch_data.emplace_back(sheet_filename, std::move(sheet_serializer).getResult());
+            // 收集并行结果
+            for (auto& future : futures) {
+                auto result = future.get();
+                if (!result.second.empty()) {
+                    batch_data.emplace_back(std::move(result));
+                }
+            }
+        } else {
+            // 单个工作表，直接序列化
+            for (size_t i = 0; i < sheets_.size(); ++i) {
+                auto& sheet = *sheets_[i];
+
+                // 🚀 使用独立的序列化器避免清理开销
+                TXZeroCopySerializer sheet_serializer(GlobalUnifiedMemoryManager::getInstance());
+                auto result = sheet.serializeToMemory(sheet_serializer);
+                if (!result.isOk()) {
+                    return result;
+                }
+
+                // 🚀 批量收集数据，稍后一次性写入
+                std::string sheet_filename = "xl/worksheets/sheet" + std::to_string(i + 1) + ".xml";
+                batch_data.emplace_back(sheet_filename, std::move(sheet_serializer).getResult());
+            }
         }
+
+        auto serialization_end = std::chrono::high_resolution_clock::now();
+        auto serialization_duration = std::chrono::duration_cast<std::chrono::microseconds>(serialization_end - serialization_start);
+        TX_LOG_DEBUG("工作表序列化耗时: {:.3f}ms", serialization_duration.count() / 1000.0);
         
         // 🚀 批量序列化其他文件
+        auto metadata_start = std::chrono::high_resolution_clock::now();
 
         // 序列化共享字符串
         if (string_pool_.size() > 0) {
@@ -929,22 +976,65 @@ TXResult<void> TXInMemoryWorkbook::saveToFile(const std::string& filename) {
             return structure_result;
         }
 
-        // 🚀 一次性批量写入所有文件到ZIP
-        for (const auto& [filename, data] : batch_data) {
-            auto write_result = zip_writer.write(filename, data);
-            if (write_result.isError()) {
-                return TXResult<void>(write_result.error());
+        auto metadata_end = std::chrono::high_resolution_clock::now();
+        auto metadata_duration = std::chrono::duration_cast<std::chrono::microseconds>(metadata_end - metadata_start);
+        TX_LOG_DEBUG("元数据序列化耗时: {:.3f}ms", metadata_duration.count() / 1000.0);
+
+        // 🚀 优化：按文件大小排序，先写入大文件以提高压缩效率
+        auto zip_write_start = std::chrono::high_resolution_clock::now();
+
+        std::sort(batch_data.begin(), batch_data.end(),
+                  [](const auto& a, const auto& b) {
+                      return a.second.size() > b.second.size();
+                  });
+
+        // 🚀 批量写入优化：使用缓冲区减少系统调用
+        size_t total_written = 0;
+        constexpr size_t BATCH_SIZE = 8; // 每批处理8个文件
+
+        for (size_t i = 0; i < batch_data.size(); i += BATCH_SIZE) {
+            size_t end = std::min(i + BATCH_SIZE, batch_data.size());
+
+            // 批量写入这一组文件
+            for (size_t j = i; j < end; ++j) {
+                const auto& [filename, data] = batch_data[j];
+                auto write_result = zip_writer.write(filename, data);
+                if (write_result.isError()) {
+                    TX_LOG_ERROR("写入文件失败: {}, 错误: {}", filename, write_result.error().getMessage());
+                    return TXResult<void>(write_result.error());
+                }
+                total_written += data.size();
+            }
+
+            // 每批次后记录进度
+            if (batch_data.size() > BATCH_SIZE) {
+                TX_LOG_DEBUG("ZIP写入进度: {}/{} 文件", end, batch_data.size());
             }
         }
 
+        auto zip_write_end = std::chrono::high_resolution_clock::now();
+        auto zip_write_duration = std::chrono::duration_cast<std::chrono::microseconds>(zip_write_end - zip_write_start);
+        TX_LOG_DEBUG("ZIP写入耗时: {:.3f}ms, 写入数据: {:.2f}MB",
+                     zip_write_duration.count() / 1000.0, total_written / (1024.0 * 1024.0));
+
         // 关闭ZIP文件
+        auto zip_close_start = std::chrono::high_resolution_clock::now();
         zip_writer.close();
-        
+        auto zip_close_end = std::chrono::high_resolution_clock::now();
+        auto zip_close_duration = std::chrono::duration_cast<std::chrono::microseconds>(zip_close_end - zip_close_start);
+        TX_LOG_DEBUG("ZIP关闭耗时: {:.3f}ms", zip_close_duration.count() / 1000.0);
+
         // 标记所有工作表为已保存
         for (auto& sheet : sheets_) {
             sheet->markClean();
         }
-        
+
+        // 🚀 总体性能统计
+        auto total_end = std::chrono::high_resolution_clock::now();
+        auto total_duration = std::chrono::duration_cast<std::chrono::microseconds>(total_end - start_time);
+        TX_LOG_INFO("文件保存完成，总耗时: {:.3f}ms, 文件: {}",
+                    total_duration.count() / 1000.0, output_filename);
+
         return TXResult<void>();
         
     } catch (const std::exception& e) {

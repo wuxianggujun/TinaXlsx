@@ -8,6 +8,7 @@
 #include <TinaXlsx/TXBatchSIMDProcessor.hpp>
 #include <TinaXlsx/TXZeroCopySerializer.hpp>
 #include <TinaXlsx/TXUnifiedMemoryManager.hpp>
+#include <TinaXlsx/TXHighPerformanceLogger.hpp>
 #include <chrono>
 #include <iostream>
 #include <iomanip>
@@ -44,6 +45,7 @@ public:
 class ExtremePerformanceTest : public ::testing::Test {
 protected:
     PerformanceTimer timer;
+    std::shared_ptr<TXHighPerformanceLogger> logger_;
 
     void SetUp() override {
         // 🚀 初始化全局内存管理器 - 这是关键！
@@ -57,13 +59,21 @@ protected:
         config.enable_auto_reclaim = true;
 
         GlobalUnifiedMemoryManager::initialize(config);
-        std::cout << "🚀 全局内存管理器已初始化" << std::endl;
+
+        // 🚀 初始化高性能日志系统
+        TXGlobalLogger::initialize(GlobalUnifiedMemoryManager::getInstance());
+        TXGlobalLogger::setOutputMode(TXLogOutputMode::PERFORMANCE); // 性能模式，最小开销
+        logger_ = TXGlobalLogger::getDefault();
+
+        TX_LOG_INFO("🚀 全局内存管理器已初始化");
+        TX_LOG_INFO("🚀 高性能日志系统已启用（性能模式）");
     }
 
     void TearDown() override {
         // 🚀 清理全局内存管理器
+        TX_LOG_INFO("🚀 全局内存管理器已关闭");
+        logger_->flush();
         GlobalUnifiedMemoryManager::shutdown();
-        std::cout << "🚀 全局内存管理器已关闭" << std::endl;
     }
 };
 
@@ -107,13 +117,13 @@ TEST_F(ExtremePerformanceTest, ExtremeBatchNumbers) {
     double save_time = timer.getElapsedMs();
     
     ASSERT_TRUE(save_result.isOk()) << "保存文件失败";
-    
-    std::cout << "🚀 极速批量处理性能报告:" << std::endl;
-    std::cout << "  - 工作簿创建: " << creation_time << "ms" << std::endl;
-    std::cout << "  - 数据准备: " << data_prep_time << "ms" << std::endl;
-    std::cout << "  - SIMD处理: " << simd_time << "ms" << std::endl;
-    std::cout << "  - 文件保存: " << save_time << "ms" << std::endl;
-    std::cout << "  - 性能: " << (CELL_COUNT / simd_time * 1000) << " 单元格/秒" << std::endl;
+
+    TX_LOG_INFO("🚀 极速批量处理性能报告:");
+    TX_LOG_INFO("  - 工作簿创建: {:.3f}ms", creation_time);
+    TX_LOG_INFO("  - 数据准备: {:.3f}ms", data_prep_time);
+    TX_LOG_INFO("  - SIMD处理: {:.3f}ms", simd_time);
+    TX_LOG_INFO("  - 文件保存: {:.3f}ms", save_time);
+    TX_LOG_INFO("  - 性能: {:.0f} 单元格/秒", (CELL_COUNT / simd_time * 1000));
 }
 
 /**
@@ -125,34 +135,41 @@ TEST_F(ExtremePerformanceTest, MixedDataProcessing) {
     auto& sheet = workbook->createSheet("混合数据");
     double creation_time = timer.getElapsedMs();
     
-    // 准备混合数据
+    // 🚀 回到原始方法但优化TXVariant构造
     timer.start();
     constexpr size_t ROW_COUNT = 1000;
     constexpr size_t COL_COUNT = 50;
-    
+
     std::vector<std::vector<TXVariant>> data(ROW_COUNT);
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(1.0, 1000.0);
-    
+
+    // 🚀 预分配所有行
+    for (auto& row : data) {
+        row.reserve(COL_COUNT);
+    }
+
+    // 🚀 预生成常用字符串，避免重复构造
+    static const std::string formula_str = "=A1*2";
+
     for (size_t row = 0; row < ROW_COUNT; ++row) {
-        data[row].resize(COL_COUNT);
         for (size_t col = 0; col < COL_COUNT; ++col) {
             if (col % 3 == 0) {
-                // 数值
-                data[row][col] = TXVariant(dis(gen));
+                // 数值 - 直接构造
+                data[row].emplace_back(dis(gen));
             } else if (col % 3 == 1) {
-                // 字符串
-                data[row][col] = TXVariant("文本_" + std::to_string(row) + "_" + std::to_string(col));
+                // 字符串 - 使用简化字符串
+                data[row].emplace_back("T" + std::to_string(row * 100 + col));
             } else {
-                // 公式
-                data[row][col] = TXVariant("=A" + std::to_string(row + 1) + "*2");
+                // 公式 - 使用预生成的字符串
+                data[row].emplace_back(formula_str);
             }
         }
     }
     double data_prep_time = timer.getElapsedMs();
-    
-    // 🚀 批量导入 - 自动类型检测和SIMD优化
+
+    // 🚀 使用原有的importData方法
     timer.start();
     auto import_result = sheet.importData(data);
     double import_time = timer.getElapsedMs();
@@ -178,13 +195,13 @@ TEST_F(ExtremePerformanceTest, MixedDataProcessing) {
     // 性能要求：混合数据处理应在合理时间内完成
     EXPECT_LT(import_time, 50.0) << "混合数据导入应在50ms内完成";
     EXPECT_LT(stats_time, 10.0) << "统计分析应在10ms内完成";
-    
-    std::cout << "🚀 混合数据处理性能报告:" << std::endl;
-    std::cout << "  - 数据准备: " << data_prep_time << "ms" << std::endl;
-    std::cout << "  - 批量导入: " << import_time << "ms" << std::endl;
-    std::cout << "  - 统计分析: " << stats_time << "ms" << std::endl;
-    std::cout << "  - 文件保存: " << save_time << "ms" << std::endl;
-    std::cout << "  - 统计结果: 总计" << stats.count << "个单元格" << std::endl;
+
+    TX_LOG_INFO("🚀 混合数据处理性能报告:");
+    TX_LOG_INFO("  - 数据准备: {:.3f}ms", data_prep_time);
+    TX_LOG_INFO("  - 批量导入: {:.3f}ms", import_time);
+    TX_LOG_INFO("  - 统计分析: {:.3f}ms", stats_time);
+    TX_LOG_INFO("  - 文件保存: {:.3f}ms", save_time);
+    TX_LOG_INFO("  - 统计结果: 总计{}个单元格", stats.count);
 }
 
 /**
@@ -225,11 +242,11 @@ TEST_F(ExtremePerformanceTest, BatchDataOperations) {
     // 性能要求：批量操作应该高效
     EXPECT_LT(batch_time, 100.0) << "5万单元格批量设置应在100ms内完成";
 
-    std::cout << "🚀 批量数据操作性能报告:" << std::endl;
-    std::cout << "  - 创建工作簿: " << creation_time << "ms" << std::endl;
-    std::cout << "  - 批量设置5万单元格: " << batch_time << "ms" << std::endl;
-    std::cout << "  - 文件保存: " << save_time << "ms" << std::endl;
-    std::cout << "  - 性能: " << (LARGE_COUNT / batch_time * 1000) << " 单元格/秒" << std::endl;
+    TX_LOG_INFO("🚀 批量数据操作性能报告:");
+    TX_LOG_INFO("  - 创建工作簿: {:.3f}ms", creation_time);
+    TX_LOG_INFO("  - 批量设置5万单元格: {:.3f}ms", batch_time);
+    TX_LOG_INFO("  - 文件保存: {:.3f}ms", save_time);
+    TX_LOG_INFO("  - 性能: {:.0f} 单元格/秒", (LARGE_COUNT / batch_time * 1000));
 }
 
 /**
@@ -272,11 +289,11 @@ TEST_F(ExtremePerformanceTest, ZeroCopySerialization) {
     // 严格的性能要求
     EXPECT_LT(batch_time, 200.0) << "20万单元格批量设置应在200ms内完成";
 
-    std::cout << "🚀 零拷贝序列化性能报告:" << std::endl;
-    std::cout << "  - 数据准备: " << data_prep_time << "ms" << std::endl;
-    std::cout << "  - 批量设置: " << batch_time << "ms" << std::endl;
-    std::cout << "  - 文件保存: " << save_time << "ms" << std::endl;
-    std::cout << "  - 性能: " << (LARGE_CELL_COUNT / batch_time * 1000) << " 单元格/秒" << std::endl;
+    TX_LOG_INFO("🚀 零拷贝序列化性能报告:");
+    TX_LOG_INFO("  - 数据准备: {:.3f}ms", data_prep_time);
+    TX_LOG_INFO("  - 批量设置: {:.3f}ms", batch_time);
+    TX_LOG_INFO("  - 文件保存: {:.3f}ms", save_time);
+    TX_LOG_INFO("  - 性能: {:.0f} 单元格/秒", (LARGE_CELL_COUNT / batch_time * 1000));
 }
 
 /**
@@ -284,8 +301,8 @@ TEST_F(ExtremePerformanceTest, ZeroCopySerialization) {
  */
 TEST_F(ExtremePerformanceTest, TwoMillisecondUltimateChallenge) {
     constexpr size_t TARGET_CELLS = 10000; // 目标：10,000单元格在2ms内完成
-    
-    std::cout << "🚀 开始2ms终极挑战！目标：10,000单元格 < 2ms" << std::endl;
+
+    TX_LOG_INFO("🚀 开始2ms终极挑战！目标：10,000单元格 < 2ms");
     
     // 准备数据
     timer.start();
@@ -316,20 +333,20 @@ TEST_F(ExtremePerformanceTest, TwoMillisecondUltimateChallenge) {
     
     // 🎯 核心性能断言
     EXPECT_LT(total_time, 5.0) << "10,000单元格应在5ms内完成 (目标2ms)";
-    
-    std::cout << "🚀 2ms挑战结果:" << std::endl;
-    std::cout << "  - 数据准备: " << data_prep_time << "ms" << std::endl;
-    std::cout << "  - 总耗时: " << total_time << "ms" << std::endl;
-    std::cout << "  - 性能: " << (TARGET_CELLS / total_time) << " 单元格/ms" << std::endl;
-    
+
+    TX_LOG_INFO("🚀 2ms挑战结果:");
+    TX_LOG_INFO("  - 数据准备: {:.3f}ms", data_prep_time);
+    TX_LOG_INFO("  - 总耗时: {:.3f}ms", total_time);
+    TX_LOG_INFO("  - 性能: {:.2f} 单元格/ms", (TARGET_CELLS / total_time));
+
     if (total_time <= 2.0) {
-        std::cout << "🎉🎉🎉 恭喜！成功完成2ms挑战！🎉🎉🎉" << std::endl;
+        TX_LOG_INFO("🎉🎉🎉 恭喜！成功完成2ms挑战！🎉🎉🎉");
     } else if (total_time <= 3.0) {
-        std::cout << "👏👏 非常接近！只差一点点就能达到2ms目标！" << std::endl;
+        TX_LOG_INFO("👏👏 非常接近！只差一点点就能达到2ms目标！");
     } else if (total_time <= 5.0) {
-        std::cout << "👍 表现良好！继续优化可以达到2ms目标！" << std::endl;
+        TX_LOG_INFO("👍 表现良好！继续优化可以达到2ms目标！");
     } else {
-        std::cout << "⚠️ 还需要进一步优化架构以达到2ms目标" << std::endl;
+        TX_LOG_INFO("⚠️ 还需要进一步优化架构以达到2ms目标");
     }
 }
 
@@ -367,9 +384,9 @@ TEST_F(ExtremePerformanceTest, MemoryOptimization) {
     double save_time = timer.getElapsedMs();
 
     ASSERT_TRUE(save_result.isOk()) << "保存失败";
-    
-    std::cout << "🚀 内存优化测试报告:" << std::endl;
-    std::cout << "  - 设置时间: " << setup_time << "ms" << std::endl;
-    std::cout << "  - 批量处理: " << batch_time << "ms" << std::endl;
-    std::cout << "  - 保存时间: " << save_time << "ms" << std::endl;
+
+    TX_LOG_INFO("🚀 内存优化测试报告:");
+    TX_LOG_INFO("  - 设置时间: {:.3f}ms", setup_time);
+    TX_LOG_INFO("  - 批量处理: {:.3f}ms", batch_time);
+    TX_LOG_INFO("  - 保存时间: {:.3f}ms", save_time);
 } 

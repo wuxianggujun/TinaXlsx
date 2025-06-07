@@ -140,6 +140,19 @@ public:
         const TXCompactCellBuffer& buffer,
         const std::vector<TXRowGroup>& row_groups
     );
+
+    /**
+     * @brief 🚀 高性能序列化单元格数据 - 使用TXFastXmlWriter
+     * @param writer 高性能XML写入器
+     * @param buffer 单元格缓冲区
+     * @param row_groups 行分组信息
+     * @return 序列化的单元格数量
+     */
+    size_t serializeCellDataFast(
+        class TXFastXmlWriter& writer,
+        const TXCompactCellBuffer& buffer,
+        const std::vector<TXRowGroup>& row_groups
+    );
     
     /**
      * @brief 批量序列化行数据
