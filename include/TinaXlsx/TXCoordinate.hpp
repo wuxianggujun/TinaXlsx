@@ -27,7 +27,7 @@ public:
     TXCoordinate(const row_t& row, const column_t& col) : row_(row), col_(col) {}
     
     /**
-     * @brief 从A1格式地址构造
+     * @brief 从A1格式地址构造 (使用统一的TXCoordUtils)
      * @param address A1格式地址 (如 "A1", "B5", "AA10")
      */
     explicit TXCoordinate(const std::string& address);
@@ -214,7 +214,7 @@ public:
     // ==================== 静态工厂方法 ====================
     
     /**
-     * @brief 从A1格式地址创建坐标
+     * @brief 从A1格式地址创建坐标 (使用统一的TXCoordUtils)
      * @param address A1格式地址 (如 "A1", "B5", "AA10")
      * @return 坐标对象
      */

@@ -78,25 +78,8 @@ namespace Features {
     constexpr bool HAS_NUMBER_FORMAT = true;    ///< 是否支持数字格式化
 }
 
-/**
- * @brief 快速使用别名 - 新架构
- */
-using Workbook = TXInMemoryWorkbook;  // 使用内存优先工作簿
-using Sheet = TXInMemorySheet;        // 使用内存优先工作表
-// 注意：新架构中不再有独立的Cell类，使用TXCompactCellBuffer进行批量操作
-using Style = TXCellStyle;
-using Color = TXColor;
-using Coordinate = TXCoordinate;
-using Range = TXRange;
-using Formula = TXFormula;
-using MergedCells = TXMergedCells;
-using NumberFormat = TXNumberFormat;
-
-// 常用类型别名
-using RowIndex = row_t;
-using ColIndex = column_t;
-using ColorValue = color_value_t;
-using FontSize = font_size_t;
+// 🚀 不使用别名！TX前缀已经足够防止命名冲突
+// 直接使用完整的类名：TXWorkbook, TXSheet, TXCell, TXCoordinate 等
 
 /**
  * @brief 初始化库
@@ -186,17 +169,13 @@ public:
         const std::string& filename
     );
     
-    /**
-     * @brief 内存优先工作簿别名 - 推荐使用
-     */
-    using MemoryWorkbook = TXInMemoryWorkbook;
-    using MemorySheet = TXInMemorySheet;
+    // 🚀 直接使用完整类名，无需别名
 };
 
-// 新架构别名（推荐使用）
-using MemoryWorkbook = TXInMemoryWorkbook;
-using MemorySheet = TXInMemorySheet;
-using SIMDProcessor = TXBatchSIMDProcessor;
-using ZeroCopySerializer = TXZeroCopySerializer;
+// 🚀 无别名！直接使用完整类名：
+// - TXInMemoryWorkbook
+// - TXInMemorySheet
+// - TXBatchSIMDProcessor
+// - TXZeroCopySerializer
 
 } // namespace TinaXlsx 

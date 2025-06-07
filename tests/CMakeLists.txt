@@ -25,6 +25,36 @@ add_unit_test(Variant
     unit/test_variant.cpp
 )
 
+# 🚀 统一坐标转换工具测试
+add_unit_test(CoordUtils
+    unit/test_coord_utils.cpp
+)
+
+# 🚀 用户层单元格类测试
+add_unit_test(TXCell
+    unit/test_tx_cell.cpp
+)
+
+# 🚀 用户层工作表类测试
+add_unit_test(TXSheet
+    unit/test_tx_sheet.cpp
+)
+
+# 🚀 用户层工作簿类测试
+add_unit_test(TXWorkbook
+    unit/test_tx_workbook.cpp
+)
+
+# 📁 Excel文件I/O测试
+add_unit_test(TXExcelIO
+    unit/test_tx_excel_io.cpp
+)
+
+# 🚀 高性能XLSX读取器测试
+add_unit_test(TXHighPerformanceXLSXReader
+    unit/test_tx_high_performance_xlsx_reader.cpp
+)
+
 # 🚀 高性能日志库测试
 add_unit_test(HighPerformanceLogger
     unit/test_high_performance_logger.cpp
@@ -86,11 +116,21 @@ add_custom_target(RunPerformanceBenchmark
 add_custom_target(ValidateCore
     COMMAND echo "✅ 验证核心功能..."
     COMMAND MemoryFirstAPITests
+    COMMAND CoordUtilsTests
+    COMMAND TXCellTests
+    COMMAND TXSheetTests
+    COMMAND TXWorkbookTests
+    COMMAND TXExcelIOTests
     COMMAND BatchSIMDProcessorTests
     COMMAND ZeroCopySerializerTests
-    DEPENDS 
+    DEPENDS
         MemoryFirstAPITests
-        BatchSIMDProcessorTests  
+        CoordUtilsTests
+        TXCellTests
+        TXSheetTests
+        TXWorkbookTests
+        TXExcelIOTests
+        BatchSIMDProcessorTests
         ZeroCopySerializerTests
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "验证核心组件功能"
@@ -129,6 +169,11 @@ message(STATUS "    - make RunPerformanceBenchmark : 🚀 性能基准测试")
 message(STATUS "")
 message(STATUS "  单独测试:")
 message(STATUS "    - make RunMemoryFirstAPITests : API功能测试")
+message(STATUS "    - make RunCoordUtilsTests : 🚀 坐标转换工具测试")
+message(STATUS "    - make RunTXCellTests : 🚀 用户层单元格测试")
+message(STATUS "    - make RunTXSheetTests : 🚀 用户层工作表测试
+    - make RunTXWorkbookTests : 🚀 用户层工作簿测试
+    - make RunTXExcelIOTests : 📁 Excel文件I/O测试")
 message(STATUS "    - make RunExtremePerformancePerformanceTests : 极致性能测试")
 message(STATUS "")
 message(STATUS "==========================================") 

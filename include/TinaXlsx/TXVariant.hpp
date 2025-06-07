@@ -181,7 +181,4 @@ private:
     std::string string_value_;
 };
 
-// 注意: TXCellStats, TXRange, TXRowGroup, TXImportOptions 已移至其他头文件
-// 这里只保留核心的 TXVariant 类以避免循环依赖
-
 } // namespace TinaXlsx 

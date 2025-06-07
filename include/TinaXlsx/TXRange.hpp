@@ -97,6 +97,12 @@ public:
      * @return 有效返回true，无效返回false
      */
     bool isValid() const;
+
+    /**
+     * @brief 检查范围是否为空
+     * @return 为空返回true，否则返回false
+     */
+    bool isEmpty() const;
     
     /**
      * @brief 检查坐标是否在范围内
@@ -168,8 +174,8 @@ public:
     // ==================== 静态工厂方法 ====================
     
     /**
-     * @brief 从范围地址创建范围
-     * @param range_address 范围地址
+     * @brief 从范围地址创建范围 (使用统一的TXCoordUtils)
+     * @param range_address 范围地址 (如 "A1:B2")
      * @return 范围对象
      */
     static TXRange fromAddress(const std::string& range_address);

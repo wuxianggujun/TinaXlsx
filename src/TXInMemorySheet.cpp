@@ -80,7 +80,7 @@ TXInMemorySheet::TXInMemorySheet(
     const std::string& name,
     TXUnifiedMemoryManager& memory_manager,
     TXGlobalStringPool& string_pool
-) : cell_buffer_(memory_manager)  // 🚀 使用内存管理器初始化cell_buffer_
+) : cell_buffer_(memory_manager, 1024)  // 🚀 使用内存管理器初始化cell_buffer_，初始容量1024
   , memory_manager_(memory_manager)
   , string_pool_(string_pool)
   , name_(name)
@@ -428,12 +428,12 @@ TXResult<size_t> TXInMemorySheet::clearRange(const TXRange& range) {
         
         // 找到范围内的所有单元格并标记为删除
         std::vector<size_t> to_remove;
-        uint32_t range_start = (range.getStart().getRow().index() << 16) | range.getStart().getCol().index();
-        uint32_t range_end = (range.getEnd().getRow().index() << 16) | range.getEnd().getCol().index();
-        
+
         for (size_t i = 0; i < cell_buffer_.size; ++i) {
-            uint32_t coord = cell_buffer_.coordinates[i];
-            if (coord >= range_start && coord <= range_end) {
+            TXCoordinate coord = keyToCoord(cell_buffer_.coordinates[i]);
+
+            // 正确的范围检查：检查行和列是否都在范围内
+            if (range.contains(coord)) {
                 to_remove.push_back(i);
             }
         }
@@ -480,7 +480,11 @@ TXResult<void> TXInMemorySheet::setNumber(const TXCoordinate& coord, double valu
         } else {
             // 创建新单元格
             if (cell_buffer_.size >= cell_buffer_.capacity) {
-                return TXResult<void>(TXError(TXErrorCode::MemoryError, "单元格缓冲区已满"));
+                // 🚀 动态扩容：当缓冲区满时自动扩容
+                auto expand_result = expandCellBuffer();
+                if (expand_result.isError()) {
+                    return expand_result;
+                }
             }
             
             size_t index = cell_buffer_.size++;
@@ -518,7 +522,11 @@ TXResult<void> TXInMemorySheet::setString(const TXCoordinate& coord, const std::
         } else {
             // 创建新单元格
             if (cell_buffer_.size >= cell_buffer_.capacity) {
-                return TXResult<void>(TXError(TXErrorCode::MemoryError, "单元格缓冲区已满"));
+                // 🚀 动态扩容：当缓冲区满时自动扩容
+                auto expand_result = expandCellBuffer();
+                if (expand_result.isError()) {
+                    return expand_result;
+                }
             }
             
             size_t index = cell_buffer_.size++;
@@ -652,14 +660,53 @@ std::vector<TXCoordinate> TXInMemorySheet::findValue(
     double target_value,
     const TXRange* range
 ) const {
-    std::vector<uint32_t> found_coords;
-    TXBatchSIMDProcessor::batchFind(cell_buffer_, target_value, found_coords);
-    
     std::vector<TXCoordinate> result;
-    for (uint32_t coord : found_coords) {
-        result.push_back(keyToCoord(coord));
+
+    // 遍历所有单元格查找匹配的数值
+    for (size_t i = 0; i < cell_buffer_.size; ++i) {
+        if (static_cast<TXCellType>(cell_buffer_.cell_types[i]) == TXCellType::Number) {
+            if (std::abs(cell_buffer_.number_values[i] - target_value) < 1e-9) {
+                TXCoordinate coord = keyToCoord(cell_buffer_.coordinates[i]);
+
+                // 如果指定了范围，检查是否在范围内
+                if (range == nullptr || range->contains(coord)) {
+                    result.push_back(coord);
+                }
+            }
+        }
     }
-    
+
+    return result;
+}
+
+std::vector<TXCoordinate> TXInMemorySheet::findString(
+    const std::string& target_string,
+    const TXRange* range
+) const {
+    std::vector<TXCoordinate> result;
+
+    try {
+        // 获取目标字符串在字符串池中的索引
+        uint32_t target_index = string_pool_.getIndex(target_string);
+
+        // 遍历所有单元格查找匹配的字符串
+        for (size_t i = 0; i < cell_buffer_.size; ++i) {
+            if (static_cast<TXCellType>(cell_buffer_.cell_types[i]) == TXCellType::String) {
+                if (cell_buffer_.string_indices[i] == target_index) {
+                    TXCoordinate coord = keyToCoord(cell_buffer_.coordinates[i]);
+
+                    // 如果指定了范围，检查是否在范围内
+                    if (range == nullptr || range->contains(coord)) {
+                        result.push_back(coord);
+                    }
+                }
+            }
+        }
+    } catch (const std::exception& e) {
+        // 字符串不在池中，返回空结果
+        TX_LOG_DEBUG("查找字符串失败: {}", e.what());
+    }
+
     return result;
 }
 
@@ -744,10 +791,42 @@ TXResult<std::string> TXInMemorySheet::exportToCSV(const TXRange* range) const {
 
 TXRange TXInMemorySheet::getUsedRange() const {
     if (cell_buffer_.empty()) {
-        return TXRange(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(1), column_t(1)));
+        // 返回一个明确的空范围
+        TX_LOG_DEBUG("getUsedRange: 缓冲区为空");
+        return TXRange(TXCoordinate(row_t(0u), column_t(0u)), TXCoordinate(row_t(0u), column_t(0u)));
     }
-    
-    return TXRange(TXCoordinate(row_t(1), column_t(1)), TXCoordinate(row_t(max_row_), column_t(max_col_)));
+
+    // TX_LOG_INFO("getUsedRange: 缓冲区大小 = {}", cell_buffer_.size);
+
+    // 找到实际使用的最小和最大坐标
+    uint32_t min_row = UINT32_MAX, max_row = 0;
+    uint32_t min_col = UINT32_MAX, max_col = 0;
+
+    for (size_t i = 0; i < cell_buffer_.size; ++i) {
+        if (static_cast<TXCellType>(cell_buffer_.cell_types[i]) != TXCellType::Empty) {
+            TXCoordinate coord = keyToCoord(cell_buffer_.coordinates[i]);
+            uint32_t row = coord.getRow().index();
+            uint32_t col = coord.getCol().index();
+
+            // TX_LOG_INFO("getUsedRange: 单元格[{}] 坐标={}:{}, 类型={}",
+            //             i, row, col, static_cast<int>(cell_buffer_.cell_types[i]));
+
+            min_row = std::min(min_row, row);
+            max_row = std::max(max_row, row);
+            min_col = std::min(min_col, col);
+            max_col = std::max(max_col, col);
+        }
+    }
+
+    if (min_row == UINT32_MAX) {
+        // 没有非空单元格
+        TX_LOG_DEBUG("getUsedRange: 没有非空单元格");
+        return TXRange(TXCoordinate(row_t(0u), column_t(0u)), TXCoordinate(row_t(0u), column_t(0u)));
+    }
+
+    TX_LOG_INFO("getUsedRange: 范围 {}:{} 到 {}:{}", min_row, min_col, max_row, max_col);
+    return TXRange(TXCoordinate(row_t(min_row), column_t(min_col)),
+                   TXCoordinate(row_t(max_row), column_t(max_col)));
 }
 
 // ==================== 性能监控 ====================
@@ -805,6 +884,49 @@ void TXInMemorySheet::updateStats(size_t cells_processed, double time_ms) const 
     stats_.batch_operations++;
     stats_.total_operation_time += time_ms;
     stats_.cache_hits++; // 简化统计
+}
+
+TXResult<void> TXInMemorySheet::expandCellBuffer() {
+    try {
+        // 🚀 智能扩容策略
+        size_t current_capacity = cell_buffer_.capacity;
+        size_t new_capacity;
+
+        if (current_capacity == 0) {
+            new_capacity = 1024;  // 初始容量
+        } else if (current_capacity < 10000) {
+            new_capacity = current_capacity * 2;  // 小容量时双倍扩容
+        } else if (current_capacity < 100000) {
+            new_capacity = current_capacity + current_capacity / 2;  // 中等容量时1.5倍扩容
+        } else {
+            new_capacity = current_capacity + 50000;  // 大容量时固定增量扩容
+        }
+
+        // 简化版本：直接尝试扩容，如果失败则返回错误
+        // 检查内存使用情况
+        size_t current_memory = memory_manager_.getTotalMemoryUsage();
+        size_t estimated_additional = (new_capacity - current_capacity) *
+            (sizeof(uint32_t) + sizeof(double) + sizeof(uint32_t) + sizeof(uint8_t) + sizeof(uint16_t));
+
+        // 简单的内存检查：如果当前使用量加上预估增量超过配置限制，则拒绝扩容
+        if (current_memory + estimated_additional > memory_manager_.getConfig().memory_limit) {
+            return TXResult<void>(TXError(TXErrorCode::MemoryError,
+                "内存不足，无法扩容缓冲区"));
+        }
+
+        // 执行扩容 - reserve方法不返回错误，直接调用
+        cell_buffer_.reserve(new_capacity);
+
+        TX_LOG_DEBUG("缓冲区扩容成功: {} -> {} (增长 {:.1f}%)",
+                    current_capacity, new_capacity,
+                    (double)(new_capacity - current_capacity) / current_capacity * 100);
+
+        return TXResult<void>();
+
+    } catch (const std::exception& e) {
+        return TXResult<void>(TXError(TXErrorCode::MemoryError,
+                                     std::string("缓冲区扩容失败: ") + e.what()));
+    }
 }
 
 uint32_t TXInMemorySheet::coordToKey(const TXCoordinate& coord) {

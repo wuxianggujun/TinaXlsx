@@ -49,6 +49,7 @@ namespace TinaXlsx
         FileWriteFailed = 102, // 文件写入失败
         FileReadFailed = 103, // 文件读取失败
         InvalidFileFormat = 104, // 无效文件格式
+        UnsupportedFormat = 105, // 不支持的文件格式
 
         // 坐标相关错误 (200-299)
         InvalidCoordinate = 200, // 无效坐标

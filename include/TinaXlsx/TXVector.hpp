@@ -306,6 +306,96 @@ public:
         assign(init.begin(), init.end());
     }
 
+    // ==================== 插入和删除操作 ====================
+
+    /**
+     * @brief 在指定位置插入元素
+     */
+    iterator insert(const_iterator pos, const T& value) {
+        size_type index = pos - begin();
+        if (size_ >= capacity_) {
+            reserve(calculateGrowth());
+        }
+
+        // 移动后面的元素
+        for (size_type i = size_; i > index; --i) {
+            new(data_ + i) T(std::move(data_[i - 1]));
+            data_[i - 1].~T();
+        }
+
+        // 插入新元素
+        new(data_ + index) T(value);
+        ++size_;
+
+        return begin() + index;
+    }
+
+    /**
+     * @brief 在指定位置插入移动元素
+     */
+    iterator insert(const_iterator pos, T&& value) {
+        size_type index = pos - begin();
+        if (size_ >= capacity_) {
+            reserve(calculateGrowth());
+        }
+
+        // 移动后面的元素
+        for (size_type i = size_; i > index; --i) {
+            new(data_ + i) T(std::move(data_[i - 1]));
+            data_[i - 1].~T();
+        }
+
+        // 插入新元素
+        new(data_ + index) T(std::move(value));
+        ++size_;
+
+        return begin() + index;
+    }
+
+    /**
+     * @brief 删除指定位置的元素
+     */
+    iterator erase(const_iterator pos) {
+        size_type index = pos - begin();
+
+        // 析构要删除的元素
+        data_[index].~T();
+
+        // 移动后面的元素
+        for (size_type i = index; i < size_ - 1; ++i) {
+            new(data_ + i) T(std::move(data_[i + 1]));
+            data_[i + 1].~T();
+        }
+
+        --size_;
+        return begin() + index;
+    }
+
+    /**
+     * @brief 删除指定范围的元素
+     */
+    iterator erase(const_iterator first, const_iterator last) {
+        size_type start_index = first - begin();
+        size_type end_index = last - begin();
+        size_type count = end_index - start_index;
+
+        if (count == 0) return begin() + start_index;
+
+        // 析构要删除的元素
+        for (size_type i = start_index; i < end_index; ++i) {
+            data_[i].~T();
+        }
+
+        // 移动后面的元素
+        for (size_type i = start_index; i < size_ - count; ++i) {
+            new(data_ + i) T(std::move(data_[i + count]));
+            data_[i + count].~T();
+        }
+
+        size_ -= count;
+        return begin() + start_index;
+    }
+
 private:
     // ==================== 内部辅助方法 ====================
     

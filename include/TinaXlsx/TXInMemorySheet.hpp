@@ -463,10 +463,13 @@ private:
     void updateIndex(const TXCoordinate& coord, size_t buffer_index);
     void removeFromIndex(const TXCoordinate& coord);
     void maybeOptimize();                    // 条件优化
-    
+
+    // 🚀 缓冲区管理
+    TXResult<void> expandCellBuffer();       // 动态扩容
+
     // 性能统计更新
     void updateStats(size_t cells_processed, double time_ms) const;
-    
+
     // 坐标转换
     static uint32_t coordToKey(const TXCoordinate& coord);
     static TXCoordinate keyToCoord(uint32_t key);

@@ -1,6 +1,7 @@
 #include "TinaXlsx/TXRange.hpp"
-#include "TinaXlsx/TXRange.hpp"
+#include "TinaXlsx/TXCoordUtils.hpp"  // 🚀 使用统一的坐标转换工具
 #include <algorithm>
+#include <sstream>
 
 namespace TinaXlsx {
 
@@ -14,23 +15,32 @@ TXRange::TXRange(const TXCoordinate& start, const TXCoordinate& end)
 }
 
 TXRange::TXRange(const std::string& range_address) {
-    // 解析范围地址，如 "A1:B5"
+    // 🚀 使用统一的TXCoordUtils解析范围地址
     auto colon_pos = range_address.find(':');
     if (colon_pos == std::string::npos) {
         // 单个单元格
-        TXCoordinate coord(range_address);
-        start_ = coord;
-        end_ = coord;
+        auto result = TXCoordUtils::parseCoord(range_address);
+        if (result.isOk()) {
+            start_ = result.value();
+            end_ = result.value();
+        } else {
+            // 解析失败，创建无效范围
+            start_ = TXCoordinate(row_t(static_cast<uint32_t>(0)), column_t(static_cast<uint32_t>(0)));
+            end_ = TXCoordinate(row_t(static_cast<uint32_t>(0)), column_t(static_cast<uint32_t>(0)));
+        }
     } else {
-        std::string start_addr = range_address.substr(0, colon_pos);
-        std::string end_addr = range_address.substr(colon_pos + 1);
-        
-        TXCoordinate start(start_addr);
-        TXCoordinate end(end_addr);
-        
-        start_ = start;
-        end_ = end;
-        normalize();
+        // 使用TXCoordUtils解析范围
+        auto range_result = TXCoordUtils::parseRange(range_address);
+        if (range_result.isOk()) {
+            auto [start, end] = range_result.value();
+            start_ = start;
+            end_ = end;
+            normalize();
+        } else {
+            // 解析失败，创建无效范围
+            start_ = TXCoordinate(row_t(static_cast<uint32_t>(0)), column_t(static_cast<uint32_t>(0)));
+            end_ = TXCoordinate(row_t(static_cast<uint32_t>(0)), column_t(static_cast<uint32_t>(0)));
+        }
     }
 }
 
@@ -72,9 +82,16 @@ TXRange& TXRange::set(const TXCoordinate& start, const TXCoordinate& end) {
 // ==================== TXRange 验证和操作实现 ====================
 
 bool TXRange::isValid() const {
-    return start_.isValid() && end_.isValid() && 
-           start_.getRow().index() <= end_.getRow().index() && 
+    return start_.isValid() && end_.isValid() &&
+           start_.getRow().index() <= end_.getRow().index() &&
            start_.getCol().index() <= end_.getCol().index();
+}
+
+bool TXRange::isEmpty() const {
+    // 范围为空的条件：无效或者起始和结束坐标都是(0,0)
+    return !isValid() ||
+           (start_.getRow().index() == 0 && start_.getCol().index() == 0 &&
+            end_.getRow().index() == 0 && end_.getCol().index() == 0);
 }
 
 bool TXRange::contains(const TXCoordinate& coord) const {

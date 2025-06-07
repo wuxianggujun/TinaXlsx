@@ -1,7 +1,7 @@
 #include "TinaXlsx/TXCoordinate.hpp"
+#include "TinaXlsx/TXCoordUtils.hpp"  // 🚀 使用统一的坐标转换工具
 #include <algorithm>
 #include <cctype>
-#include <regex>
 #include <sstream>
 
 namespace TinaXlsx {
@@ -9,23 +9,12 @@ namespace TinaXlsx {
 // ==================== TXCoordinate 构造函数实现 ====================
 
 TXCoordinate::TXCoordinate(const std::string& address) {
-    // 使用正则表达式解析地址
-    std::regex addr_regex(R"(([A-Z]+)(\d+))");
-    std::smatch match;
-    
-    if (std::regex_match(address, match, addr_regex)) {
-        std::string col_str = match[1].str();
-        std::string row_str = match[2].str();
-        
-        col_ = column_t(col_str);
-        try {
-            u32 row_index = static_cast<u32>(std::stoul(row_str));
-            row_ = row_t(row_index);
-        } catch (const std::exception&) {
-            // 解析失败，创建无效坐标
-            row_ = row_t(0);
-            col_ = column_t(static_cast<u32>(0));
-        }
+    // 🚀 使用统一的TXCoordUtils进行解析
+    auto result = TXCoordUtils::parseCoord(address);
+    if (result.isOk()) {
+        auto coord = result.value();
+        row_ = coord.getRow();
+        col_ = coord.getCol();
     } else {
         // 解析失败，创建无效坐标
         row_ = row_t(0);
@@ -149,6 +138,7 @@ TXCoordinate& TXCoordinate::operator-=(const TXCoordinate& other) {
 // ==================== TXCoordinate 静态工厂方法实现 ====================
 
 TXCoordinate TXCoordinate::fromAddress(const std::string& address) {
+    // 🚀 使用统一的TXCoordUtils进行解析
     return TXCoordinate(address);
 }
 

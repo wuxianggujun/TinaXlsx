@@ -89,6 +89,9 @@ set(CORE_SOURCES
     src/TXInMemorySheet.cpp           # 内存优先工作表
     src/TXZeroCopySerializer.cpp      # 零拷贝序列化
     src/TXFastXmlWriter.cpp           # 🚀 超高性能XML写入器
+    src/TXCoordUtils.cpp              # 🚀 统一坐标转换工具
+    src/user/TXCell.cpp               # 🚀 用户层单元格类
+    src/user/TXSheet.cpp              # 🚀 用户层工作表类
     src/TXHighPerformanceLogger.cpp   # 高性能日志库
     
     # 📦 基础支撑组件 (必需)
@@ -105,7 +108,15 @@ set(CORE_SOURCES
     src/TXNumberUtils.cpp             # 数字工具
     src/TXRange.cpp                   # 范围操作
     src/TinaXlsx.cpp                  # 主入口
-    
+
+    # 🚀 用户层API
+    src/user/TXSheet.cpp              # 用户层工作表
+    src/user/TXWorkbook.cpp           # 用户层工作簿
+
+    # 📁 文件I/O处理
+    src/io/TXExcelIO.cpp
+    src/io/TXHighPerformanceXLSXReader.cpp              # Excel文件读写
+
     # 🎨 可选样式支持 (简化)
     src/TXColor.cpp                   # 颜色处理
     src/TXStyle.cpp                   # 基础样式

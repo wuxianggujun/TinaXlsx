@@ -266,19 +266,20 @@ xdg-open api-docs/html/index.html # Linux
 
 ```cpp
 #include "TinaXlsx/TinaXlsx.hpp"
-using namespace TinaXlsx;
 
 // 初始化库
 TinaXlsx::initialize();
 
-// 创建内存优先工作簿（推荐）
-auto workbook = TXInMemoryWorkbook::create("sales_report.xlsx");
+// 🚀 直接使用完整类名，无需using namespace
+auto workbook = TinaXlsx::TXInMemoryWorkbook::create("sales_report.xlsx");
 auto& sheet = workbook->createSheet("销售数据");
 
 // 批量设置表头
 std::vector<std::string> headers = {"产品名称", "销售额", "增长率"};
-std::vector<TXCoordinate> header_coords = {
-    TXCoordinate(0, 0), TXCoordinate(0, 1), TXCoordinate(0, 2)
+std::vector<TinaXlsx::TXCoordinate> header_coords = {
+    TinaXlsx::TXCoordinate(0, 0),
+    TinaXlsx::TXCoordinate(0, 1),
+    TinaXlsx::TXCoordinate(0, 2)
 };
 sheet.batchSetStrings(header_coords, headers);
 

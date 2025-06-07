@@ -316,77 +316,7 @@ private:
     mutable std::atomic<size_t> misses_{0};
 };
 
-/**
- * @brief Excel坐标转换工具
- */
-class TXExcelCoordinates {
-public:
-    /**
-     * @brief 将行列转换为Excel格式 (如: A1, B2, AA10)
-     */
-    static std::string rowColToString(uint32_t row, uint32_t col) {
-        std::string result;
-        
-        // 列转换为字母 (A-Z, AA-ZZ, AAA-ZZZ...)
-        uint32_t temp_col = col + 1; // Excel列从1开始
-        do {
-            temp_col--;
-            result = char('A' + (temp_col % 26)) + result;
-            temp_col /= 26;
-        } while (temp_col > 0);
-        
-        // 行号 (1-based)
-        result += std::to_string(row + 1);
-        
-        return result;
-    }
-    
-    /**
-     * @brief 将坐标对转换为Excel格式
-     */
-    static std::string coordToString(uint32_t packed_coord) {
-        uint32_t row = packed_coord >> 16;
-        uint32_t col = packed_coord & 0xFFFF;
-        return rowColToString(row, col);
-    }
-    
-    /**
-     * @brief 批量转换坐标
-     */
-    static void coordsBatchToStrings(const uint32_t* coords, size_t count, 
-                                    std::vector<std::string>& output) {
-        output.clear();
-        output.reserve(count);
-        
-        for (size_t i = 0; i < count; ++i) {
-            output.push_back(coordToString(coords[i]));
-        }
-    }
-    
-    /**
-     * @brief 解析Excel格式坐标 (如: A1 -> {0, 0})
-     */
-    static std::pair<uint32_t, uint32_t> parseCoordinate(std::string_view coord_str) {
-        size_t i = 0;
-        uint32_t col = 0;
-        
-        // 解析列部分
-        while (i < coord_str.size() && std::isalpha(coord_str[i])) {
-            col = col * 26 + (std::toupper(coord_str[i]) - 'A' + 1);
-            ++i;
-        }
-        col--; // 转换为0-based
-        
-        // 解析行部分
-        uint32_t row = 0;
-        while (i < coord_str.size() && std::isdigit(coord_str[i])) {
-            row = row * 10 + (coord_str[i] - '0');
-            ++i;
-        }
-        row--; // 转换为0-based
-        
-        return {row, col};
-    }
-};
+// 🚀 Excel坐标转换功能已统一到 TXCoordUtils，删除重复实现
+// 如需坐标转换，请使用 #include "TinaXlsx/TXCoordUtils.hpp"
 
 } // namespace TinaXlsx 
